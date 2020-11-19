@@ -23,6 +23,120 @@ public class JchLib_BibleTests {
 		// TODO Auto-generated constructor stub
 	}
 
+
+	/* Text analysis Considerations
+	 * 
+	 * 
+	 * 
+	 * ----------------------------------------
+	 * Language
+	 * 	Dialects
+	 * Library
+	 * Story
+	 * 	Fiction
+	 * 	Non-Fiction
+	 * 	Reference
+	 * 	Dimensions 
+	 * Paragraphs
+	 * Sentences
+	 * 	Structure
+	 * Phrases
+	 * Compound-Words
+	 * Word
+	 * 	Parts of Speech
+	 * 	Identifiers
+	 * Sub-Word
+	 * 	Abbreviations
+	 * 	Prefixes
+	 * 	Suffixes
+	 * Letters
+	 * Punctuation
+	 * 
+	 * 
+	 * ----------------------------------------
+	 * Author
+	 * Author Location
+	 * Publish Date
+	 * 
+	 * 
+	 * 
+	 * 
+	 * ----------------------------------------
+	 * Dimensions
+	 * 
+	 * 
+	 * 
+	 * 
+	 */
+	
+	
+	//Start from: *** START OF THIS PROJECT GUTENBERG EBOOK THE KING JAMES BIBLE ***
+	//End from: End of the Project Gutenberg EBook of The King James Bible
+	public static void kjvT1() {
+		String seedLocation = "data/lang/eng/seed/published/project_gutenburg/txt/";
+		String seedFile = "pg10.txt";
+		String compileLocation = "data/lang/eng/stats/words/";
+		
+		//File folder = new File(seedLocation);
+		//File[] listOfFiles = folder.listFiles();
+		
+		System.out.println("Loading file: " + seedLocation + seedFile);
+		ChunkList kjv = ChunkList.loadFile(seedLocation + seedFile);
+		System.out.println("Chunk Count:  " + kjv.getChunkCount());
+		
+		System.out.println("Cleaning...");
+		
+		//This current recipe gets the job done
+		//I like to show the chunk size reduction to how each method impacts the ChunkList
+		System.out.println(kjv.getChunkCount());
+		kjv.removeBeforeKey("Start from: *** START OF THIS PROJECT GUTENBERG EBOOK THE KING JAMES BIBLE ***", true);
+		System.out.println(kjv.getChunkCount());
+		kjv.removeAfterKey("End of the Project Gutenberg EBook of The King James Bible", true);
+		System.out.println(kjv.getChunkCount());
+		
+		
+		System.out.println("Generating TreeMap...");
+		kjv.moveFirstChunk();
+		TreeMap<String, Long> seedsDict = ChunkList.toStringTreeMapDictionary(kjv, getMedDelims());
+		
+		System.out.println("Printing...");
+		
+		System.out.println(kjv.toString(kjv.getChunkCount()));
+		
+		BufferedWriter writer =null;
+		try {
+			writer = new BufferedWriter(new FileWriter(compileLocation + "kjv_stats.txt"));
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+    	kjv.moveFirstChunk();
+		System.out.println("Write location: " + compileLocation + "kjv_stats.txt");
+		for(Map.Entry<String, Long> entry : seedsDict.entrySet()) {
+			System.out.println(entry.getKey() + "\t" + entry.getValue()); 
+			
+			try {
+
+				writer.write(entry.getKey() + "\t" + entry.getValue() + "\r\n");
+				
+			} catch (IOException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			}
+			
+		}
+		
+		try {
+			writer.close();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		System.out.println("Done?");
+		
+	}
 	
 
 	public static void biblegrammartest() {
