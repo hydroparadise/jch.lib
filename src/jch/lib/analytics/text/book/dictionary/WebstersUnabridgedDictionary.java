@@ -7,12 +7,12 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.TreeMap;
 
-import jch.lib.analytics.chunk.ChunkLink;
-import jch.lib.analytics.chunk.ChunkList;
-import jch.lib.analytics.chunk.StringChunkLink;
 import jch.lib.analytics.text.StringStatEntryList;
 import jch.lib.analytics.text.StringStatEntryList.SortByFromCount;
 import jch.lib.analytics.text.book.bible.KingJamesVersionBible;
+import jch.lib.common.chunk.ChunkLink;
+import jch.lib.common.chunk.ChunkList;
+import jch.lib.common.chunk.StringChunkLink;
 
 public class WebstersUnabridgedDictionary {
 	

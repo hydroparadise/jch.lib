@@ -8,7 +8,6 @@ import java.util.Map;
 import java.util.Scanner;
 import java.util.TreeMap;
 
-import jch.lib.analytics.chunk.ChunkList;
 import jch.lib.analytics.text.book.SyntaxDatasetEntry;
 import jch.lib.analytics.text.book.bible.Bible;
 import jch.lib.analytics.text.book.bible.BibleChapter;
@@ -16,6 +15,7 @@ import jch.lib.analytics.text.book.bible.BibleVerse;
 import jch.lib.analytics.text.book.bible.KingJamesVersionBible;
 import jch.lib.analytics.text.book.dictionary.WebstersUnabridgedDictionary;
 import jch.lib.analytics.text.book.dictionary.WordDictionary;
+import jch.lib.common.chunk.ChunkList;
 
 public class JchLib_BibleTests {
 

@@ -20,9 +20,9 @@ import javax.xml.parsers.ParserConfigurationException;
 import org.w3c.dom.Document;
 import org.xml.sax.SAXException;
 
-import jch.lib.analytics.chunk.ChunkList;
 import jch.lib.common.HttpWorker;
 import jch.lib.common.ReadWorker;
+import jch.lib.common.chunk.ChunkList;
 
 public class JchLib_FileTests {
 

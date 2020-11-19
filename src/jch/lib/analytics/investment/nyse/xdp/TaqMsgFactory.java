@@ -9,9 +9,9 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
-import jch.lib.analytics.chunk.ChunkList;
-import jch.lib.analytics.chunk.StringChunkLink;
 import jch.lib.analytics.investment.nyse.xdp.*;
+import jch.lib.common.chunk.ChunkList;
+import jch.lib.common.chunk.StringChunkLink;
 
 /*
  

@@ -11,7 +11,7 @@ import jch.lib.analytics.text.StringStatEntryList.StringStatEntry;
 import jch.lib.analytics.text.book.SyntaxDatasetEntry;
 import jch.lib.analytics.text.book.bible.BibleSyntaxDatasetEntry;
 import jch.lib.analytics.text.book.bible.KingJamesVersionBible;
-import jch.lib.analytics.chunk.ChunkList;
+import jch.lib.common.chunk.ChunkList;
 import jch.lib.analytics.text.StringArrayStatEntryList.StringArrayStatEntry;
 import jch.lib.analytics.text.StringStatEntryList.SortByFromCount;
 

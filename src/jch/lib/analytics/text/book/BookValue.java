@@ -1,8 +1,8 @@
 package jch.lib.analytics.text.book;
 
-import jch.lib.analytics.chunk.ChunkLink;
-import jch.lib.analytics.chunk.ChunkList;
-import jch.lib.analytics.chunk.StringChunkLink;
+import jch.lib.common.chunk.ChunkLink;
+import jch.lib.common.chunk.ChunkList;
+import jch.lib.common.chunk.StringChunkLink;
 
 
 

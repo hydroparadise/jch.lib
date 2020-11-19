@@ -2,8 +2,8 @@ package jch.lib.analytics.text.book.bible;
 
 import java.util.ArrayList;
 
-import jch.lib.analytics.chunk.ChunkLink;
 import jch.lib.analytics.text.book.BookValue;
+import jch.lib.common.chunk.ChunkLink;
 
 public class BibleBook extends BookValue {
 	public ChunkLink getStartContentRef() {

@@ -6,8 +6,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import jch.lib.analytics.chunk.ChunkList;
 import jch.lib.common.ReadWorker;
+import jch.lib.common.chunk.ChunkList;
 
 public class JchLib_FinanceTests {
 

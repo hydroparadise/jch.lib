@@ -1,4 +1,4 @@
-package jch.lib.analytics.chunk;
+package jch.lib.common.chunk;
 
 
 public interface ChunkLink {

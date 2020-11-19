@@ -3,10 +3,10 @@ package jch.lib.test;
 import java.io.FileWriter;
 import java.io.IOException;
 
-import jch.lib.analytics.chunk.ChunkList;
 import jch.lib.analytics.text.book.bible.Bible;
 import jch.lib.analytics.text.book.bible.BibleSyntaxDatasetEntry;
 import jch.lib.analytics.text.book.bible.KingJamesVersionBible;
+import jch.lib.common.chunk.ChunkList;
 
 /*
 import com.google.cloud.language.v1.AnalyzeSyntaxRequest;

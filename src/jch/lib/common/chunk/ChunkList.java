@@ -1,4 +1,4 @@
-package jch.lib.analytics.chunk;
+package jch.lib.common.chunk;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;

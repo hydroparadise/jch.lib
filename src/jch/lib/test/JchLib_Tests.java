@@ -33,10 +33,6 @@ import javax.xml.parsers.ParserConfigurationException;
 import org.w3c.dom.Document;
 import org.xml.sax.SAXException;
 
-
-
-import jch.lib.analytics.chunk.ChunkList;
-import jch.lib.analytics.chunk.StringChunkLink;
 import jch.lib.analytics.investment.nyse.xdp.TaqMsg;
 import jch.lib.analytics.investment.nyse.xdp.TaqMsgFactory;
 import jch.lib.analytics.investment.nyse.xdp.TaqMsgType003;
@@ -61,6 +57,8 @@ import jch.lib.analytics.text.book.dictionary.WebstersUnabridgedDictionary;
 import jch.lib.analytics.text.book.dictionary.WordDictionary;
 import jch.lib.common.HttpWorker;
 import jch.lib.common.ReadWorker;
+import jch.lib.common.chunk.ChunkList;
+import jch.lib.common.chunk.StringChunkLink;
 
 
 

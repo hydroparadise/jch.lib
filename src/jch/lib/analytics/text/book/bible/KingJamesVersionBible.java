@@ -13,10 +13,10 @@ import java.util.Comparator;
 
 import jch.lib.analytics.*;
 import jch.lib.analytics.apps.*;
-import jch.lib.analytics.chunk.ChunkLink;
-import jch.lib.analytics.chunk.ChunkList;
-import jch.lib.analytics.chunk.StringChunkLink;
 import jch.lib.analytics.text.book.*;
+import jch.lib.common.chunk.ChunkLink;
+import jch.lib.common.chunk.ChunkList;
+import jch.lib.common.chunk.StringChunkLink;
 
 /*
  * Testament
