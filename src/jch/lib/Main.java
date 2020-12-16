@@ -25,9 +25,7 @@ public class Main {
 		//console output to prove it compiles
 		System.out.println("hello jch.lib");
 		
-		//the last stuff i was building
-		new JchLib_StockTests();
-		JchLib_StockTests.aalFrameSplitTest();
+		JchLib_FinanceTests.mbrTranLoad1();
 	}
 	
 }

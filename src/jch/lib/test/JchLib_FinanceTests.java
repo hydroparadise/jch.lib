@@ -5,7 +5,12 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
+import jch.lib.analytics.text.GhostWriter;
+import jch.lib.analytics.text.GhostWriter.StatLenEntry;
+import jch.lib.analytics.text.StringStatEntryList.StringStatEntry;
 import jch.lib.common.ReadWorker;
 import jch.lib.common.chunk.ChunkList;
 
@@ -300,4 +305,77 @@ public class JchLib_FinanceTests {
 		*/
 		System.out.println("Done!");
 	}
+	
+	
+	
+	/*
+	 * Load and analyze member transaction info to extract places of business to understand 
+	 * where they shop.  In short, performing text analysis for common strings
+	 * 
+	 * 1) Char by char analysis
+	 * 2) Word by word analysis
+	 * 3) Phrase by phrase analysis
+	 * 
+	 */
+	static String tdLoc = "R:\\_Analytics\\Business Intelligence\\Analysis\\20201118 Member Tran Analysis\\Tran Locs Prev 180\\TranTypes\\";
+	static String tdFiles[] = {
+			"01_Sig\\Sig_WB.txt",
+			"02_POS\\POS_WB.txt",
+	};
+	
+	public static void mbrTranLoad1() {
+		//load file into linked list
+			System.out.println("Loading file " + tdLoc + tdFiles[0]);
+		ChunkList posWb = ChunkList.loadFile(tdLoc + tdFiles[0]);
+		
+		//do some file cleaning
+		System.out.println("Cleaning...");
+		posWb.replaceAll("\r\n", " ");	//remove new lines
+		posWb.replaceAll("  ", " ");	//remove repeated spaces
+		posWb.reindex();
+		
+		//Ghostwriter object will do analysis
+		GhostWriter gw = new GhostWriter();
+		
+		//Pass linked list by reference for gw to access
+		gw.SeedSource = posWb;
+		
+		System.out.print("Max Repeat Length: ");
+		System.out.println(gw.calcMaxLengthString());
+		
+		
+		gw.buildStringStats2(25);
+		
+		System.out.println("Stats Built");
+		System.out.println(gw.CharStringStatLen.size());
+		
+		for(Map.Entry<Integer, StatLenEntry>  statLen : gw.CharStringStatLen.entrySet()) {
+			//print aggregation results
+			System.out.print(statLen.getKey());
+			System.out.print("\t");
+			System.out.println(statLen.getValue().CharChanceList.list.size());
+			
+			//print details
+			
+			/*
+			for(StringStatEntry listEntry : statLen.getValue().CharChanceList.list) {
+				System.out.print(listEntry.getFrom() + listEntry.getTo() +"\t");
+				System.out.println(listEntry.getCount());
+			}
+			
+			try {
+				System.in.read();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}	
+			*/
+		}
+		
+		
+		gw.buildCharPublish(500);
+		
+		System.out.println("done!");
+	}
+	
 }

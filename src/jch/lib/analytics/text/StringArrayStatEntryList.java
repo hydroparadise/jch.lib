@@ -9,6 +9,13 @@ import jch.lib.analytics.text.StringStatEntryList.StringStatEntry;
 public class StringArrayStatEntryList {
 	public ArrayList<StringArrayStatEntry> list;
 	
+	/***
+	 * 
+	 * @param key - 
+	 * @param from
+	 * @param to
+	 * @param count
+	 */
 	public void addEntry(String[] key, String[] from, String to, Long count) {
 		StringArrayStatEntry newEntry = new StringArrayStatEntry(key, from, to, count);
 		list.add(newEntry);

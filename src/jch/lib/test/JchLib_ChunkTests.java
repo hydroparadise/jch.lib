@@ -1127,6 +1127,47 @@ public class JchLib_ChunkTests {
 		System.out.println(list.getChunkCount());
 	}
 	
+	public static void test25() {
+		
+		ChunkList test = new ChunkList();
+		
+		test.setPosition(test.getChunkCount() - 5);
+		System.out.println(test.toString(5));
+		
+		test.appendChunkList(ChunkList.stringToChunks("a"));
+		test.setPosition(test.getChunkCount() - 5);
+		System.out.println(test.toString(5));
+		
+		test.appendChunkList(ChunkList.stringToChunks("b"));
+		test.setPosition(test.getChunkCount() - 5);
+		System.out.println(test.toString(5));
+		
+		
+		test.appendChunkList(ChunkList.stringToChunks("c"));
+		test.setPosition(test.getChunkCount() - 5);
+		System.out.println(test.toString(5));
+		
+		test.appendChunkList(ChunkList.stringToChunks("d"));
+		test.setPosition(test.getChunkCount() - 5);
+		System.out.println(test.toString(5));
+		
+		test.appendChunkList(ChunkList.stringToChunks("e"));
+		test.setPosition(test.getChunkCount() - 5);
+		System.out.println(test.toString(5));
+		
+		test.appendChunkList(ChunkList.stringToChunks("f"));
+		test.setPosition(test.getChunkCount() - 5);
+		System.out.println(test.toString(5));
+		
+		test.appendChunkList(ChunkList.stringToChunks("g"));
+		test.setPosition(test.getChunkCount() - 5);
+		System.out.println(test.toString(5));
+		
+		test.appendChunkList(ChunkList.stringToChunks("h"));
+		test.setPosition(test.getChunkCount() - 5);
+		System.out.println(test.toString(5));
+	}
+	
 	
 	public static void test16() {
 		System.out.println(System.getProperty("os.name"));

@@ -16,7 +16,11 @@ import jch.lib.analytics.text.StringArrayStatEntryList.StringArrayStatEntry;
 import jch.lib.analytics.text.StringStatEntryList.SortByFromCount;
 
 
-
+/***
+ * 
+ * @author harrisonc
+ *
+ */
 public class GhostWriter {
 	public ChunkList SeedSource;
 	public ArrayList<SyntaxDatasetEntry> SeedSourceGrammar;
@@ -112,6 +116,120 @@ public class GhostWriter {
 	}
 	
 	
+	public void buildStringStats2(int lookback) {
+		
+		if(SeedSource != null && SeedSource.getChunkCount() > 0) {
+			
+			this.lookback = lookback;
+			String tempVal = null;
+			String prevFrom = "";
+			long cnt = 0;
+			double rt = 0.0;
+			
+			//start from 1 and work our way up to lookback value
+			for(int curLen = 1; curLen - 1 < lookback; curLen++) {
+				System.out.println(curLen);
+				
+				//ins
+				TreeMap<String, Long> tmap = new TreeMap<String, Long>();
+				StringStatEntryList   list = new StringStatEntryList();
+				StatLenEntry          lenEntry = new StatLenEntry();
+		
+				SeedSource.moveFirstChunk();
+				
+				//scan through file with given length				
+				cnt = 0;
+				rt = 0.0;
+				do {//will short-circuit when .moveNextChunk() hits NULL
+					//get current character ascii value
+					tempVal = SeedSource.toString(curLen).toUpperCase();
+					
+					if(tempVal.length() == curLen ) {
+						//if not exist, insert here
+						if(tmap.get(tempVal) == null) {
+							tmap.put(tempVal, (long) 1);
+						}
+						//otherwise, add 1 more to its count
+						else { 
+							cnt = (long)tmap.get(tempVal);
+							tmap.put(tempVal, ++cnt);
+						}
+					}
+					
+					//reset
+					tempVal = null;
+				} while(SeedSource.moveNextChunk());
+				
+				
+				//Load treemap entries in a list
+				for(Entry<String, Long> entry : tmap.entrySet()) {
+					String from = null;
+					String to = null;
+					
+					//we cant cant split a string where len == 1
+					if(curLen == 1) {
+						from = entry.getKey();
+						to = "";
+					}
+					else if(curLen > 1) {
+						from = entry.getKey().substring(0,curLen-1);
+						to = entry.getKey().substring(curLen-1);
+					}
+					
+					//add entry to list
+                    //             'abcd'         'abc' 'd'	  250
+					list.addEntry(entry.getKey(), from, to, entry.getValue());
+				}
+				
+				//sort entries from least common to most common
+				Collections.sort(list.list, new StringStatEntryList().new SortByFromCount());
+				
+				//calc odds
+				rt = 0.0;
+				prevFrom = "";
+				for(StringStatEntry stringStatEntry : list.list) {
+					
+					//
+					double chance = 0.0;
+					if(curLen == 1) {
+						//calcs odds for base
+						chance = (double)stringStatEntry.getCount()/(double)SeedSource.getChunkCount();
+					}
+					else if(curLen > 1) {
+						//grabs from len - 1
+						chance = 
+								(double)stringStatEntry.getCount()/
+							    (double)CharStringStatLen.get(curLen - 1).CharSet.get(stringStatEntry.getFrom());
+					}
+					stringStatEntry.setChance(chance);
+					
+					//restart running total where len greater than 1 and "from" differs from prevFrom
+					if(curLen > 1 && prevFrom.compareTo(stringStatEntry.getFrom()) != 0) 
+						rt = 0.0;
+					rt = stringStatEntry.getChance() + rt;
+					stringStatEntry.setRoll(rt);
+					
+					//grab "from" value to be compares as prevFrom for next iteration
+					prevFrom = stringStatEntry.getFrom();
+
+				}
+				
+
+				
+				lenEntry.setLen(curLen);
+				lenEntry.CharSet = tmap;
+				lenEntry.CharChanceList = list;
+				
+				CharStringStatLen.put(curLen, lenEntry);
+				
+				//Trim horizontally
+				
+				//Trim vertically
+				if(curLen > 1) CharStringStatLen.remove(curLen - 1);
+			}
+		}
+	}
+
 	/**
 	 * Builds char statistics
 	 * @param lookback
@@ -262,6 +380,60 @@ public class GhostWriter {
 		}
 	}
 	
+	/***
+	 * Calculates max repeatable set of characters for a given
+	 * SeedSource.  Attempts to be light on the cpu, but who knows.
+	 * @return
+	 */
+	public long calcMaxLengthString() {
+		long output = 0;
+		//make sure SeedSource is populated and has content
+		if(SeedSource != null && SeedSource.getChunkCount() > 0) {
+			StringBuilder lenSmpl = null;
+			StringBuilder lenTest = null;
+			
+			//increasing lengths to test
+			for(long curLen = 1; curLen < SeedSource.getChunkCount(); curLen++) {
+				
+				//flag for repeat found
+				Boolean fnd = false;
+				
+				//Sample loop
+				for(long smpl = 1; smpl - curLen < SeedSource.getChunkCount(); smpl++) {
+					SeedSource.moveFirstChunk();   //jumps instead of moves (saves time/compute)
+					//SeedSource.setPosition(smpl);  //moves to position
+					lenSmpl = new StringBuilder(SeedSource.toString(curLen));
+					
+					System.out.println(curLen + ": " +lenSmpl);
+					
+					//Compare Loop
+					for(long cmpr = smpl + 1; cmpr - curLen < SeedSource.getChunkCount(); cmpr++  ) {
+						//SeedSource.setPosition(cmpr);  //moves to position
+						SeedSource.moveNextChunk();
+						lenTest = new StringBuilder(SeedSource.toString(curLen));
+						
+						if(cmpr % 10000000 == 0) System.out.println(cmpr);
+						
+						if(lenSmpl.compareTo(lenTest) == 0) {
+							//repeat found; short circuit loops
+							smpl = Long.MAX_VALUE;
+							cmpr = Long.MAX_VALUE;
+							fnd = true;
+							System.out.print("boom!");
+							
+						}	
+					}
+				}
+				
+				if(fnd == false) {
+					//didnt find repeat at curLen; report prev max length
+					output = curLen - 1;
+					curLen = Long.MAX_VALUE;
+				}
+			}
+		}
+		return output;
+	}
 	
 	/**
 	 * 
@@ -491,6 +663,11 @@ public class GhostWriter {
 	 * Key = 	cat
 	 * From = 	ca
 	 * To = 	t
+	 * 
+	 *  From  To Count
+	 *  ca -> t     23
+	 *  ca -> u     28
+	 *  etc...
 	 * @author James Chad Harrison
 	 *
 	 */
