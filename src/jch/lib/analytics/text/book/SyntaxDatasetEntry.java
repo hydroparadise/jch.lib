@@ -1,5 +1,6 @@
 package jch.lib.analytics.text.book;
 
+//for receiving google analytics object properties
 public interface SyntaxDatasetEntry {
 	public String getText();
 	public void setText(String text);

@@ -121,47 +121,7 @@ public class JchLib_FinanceTests {
 		
 	}
 	
-	public static void test25() {
-		
-		ChunkList test = new ChunkList();
-		
-		test.setPosition(test.getChunkCount() - 5);
-		System.out.println(test.toString(5));
-		
-		test.appendChunkList(ChunkList.stringToChunks("a"));
-		test.setPosition(test.getChunkCount() - 5);
-		System.out.println(test.toString(5));
-		
-		test.appendChunkList(ChunkList.stringToChunks("b"));
-		test.setPosition(test.getChunkCount() - 5);
-		System.out.println(test.toString(5));
-		
-		
-		test.appendChunkList(ChunkList.stringToChunks("c"));
-		test.setPosition(test.getChunkCount() - 5);
-		System.out.println(test.toString(5));
-		
-		test.appendChunkList(ChunkList.stringToChunks("d"));
-		test.setPosition(test.getChunkCount() - 5);
-		System.out.println(test.toString(5));
-		
-		test.appendChunkList(ChunkList.stringToChunks("e"));
-		test.setPosition(test.getChunkCount() - 5);
-		System.out.println(test.toString(5));
-		
-		test.appendChunkList(ChunkList.stringToChunks("f"));
-		test.setPosition(test.getChunkCount() - 5);
-		System.out.println(test.toString(5));
-		
-		test.appendChunkList(ChunkList.stringToChunks("g"));
-		test.setPosition(test.getChunkCount() - 5);
-		System.out.println(test.toString(5));
-		
-		test.appendChunkList(ChunkList.stringToChunks("h"));
-		test.setPosition(test.getChunkCount() - 5);
-		System.out.println(test.toString(5));
-	}
-	
+
 
 	public static void test23() {
 		String loadPath = "J:\\Chad\\EXTRACT.LOANTRANSACTION";
@@ -317,13 +277,48 @@ public class JchLib_FinanceTests {
 	 * 3) Phrase by phrase analysis
 	 * 
 	 */
-	static String tdLoc = "R:\\_Analytics\\Business Intelligence\\Analysis\\20201118 Member Tran Analysis\\Tran Locs Prev 180\\TranTypes\\";
+	static String tdLoc = "R:\\_Analytics\\Analysis\\20201118 Member Tran Analysis\\Tran Locs Prev 180\\TranTypes\\";
 	static String tdFiles[] = {
 			"01_Sig\\Sig_WB.txt",
 			"02_POS\\POS_WB.txt",
 	};
 	
+	
+	/***
+	 * testing max length
+	 */
 	public static void mbrTranLoad1() {
+		//load file into linked list
+		System.out.println("Loading file " + tdLoc + tdFiles[0]);
+		ChunkList posWb = ChunkList.loadFile(tdLoc + tdFiles[0]);
+		System.out.println("CL Size: " + posWb.getChunkCount() );
+		//do some file cleaning
+		System.out.println("Cleaning 1...");
+		posWb.replaceAll("\r\n", " ");	//remove new lines
+		System.out.println("Cleaning 2...");
+		posWb.replaceAll("  ", " ");	//remove repeated spaces
+		System.out.println("Reindex...");
+		posWb.reindex();
+		
+		System.out.println("CL Size: " + posWb.getChunkCount() );
+		
+		//Ghostwriter object will do analysis
+		GhostWriter gw = new GhostWriter();
+		
+		//Pass linked list by reference for gw to access
+		gw.SeedSource = posWb;
+		
+		System.out.println("Max Repeat Length: ");
+		gw.calcMaxLengthString();
+
+		
+		System.out.println("done!");
+		
+		
+	}
+	
+
+	public static void mbrTranLoad2() {
 		//load file into linked list
 			System.out.println("Loading file " + tdLoc + tdFiles[0]);
 		ChunkList posWb = ChunkList.loadFile(tdLoc + tdFiles[0]);
@@ -376,6 +371,9 @@ public class JchLib_FinanceTests {
 		gw.buildCharPublish(500);
 		
 		System.out.println("done!");
+		
+		
 	}
+	
 	
 }

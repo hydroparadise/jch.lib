@@ -12,6 +12,7 @@ import jch.lib.analytics.text.book.SyntaxDatasetEntry;
 import jch.lib.analytics.text.book.bible.BibleSyntaxDatasetEntry;
 import jch.lib.analytics.text.book.bible.KingJamesVersionBible;
 import jch.lib.common.chunk.ChunkList;
+import jch.lib.common.chunk.StringChunkLink;
 import jch.lib.analytics.text.StringArrayStatEntryList.StringArrayStatEntry;
 import jch.lib.analytics.text.StringStatEntryList.SortByFromCount;
 
@@ -115,7 +116,10 @@ public class GhostWriter {
 		}
 	}
 	
-	
+	/***
+	 * Builds single layer of string stats
+	 * @param lookback
+	 */
 	public void buildStringStats2(int lookback) {
 		
 		if(SeedSource != null && SeedSource.getChunkCount() > 0) {
@@ -231,7 +235,9 @@ public class GhostWriter {
 	}
 
 	/**
-	 * Builds char statistics
+	 * Builds char statistics in layers from 1 to lookback
+	 *  
+	 * 
 	 * @param lookback
 	 */
 	public void buildStringStats(int lookback) {
@@ -380,13 +386,16 @@ public class GhostWriter {
 		}
 	}
 	
+	
+
 	/***
 	 * Calculates max repeatable set of characters for a given
 	 * SeedSource.  Attempts to be light on the cpu, but who knows.
 	 * @return
 	 */
-	public long calcMaxLengthString() {
+	public long calcMaxLengthString2() {
 		long output = 0;
+		
 		//make sure SeedSource is populated and has content
 		if(SeedSource != null && SeedSource.getChunkCount() > 0) {
 			StringBuilder lenSmpl = null;
@@ -399,7 +408,7 @@ public class GhostWriter {
 				Boolean fnd = false;
 				
 				//Sample loop
-				for(long smpl = 1; smpl - curLen < SeedSource.getChunkCount(); smpl++) {
+				for(long smplPos = 1; smplPos - curLen < SeedSource.getChunkCount(); smplPos++) {
 					SeedSource.moveFirstChunk();   //jumps instead of moves (saves time/compute)
 					//SeedSource.setPosition(smpl);  //moves to position
 					lenSmpl = new StringBuilder(SeedSource.toString(curLen));
@@ -407,7 +416,7 @@ public class GhostWriter {
 					System.out.println(curLen + ": " +lenSmpl);
 					
 					//Compare Loop
-					for(long cmpr = smpl + 1; cmpr - curLen < SeedSource.getChunkCount(); cmpr++  ) {
+					for(long cmpr = smplPos + 1; cmpr - curLen < SeedSource.getChunkCount(); cmpr++  ) {
 						//SeedSource.setPosition(cmpr);  //moves to position
 						SeedSource.moveNextChunk();
 						lenTest = new StringBuilder(SeedSource.toString(curLen));
@@ -416,24 +425,123 @@ public class GhostWriter {
 						
 						if(lenSmpl.compareTo(lenTest) == 0) {
 							//repeat found; short circuit loops
-							smpl = Long.MAX_VALUE;
+							smplPos = Long.MAX_VALUE;
 							cmpr = Long.MAX_VALUE;
 							fnd = true;
 							System.out.print("boom!");
 							
 						}	
 					}
-				}
+				}//smpl
 				
 				if(fnd == false) {
 					//didnt find repeat at curLen; report prev max length
 					output = curLen - 1;
 					curLen = Long.MAX_VALUE;
 				}
-			}
+				
+			}//curlen
 		}
 		return output;
 	}
+
+	
+	public long calcMaxLengthString() {
+		System.out.println("Start");
+		LenCmp lc = new LenCmp();
+		lc.cl = this.SeedSource;
+		lc.smplPos = (StringChunkLink) this.SeedSource.getFirstChunk();
+		lc.maxLen = 1;
+		
+		lc.cl.moveFirstChunk();
+		for(long i = lc.maxLen; i < lc.cl.getChunkCount(); i++) {
+			
+			System.out.println("i: " + i);
+			while(lc.compareMode1() == 0 && lc.smplPos != lc.cl.getLastChunk()) {
+				lc.smplPos = (StringChunkLink)lc.smplPos.getNextChunk();
+				System.out.println("ml: " + lc.smplPos.getIndex() + "," + lc.maxLen + " " + lc.smpl);
+ 			}
+			
+			System.out.println("jump modes maxLen : " + lc.maxLen);
+			lc.compareMode2();
+			System.out.println("compareMode2() done!");
+		}
+
+		return 0;
+	}
+	
+	
+	/***
+	 * Helper class to find max length repeatable string
+	 * @author harrisonc
+	 *
+	 */
+	class LenCmp {
+		public ChunkList cl = null;
+		public StringBuilder smpl = null;
+		public StringBuilder cmpr = null;
+		public long maxLen = -1;
+		public StringChunkLink smplPos = null;
+		public StringChunkLink cmprPos = null;
+		
+		
+		public long compareMode1() {
+			long output = -1;
+			cl.setCurrentChunk(smplPos);
+			cl.setRelativeOffset(maxLen);
+			cmprPos = (StringChunkLink) cl.getCurrentChunk();
+			
+			smpl = new StringBuilder(smplPos.toString(maxLen));
+			cmpr = new StringBuilder(cmprPos.toString(maxLen));
+			
+			while(smpl.compareTo(cmpr) != 0 && cmpr.length() == maxLen) {
+				//System.out.println("m1: " + smpl + " v " + cmpr + " ~ " + cmprPos.getIndex());
+				cmprPos = (StringChunkLink) cmprPos.getNextChunk();
+				cmpr = new StringBuilder(cmprPos.toString(maxLen));
+			}
+			if(smpl.compareTo(cmpr) == 0) {
+				System.out.println("m1 compare!: " + smpl + " v " + cmpr + " ~ " + cmprPos.getIndex() + "," + smplPos.getIndex() +  "," + maxLen + "  <<==(match)");
+				output = cmprPos.getIndex();
+				//maxLen++;
+			}
+			else output = 0;
+			
+			return output;
+		}
+		
+		public long compareMode2() {
+			long output = -1;
+			smpl = new StringBuilder(smplPos.toString(maxLen));
+			cmpr = new StringBuilder(cmprPos.toString(maxLen));
+			
+			System.out.println("m2: " + smpl + " v " + cmpr + " ~ " + cmprPos.getIndex() + "," + smplPos.getIndex() +  "," + maxLen);
+			
+			while(smpl.compareTo(cmpr) == 0) {
+				System.out.println("m2: up! "+ smpl + " v " + cmpr + " ~ " + cmprPos.getIndex() + "," + smplPos.getIndex() +  "," + maxLen);
+				maxLen++;
+				smpl = new StringBuilder(smplPos.toString(maxLen));
+				cmpr = new StringBuilder(cmprPos.toString(maxLen));
+			}
+			
+			System.out.println("m2: b4 maxLen: " + smpl + " v " + cmpr + " ~ " + cmprPos.getIndex() + "," + smplPos.getIndex() +  "," + maxLen);
+			smpl = new StringBuilder(smplPos.toString(maxLen-1));
+			cmpr = new StringBuilder(cmprPos.toString(maxLen-1));
+			
+			if(smpl.compareTo(cmpr) == 0) {
+				//maxLen--;
+				output = maxLen - 1;
+				
+				System.out.println("m2: comp!!! maxLen: "+ smpl + " v " + cmpr + " ~ " + cmprPos.getIndex() + "," + smplPos.getIndex() +  "," + maxLen);
+				//smplPos = (StringChunkLink) cl.getFirstChunk();
+				cl.moveFirstChunk();
+			}
+			else output = 0;
+			
+			return output;
+		}
+	}
+	
+
 	
 	/**
 	 * 
