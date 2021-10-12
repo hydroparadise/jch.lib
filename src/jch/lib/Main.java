@@ -25,7 +25,8 @@ public class Main {
 		//console output to prove it compiles
 		System.out.println("hello jch.lib");
 		
-		JchLib_FinanceTests.mbrTranLoad1();
+		//JchLib_FinanceTests.mbrTranLoad1();
+		JchLib_DbScourTest.testSQL();
 	}
 	
 }

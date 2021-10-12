@@ -111,5 +111,8 @@
 	<classpathentry kind="lib" path="dependencies/jsoup-1.11.3-javadoc.jar"/>
 	<classpathentry kind="lib" path="dependencies/jsoup-1.11.3-sources.jar"/>
 	<classpathentry kind="lib" path="dependencies/jsoup-1.11.3.jar"/>
+	<classpathentry kind="lib" path="dependencies/sqljdbc_9.4/enu/mssql-jdbc-9.4.0.jre11.jar"/>
+	<classpathentry kind="lib" path="dependencies/sqljdbc_9.4/enu/mssql-jdbc-9.4.0.jre16.jar"/>
+	<classpathentry kind="lib" path="dependencies/sqljdbc_9.4/enu/mssql-jdbc-9.4.0.jre8.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
