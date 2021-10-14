@@ -26,7 +26,9 @@ public class Main {
 		System.out.println("hello jch.lib");
 		
 		//JchLib_FinanceTests.mbrTranLoad1();
-		JchLib_DbScourTest.testSQL();
+		//JchLib_DbScourTest.testSQL();
+		//JchLib_DbScourTest.testDbSourCreateObjects();
+		JchLib_DbScourTest.testDbScourCreateCnStrings();
 	}
 	
 }
