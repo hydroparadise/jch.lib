@@ -14,6 +14,7 @@ package jch.lib.test;
  */
 
 import java.sql.*;
+import javax.sql.*;
 import jch.lib.db.sqlserver.*;
 
 public class JchLib_DbScourTest {
@@ -23,20 +24,45 @@ public class JchLib_DbScourTest {
 		
 	}
 	
+	
+	public static void testGetBasicStats() {
+		SqlServerCnString srcCnString = new SqlServerCnString();
+		SqlServerCnString destCnString = new SqlServerCnString();
+		
+		srcCnString.setCnStringIntegratedSecurity("VM-TEMENOS", null , "Akcelerant");
+		destCnString.setCnStringIntegratedSecurity("vm-devanalytics", null , "dev01");
+		
+		SqlServerDbScour dbsSource = new SqlServerDbScour();
+		SqlServerDbScour dbsDestination = new SqlServerDbScour();
+		
+		RowSet infSchema = dbsSource.getSrcInformationSchema(srcCnString.getCnString(), srcCnString.getDatabaseName());
+		
+		//updates destination table with information schema based on source connection string
+		dbsDestination.updateDestInformationSchema(srcCnString.getCnString(), 
+				destCnString.getCnString(), destCnString.getDatabaseName(), "dbo", infSchema);
+		
+	}
+	
+	
 	/***
-	 * 
+	 * Test generation of connection string, drop DbScour objects, and then create DbScour Objects
 	 */
 	public static void testDbScourCreateCnStrings() {
-		SqlServerCnString cn = new SqlServerCnString();
+		SqlServerCnString destCn = new SqlServerCnString();
 		
 		//hostname:port, sql server instance name, database name
-		System.out.println(cn.setCnStringIntegratedSecurity("vm-devanalytics:1433", null , "dev01"));
-		if(SqlServerDbScour.createDbScourOjbects(cn.getCnString())) {
-			System.out.println("Success!");
-		}
-		else {
-			System.out.println("Failed!");
-		}
+		System.out.println("Using the following connection string:");
+		System.out.println(destCn.setCnStringIntegratedSecurity("vm-devanalytics:1433", null , "dev01"));
+		
+		System.out.println("Dropping all objects (will fail if they do not exist):");
+		if(SqlServerDbScour.dropDbScourOjbects(destCn.getCnString(),destCn.getDatabaseName(),"dbo")) 
+			{System.out.println("Success!");}
+		else {System.out.println("Failed!");}		
+
+		System.out.println("Creating all objects:");
+		if(SqlServerDbScour.createDbScourOjbects(destCn.getCnString(),destCn.getDatabaseName(),"dbo")) 
+			{System.out.println("Success!");}
+		else {System.out.println("Failed!");}	
 	}
 	
 	
@@ -46,13 +72,12 @@ public class JchLib_DbScourTest {
 	public static void testDbSourCreateObjects() {
 		
 		String cnString = "jdbc:sqlserver://vm-devanalytics;databaseName=dev01;integratedSecurity=true";
-		if(SqlServerDbScour.createDbScourOjbects(cnString)) {
+		if(SqlServerDbScour.createDbScourOjbects(cnString,"dev01","dbo")) {
 			System.out.println("Success!");
 		}
 		else {
 			System.out.println("Failed!");
 		}
-		
 	}
 	
 	/***
@@ -83,7 +108,7 @@ public class JchLib_DbScourTest {
             }
             
             //String sqlAllDatabase = SqlServerDiscovery.sqlAllUserDatabases();
-            String sqlAllTables = SqlServerDiscovery.sqlAllTableViewColumns("dev01");
+            String sqlAllTables = SqlServerDiscovery.sqlDbTableViewColumns("dev01");
             System.out.println("Output:");
             
             Statement sta = conn.createStatement();
@@ -110,29 +135,7 @@ public class JchLib_DbScourTest {
         }
         
         
-        System.out.println(SqlServerDbScour.sqlPrint(SqlServerDbScour.sqlCreateTableInformationSchema()));
+        //System.out.println(SqlServerDiscovery.sqlPrint(SqlServerDbScour.sqlCreateTableInformationSchema()));
     }
 	
-	
-	/**
-		SELECT  sch.name AS schName,
-                 lst.type AS tblType,
-                 lst.name AS tblName, 
-                 lsc.name AS colName,
-                 lsc.is_identity AS isIdentity,
-                 lsc.is_nullable AS isNullable,
-                 typ.name AS typeName,
-                 lsc.precision AS precision,
-                 lsc.max_length AS maxLength 
-         FROM (
-               SELECT name, object_id, principal_id, schema_id, parent_object_id, type, type_desc
-               FROM master.sys.tables
-               UNION ALL
-               SELECT name, object_id, principal_id, schema_id, parent_object_id, type, type_desc
-               FROM master.sys.views
-               ) AS lst JOIN [" & svrName & "].[" & dbName & "].[sys].[columns] lsc ON lst.OBJECT_ID=lsc.object_id
-             LEFT JOIN [" & svrName & "].[" & dbName & "].[sys].[types] AS typ ON lsc.system_type_id = typ.system_type_id
-             LEFT JOIN [" & svrName & "].[" & dbName & "].[sys].[schemas] AS sch ON sch.schema_id = lst.schema_id
-             WHERE typ.name <> 'sysname'
-	 */
 }

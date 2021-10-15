@@ -72,7 +72,7 @@ public class SqlServerDiscovery {
 	 * @param databaseName String
 	 * @return SQL String
 	 */
-	static String sqlAllTableViewColumnsBase(String databaseName) {
+	static String sqlDbTableViewColumnsBase(String databaseName) {
 		String output = null;
 		databaseName = sqlObjBracket(databaseName);
 		
@@ -84,10 +84,11 @@ public class SqlServerDiscovery {
 				 + "	C.NUMERIC_PRECISION,C.NUMERIC_PRECISION_RADIX,C.NUMERIC_SCALE,C.DATETIME_PRECISION,  "
 				 + " 	C.CHARACTER_SET_NAME,C.COLLATION_CATALOG,C.COLLATION_SCHEMA,C.COLLATION_NAME,C.DOMAIN_CATALOG,  "
 				 + " 	C.DOMAIN_SCHEMA,C.DOMAIN_NAME,C.CHARACTER_SET_CATALOG,C.CHARACTER_SET_SCHEMA,   "
-				 + " 		CASE WHEN DATA_TYPE IN ('varchar','nvarchar','text','char','nchar') THEN 'TEXT'  " 
-				 + " 	    WHEN DATA_TYPE IN ('smallint','int','money','numeric','decimal','bigint','float','uniqueidentifier','real','tinyint','bit') THEN 'NUMERIC'  "
-				 + " 		WHEN DATA_TYPE IN ('smalldatetime','date','datetime','datetime2','time') THEN 'DATETIME'  "
-				 + " 		ELSE 'OTHER' END DATA_TYPE_CAT  "
+				 + "	CASE WHEN DATA_TYPE IN ('varchar','nvarchar','text','char','nchar') THEN 'TEXT'  " 
+				 + "		WHEN DATA_TYPE IN ('smallint','int','money','numeric','decimal','bigint','float','uniqueidentifier','real','tinyint','bit') THEN 'NUMERIC'  "
+				 + "		WHEN DATA_TYPE IN ('smalldatetime','date','datetime','datetime2','time') THEN 'DATETIME'  "
+				 + " 		ELSE 'OTHER'  "
+				 + "	END DATA_TYPE_CAT  "
 				 + "FROM " + databaseName + ".INFORMATION_SCHEMA.TABLES T  "
 				 + "	JOIN " + databaseName + ".INFORMATION_SCHEMA.COLUMNS C ON  "
 				 + "		T.TABLE_CATALOG = C.TABLE_CATALOG AND T.TABLE_SCHEMA = C.TABLE_SCHEMA AND T.TABLE_NAME = C.TABLE_NAME  "
@@ -105,9 +106,9 @@ public class SqlServerDiscovery {
 	 * @param databaseName String
 	 * @return SQL String
 	 */
-	public static String sqlAllTableViewColumns(String databaseName) {
+	public static String sqlDbTableViewColumns(String databaseName) {
 		String output = null;
-		output = sqlAllTableViewColumnsBase(databaseName);
+		output = sqlDbTableViewColumnsBase(databaseName);
 		if(output != null) {
 			output = output + "  ORDER BY T.TABLE_TYPE,T.TABLE_CATALOG,T.TABLE_NAME,T.TABLE_SCHEMA,C.ORDINAL_POSITION";
 		}
@@ -122,7 +123,7 @@ public class SqlServerDiscovery {
 	 */
 	public static String sqlAllTableColumns(String databaseName) {
 		String output = null;
-		output = sqlAllTableViewColumnsBase(databaseName);
+		output = sqlDbTableViewColumnsBase(databaseName);
 		if(output != null) {
 			output = output + "  WHERE T.TABLE_TYPE = 'BASE TABLE'"
 					+ "  ORDER BY T.TABLE_TYPE,T.TABLE_CATALOG,T.TABLE_NAME,T.TABLE_SCHEMA,C.ORDINAL_POSITION";
@@ -137,7 +138,7 @@ public class SqlServerDiscovery {
 	 */
 	public static String sqlAllViewColumns(String databaseName) {
 		String output = null;
-		output = sqlAllTableViewColumnsBase(databaseName);
+		output = sqlDbTableViewColumnsBase(databaseName);
 		if(output != null) {
 			output = output + "  WHERE T.TABLE_TYPE = 'VIEW'"
 					+ "  ORDER BY T.TABLE_TYPE,T.TABLE_CATALOG,T.TABLE_NAME,T.TABLE_SCHEMA,C.ORDINAL_POSITION";
@@ -151,11 +152,28 @@ public class SqlServerDiscovery {
 	 * @return String
 	 */
 	public static String sqlObjBracket(String objectName) {
-		if(objectName != null && objectName.length() > 0) {
+		if(objectName != null && objectName.length() > 0 &&
+		   objectName.substring(1) != "[" &&
+		   objectName.substring(objectName.length()) != "]") {
 			return "[" + objectName + "]";
 		}
 		return null;
 		
 	}
 	
+	public static String sqlStringClean(String stringValue) {
+		if(stringValue == null) return "null";
+		else return "'" + stringValue.replace("'", "''") + "'";
+	}
+	
+	
+	public static String sqlIntClean(Integer intValue) {
+		if(intValue == null) return "null";
+		else return intValue.toString();
+	}
+	
+	
+	public static String sqlPrint(String dbScourSql) {
+		return dbScourSql.replace("  ", "\n");
+	}
 }

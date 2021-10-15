@@ -18,6 +18,7 @@ import java.util.Map.Entry;
 
 import jch.lib.test.*;
 import jch.lib.analytics.apps.*;
+import jch.lib.db.sqlserver.SqlServerDiscovery;
 
 public class Main {
 
@@ -25,10 +26,15 @@ public class Main {
 		//console output to prove it compiles
 		System.out.println("hello jch.lib");
 		
+		
 		//JchLib_FinanceTests.mbrTranLoad1();
 		//JchLib_DbScourTest.testSQL();
 		//JchLib_DbScourTest.testDbSourCreateObjects();
-		JchLib_DbScourTest.testDbScourCreateCnStrings();
+		//System.out.println(SqlServerDiscovery.sqlPrint(SqlServerDiscovery.sqlAllTableColumns("Akcelerant")));
+		//JchLib_DbScourTest.testDbScourCreateCnStrings();
+		JchLib_DbScourTest.testGetBasicStats();
+		
+
 	}
 	
 }
