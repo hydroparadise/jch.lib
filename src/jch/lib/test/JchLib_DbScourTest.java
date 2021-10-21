@@ -24,8 +24,7 @@ public class JchLib_DbScourTest {
 		
 	}
 	
-	
-	public static void testGetBasicStats() {
+	public static void testUpdateRecordCounts() {
 		SqlServerCnString srcCnString = new SqlServerCnString();
 		SqlServerCnString destCnString = new SqlServerCnString();
 		
@@ -35,17 +34,60 @@ public class JchLib_DbScourTest {
 		SqlServerDbScour dbsSource = new SqlServerDbScour();
 		SqlServerDbScour dbsDestination = new SqlServerDbScour();
 		
-		RowSet infSchema = dbsSource.getSrcInformationSchema(srcCnString.getCnString(), srcCnString.getDatabaseName());
+		RowSet tblStats = dbsDestination.getDestVwTblStats(
+				srcCnString.getCnString(),		//Grab table list based source connection string (filter value)
+				destCnString.getCnString(), 	//Used to make connection where vwTblStats resides
+				destCnString.getDatabaseName(), //Used to make connection where vwTblStats resides
+				"dbo");							//Used to make connection where vwTblStats resides
+		
+		dbsDestination.updateDestinationTableStats(
+				srcCnString.getCnString(), 		//
+				destCnString.getCnString(), 	//
+				destCnString.getDatabaseName(), //
+				"dbo", 							//
+				tblStats);						//
+		
+		
+	}
+	
+	/***
+	 * Connects to source database and populates destination information schema table
+	 * PASSED
+	 */
+	public static void testGetBasicStats() {
+		//instantiated jdbc connections string generators
+		SqlServerCnString srcCnString = new SqlServerCnString();
+		SqlServerCnString destCnString = new SqlServerCnString();
+		
+		//store source and destination host information to generate jdbc connection string
+		srcCnString.setCnStringIntegratedSecurity("VM-TEMENOS", null , "Akcelerant");
+		destCnString.setCnStringIntegratedSecurity("vm-devanalytics", null , "dev01");
+		
+		SqlServerDbScour dbsSource = new SqlServerDbScour();
+		SqlServerDbScour dbsDestination = new SqlServerDbScour();
+		
+		//grab column information from source database
+		//source connection string, source database, source schema, include views along with tables
+		RowSet infSchema = dbsSource.getSrcInformationSchema(
+				srcCnString.getCnString(), 			//Source host to get InformationSchema
+				srcCnString.getDatabaseName(), 		//Source database to get InformationSchema
+				false);								//Grab only user tables
 		
 		//updates destination table with information schema based on source connection string
-		dbsDestination.updateDestInformationSchema(srcCnString.getCnString(), 
-				destCnString.getCnString(), destCnString.getDatabaseName(), "dbo", infSchema);
+		dbsDestination.updateDestInformationSchema(
+				srcCnString.getCnString(), 
+				destCnString.getCnString(), 
+				destCnString.getDatabaseName(), 
+				"dbo", 
+				infSchema);
+		
 		
 	}
 	
 	
 	/***
 	 * Test generation of connection string, drop DbScour objects, and then create DbScour Objects
+	 * PASSED
 	 */
 	public static void testDbScourCreateCnStrings() {
 		SqlServerCnString destCn = new SqlServerCnString();
@@ -89,7 +131,7 @@ public class JchLib_DbScourTest {
  
         try {
         	/*
-	            String dbURL = "jdbc:sqlserver://gcarcu;authenticationScheme=NTLM;integratedSecurity=true;domain=teachers";
+	            String dbURL = "jdbc:sqlserver://host;authenticationScheme=NTLM;integratedSecurity=true";
 	            String user = "sa";
 	            String pass = "secret";
             */

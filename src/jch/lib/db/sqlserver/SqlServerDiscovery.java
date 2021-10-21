@@ -121,7 +121,7 @@ public class SqlServerDiscovery {
 	 * @param databaseName String
 	 * @return SQL String
 	 */
-	public static String sqlAllTableColumns(String databaseName) {
+	public static String sqlDbTableColumns(String databaseName) {
 		String output = null;
 		output = sqlDbTableViewColumnsBase(databaseName);
 		if(output != null) {
@@ -136,7 +136,7 @@ public class SqlServerDiscovery {
 	 * @param databaseName String
 	 * @return SQL String
 	 */
-	public static String sqlAllViewColumns(String databaseName) {
+	public static String sqlDbViewColumns(String databaseName) {
 		String output = null;
 		output = sqlDbTableViewColumnsBase(databaseName);
 		if(output != null) {
@@ -148,28 +148,56 @@ public class SqlServerDiscovery {
 
 	/***
 	 * Puts brackets around an object name in case of spaces in name.
+	 * If already has enclosing brackets, pass through as-is
 	 * @param objectName String
 	 * @return String
 	 */
 	public static String sqlObjBracket(String objectName) {
-		if(objectName != null && objectName.length() > 0 &&
-		   objectName.substring(1) != "[" &&
-		   objectName.substring(objectName.length()) != "]") {
-			return "[" + objectName + "]";
+		if(objectName != null && objectName.length() > 0) {
+			if(objectName.substring(0,1).compareTo("[") == 0 &&
+			   objectName.substring(
+					   objectName.length()-1,objectName.length()).compareTo("]") == 0) {
+				return objectName;
+				
+			}
+			else return "[" + objectName + "]";
 		}
-		return null;
-		
+		return null;		
 	}
 	
+	/***
+	 * Turns a string value into a SQL friendly value
+	 * @param String Value
+	 * @return SQL Friendly String Value
+	 */
 	public static String sqlStringClean(String stringValue) {
 		if(stringValue == null) return "null";
 		else return "'" + stringValue.replace("'", "''") + "'";
 	}
 	
-	
+	/***
+	 * Turns a integer value into a SQL friendly value
+	 * @param Integer Value
+	 * @return SQL Friendly String Value
+	 */
 	public static String sqlIntClean(Integer intValue) {
 		if(intValue == null) return "null";
 		else return intValue.toString();
+	}
+	
+	/***
+	 * Turns a long value into a SQL friendly value
+	 * @param longValue
+	 * @return
+	 */
+	public static String sqlLongClean(Long longValue) {
+		if(longValue == null) return "null";
+		else return longValue.toString();
+	}
+	
+	public static String sqlDoubleClean(Double doubleValue) {
+		if(doubleValue == null) return "null";
+		else return doubleValue.toString();
 	}
 	
 	
