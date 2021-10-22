@@ -84,7 +84,7 @@ public class SqlServerDiscovery {
 				 + "	C.NUMERIC_PRECISION,C.NUMERIC_PRECISION_RADIX,C.NUMERIC_SCALE,C.DATETIME_PRECISION,  "
 				 + " 	C.CHARACTER_SET_NAME,C.COLLATION_CATALOG,C.COLLATION_SCHEMA,C.COLLATION_NAME,C.DOMAIN_CATALOG,  "
 				 + " 	C.DOMAIN_SCHEMA,C.DOMAIN_NAME,C.CHARACTER_SET_CATALOG,C.CHARACTER_SET_SCHEMA,   "
-				 + "	CASE WHEN DATA_TYPE IN ('varchar','nvarchar','text','char','nchar') THEN 'TEXT'  " 
+				 + "	CASE WHEN DATA_TYPE IN ('varchar','nvarchar','text','char','nchar','ntext','xml') THEN 'TEXT'  " 
 				 + "		WHEN DATA_TYPE IN ('smallint','int','money','numeric','decimal','bigint','float','uniqueidentifier','real','tinyint','bit') THEN 'NUMERIC'  "
 				 + "		WHEN DATA_TYPE IN ('smalldatetime','date','datetime','datetime2','time') THEN 'DATETIME'  "
 				 + " 		ELSE 'OTHER'  "
@@ -121,6 +121,24 @@ public class SqlServerDiscovery {
 	 * @param databaseName String
 	 * @return SQL String
 	 */
+	public static String sqlDbTableViewColumns(String databaseName, String schemaName, String tableName) {
+		String output = null;
+		output = sqlDbTableViewColumnsBase(databaseName);
+		if(output != null) {
+			output = output 
+					+ "  WHERE T.TABLE_NAME = " + sqlStringClean(tableName)
+					+ "  	AND T.TABLE_SCHEMA = " + sqlStringClean(schemaName)
+					+ "  ORDER BY T.TABLE_TYPE,T.TABLE_CATALOG,T.TABLE_NAME,T.TABLE_SCHEMA,C.ORDINAL_POSITION";
+		}
+		return output;
+	}
+	
+	
+	/*** 
+	 * 
+	 * @param databaseName String
+	 * @return SQL String
+	 */
 	public static String sqlDbTableColumns(String databaseName) {
 		String output = null;
 		output = sqlDbTableViewColumnsBase(databaseName);
@@ -146,6 +164,27 @@ public class SqlServerDiscovery {
 		return output;
 	}
 
+	
+	public static String sqlFromClean(String dbName, String schema, String tableName) {
+
+		String from = null;
+		
+		//if talbleName not valid, all bets are off
+		if(tableName != null && tableName.length() > 0) {
+			from = SqlServerDiscovery.sqlObjBracket(tableName);
+			
+			if(schema != null && schema.length() > 0) {
+				from = SqlServerDiscovery.sqlObjBracket(schema) + "." + from;
+				
+				if(dbName != null && dbName.length() > 0) {
+					from = SqlServerDiscovery.sqlObjBracket(dbName) + "." + from;
+				}
+			}
+		}
+		else return null;
+		
+		return from;
+	}
 	/***
 	 * Puts brackets around an object name in case of spaces in name.
 	 * If already has enclosing brackets, pass through as-is
@@ -167,6 +206,8 @@ public class SqlServerDiscovery {
 	
 	/***
 	 * Turns a string value into a SQL friendly value
+	 * Adds single quotes around value
+	 * Repeats single quotes where present to pass single quote as value within String
 	 * @param String Value
 	 * @return SQL Friendly String Value
 	 */

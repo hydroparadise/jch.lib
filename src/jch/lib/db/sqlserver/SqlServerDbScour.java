@@ -16,8 +16,19 @@ import com.sun.prism.impl.Disposer.Record;
  */
 public class SqlServerDbScour {
 	
-	int threadPoolSize = 10;
+	int threadPoolSize = 3;
 	
+	
+	
+	/***
+	 * 
+	 * @param srcCnString
+	 * @param destCnString
+	 * @param destDbName
+	 * @param destSchema
+	 * @param tblStats
+	 * @return
+	 */
 	public boolean updateDestinationColStats(String srcCnString, String destCnString, 
 			String destDbName, String destSchema, RowSet tblStats) {
 		
@@ -29,9 +40,10 @@ public class SqlServerDbScour {
     		if(destSchema == null || destSchema.length() == 0) destSchema = "dbo";
     		else destSchema = SqlServerDiscovery.sqlObjBracket(destSchema);
     		       	
-        	//Thread pooler
+        	//Instantiate Thread pooler
         	exe = (ThreadPoolExecutor) Executors.newFixedThreadPool(threadPoolSize);
-
+        	
+        	//Open Db Connection
         	destCn = DriverManager.getConnection(destCnString);            
         	Statement sta = destCn.createStatement();    		
     		    		
@@ -69,9 +81,16 @@ public class SqlServerDbScour {
         	catch (SQLException ex) {ex.printStackTrace();}
 		}
 		
+		exe.shutdown();
 		return success;
 	}
 	
+	
+	/***
+	 * 
+	 * @author harrisonc
+	 *
+	 */
 	class UpdateColStatsThread extends Thread {
 		/***
 		 * 
@@ -82,7 +101,7 @@ public class SqlServerDbScour {
 		 * @param record
 		 */
 		public UpdateColStatsThread(String srcCnString,	String destCnString, String destDbName, String destSchema, 
-				TblStatsRecord record ) {
+				TblStatsRecord record) {
 			
 			this.srcCnString = srcCnString;
 			this.destCnString = destCnString;
@@ -94,29 +113,91 @@ public class SqlServerDbScour {
 		@Override
 		public void run() {
 			
-			//first get record count
-			Connection srcCn = null;
+			Connection destCn = null;
 			try {
 				//establish source connection
-	        	srcCn = DriverManager.getConnection(srcCnString);  
+	        	destCn = DriverManager.getConnection(destCnString);  
 	        	
 	        	//render SQL string for record count
-	        	Statement sta = srcCn.createStatement();
-	        	String sqlRecorCount = SqlServerDbScour.sqlRecordCount(
-	        			record.getTableCatalog(), record.getTableSchema(), record.getTableName());
+
+	        	String sqlTableColumns = sqlTableInformationSchema(
+	        			record.getCnString(), 		//srcCnString, 
+	        			record.getTableCatalog(),	//srcDatabaseName, 
+	        			record.getTableSchema(),	//srcSchema, 
+	        			record.getTableName(),		//srcTableName, 
+	        			destDbName, 
+	        			destSchema);
+	        	
+	        	System.out.println(SqlServerDiscovery.sqlPrint(sqlTableColumns));
+	        	
+		        Statement sta = destCn.createStatement(ResultSet.TYPE_FORWARD_ONLY,ResultSet.CONCUR_READ_ONLY);
+		        ResultSet res = sta.executeQuery(sqlTableColumns);
+		        
+		        RowSetFactory rsf = RowSetProvider.newFactory();
+		        CachedRowSet rs = rsf.createCachedRowSet();
+		        rs.populate(res);
+		        
+		        //RowSet is now populated, go ahead and close db connection
+		        destCn.close();
+		                
+				while(rs.next()) {
+					ColStatsRecord columnStats = new ColStatsRecord(
+							rs.getString("CnString"),//String cnString, 
+							rs.getString("TableCatalog"),//String dbName, 
+							rs.getString("TableSchema"),//String schName, 
+							rs.getString("TableName"),//String tblName, 
+							rs.getString("ColumnName")//String colName,
+							);
+					
+					//send column stat record and the datatype category of it
+					this.columnUpdate(columnStats, rs.getString("DataTypeCategory"));
+				}
+			}
+			//close connection
+	        catch (SQLException ex) {ex.printStackTrace();} 
+	        finally {
+	        	try {if (destCn != null && !destCn.isClosed()) destCn.close();} 
+	        	catch (SQLException ex) {ex.printStackTrace();}
+			}
+			
+			
+		}
+		
+		void columnUpdate(ColStatsRecord columnStats, String dataTypeCategory) {
+			Connection srcCn = null;
+			
+			//render SQL string for col stats
+			String sqlColStats = SqlServerDbScour.sqlColStats(
+	        			columnStats.getDbName(), 
+	        			columnStats.getSchName(), 
+	        			columnStats.getTblName(),
+	        			columnStats.getColName(),
+	        			dataTypeCategory);
+			
+			System.out.println(SqlServerDiscovery.sqlPrint(sqlColStats));
+			
+			try {
+				//establish source connection
+	        	srcCn = DriverManager.getConnection(columnStats.getCnString());  
 	        	
 	        	//start time measure
 	        	double start = System.currentTimeMillis();
 	        	
+	        	
 	        	//grab record count and store in
-				ResultSet res = sta.executeQuery(sqlRecorCount);
+	        	Statement sta = srcCn.createStatement();
+				ResultSet res = sta.executeQuery(sqlColStats);
 				res.next();
 				
 	        	//stop time measure
 				double stop = System.currentTimeMillis();
 	        	
-				record.setRecordCount(res.getLong("RecordCount"));
-				record.setQueryTimeSeconds((stop - start)/1000.0);
+				columnStats.setNullCount(res.getLong("NullCount"));
+				columnStats.setBlankCount(res.getLong("BlankCount"));
+				columnStats.setUniqueCount(res.getLong("UniqueCount"));
+				columnStats.setQueryTimeSeconds((stop - start)/1000.0);
+				
+				//record.setQueryTimeSeconds((stop - start)/1000.0);
 				
 			}
 			//close connection
@@ -126,16 +207,19 @@ public class SqlServerDbScour {
 	        	catch (SQLException ex) {ex.printStackTrace();}
 			}
 			
+			
+			System.out.println(columnStats.toSqlInsert(destSchema));
 			//next, insert in TblStats table
+			
 			Connection destCn = null;
 			try {
 				//establish connection
 	        	destCn = DriverManager.getConnection(destCnString);
 	        	
 	        	Statement sta = destCn.createStatement();
-	        	System.out.println(record.toSqlInsert(destSchema));
+
 	        	sta.execute("USE " + destDbName);
-	        	sta.executeUpdate(record.toSqlInsert(destSchema));
+	        	sta.executeUpdate(columnStats.toSqlInsert(destSchema));
 			}
 	        catch (SQLException ex) {ex.printStackTrace();} 
 	        finally {
@@ -259,14 +343,14 @@ public class SqlServerDbScour {
 	        	
 	        	//render SQL string for record count
 	        	Statement sta = srcCn.createStatement();
-	        	String sqlRecorCount = SqlServerDbScour.sqlRecordCount(
+	        	String sqlRecordCount = SqlServerDbScour.sqlRecordCount(
 	        			record.getTableCatalog(), record.getTableSchema(), record.getTableName());
 	        	
 	        	//start time measure
 	        	double start = System.currentTimeMillis();
 	        	
 	        	//grab record count and store in
-				ResultSet res = sta.executeQuery(sqlRecorCount);
+				ResultSet res = sta.executeQuery(sqlRecordCount);
 				res.next();
 				
 	        	//stop time measure
@@ -578,6 +662,104 @@ public class SqlServerDbScour {
 	
 	/***
 	 * 
+	 * @param srcCnString
+	 * @param srcDatabaseName
+	 * @param srcSchema
+	 * @param srcTableName
+	 * @param destDbName
+	 * @param destSchema
+	 * @return
+	 */
+	public static String sqlTableInformationSchema(String srcCnString, String srcDatabaseName, String srcSchema, String srcTableName, 
+			String destDbName, String destSchema) {
+		String output = null;
+		String from = SqlServerDiscovery.sqlFromClean(destDbName, destSchema, "InformationSchema");
+		output = "SELECT CnString,TableType,TableCatalog,TableSchema,TableName,ColumnName,ConstraintName,DataType,  "
+			   + "	OrdinalPosition,ColumnDefault,IsNullable,CharacterMaximumLength,CharacterOctetLength,NumericPrecision,  "
+			   + "	NumericPrecisionRadix,NumericScale,DateTimePrecision,CharacterSetName,CollationCatalog,CollationSchema,  "
+			   + "	CollationName,DomainCatalog,DomainSchema,DomainName,CharacterSetCatalog,CharacterSetSchema,DataTypeCategory,  "
+			   + "	MeasureDate"
+			   + "  FROM " + from
+			   + "  WHERE TableName = " + SqlServerDiscovery.sqlStringClean(srcTableName)
+			   + "  	AND TableSchema = " + SqlServerDiscovery.sqlStringClean(srcSchema)
+			   + "  	AND TableCatalog = " + SqlServerDiscovery.sqlStringClean(srcDatabaseName)
+			   + "  	AND CnString = " + SqlServerDiscovery.sqlStringClean(srcCnString)
+			   + "  ORDER BY OrdinalPosition";
+		
+		return output;
+	}
+	
+	public static String sqlColStats(String dbName, String schema, String tableName, String columnName, String dataTypeCategory) {
+
+		StringBuilder output = new StringBuilder();
+		output.append("SELECT  ");
+		output.append(" (" + sqlNullCount(dbName, schema, tableName, columnName) + ") NullCount,");
+		
+		if(dataTypeCategory == "TEXT")
+			output.append(" (" + sqlBlankCount(dbName, schema, tableName, columnName) + ") BlankCount,");
+		else
+			output.append("null BlankCount,");
+		
+		output.append(" (" + sqlUniqueCount(dbName, schema, tableName, columnName) + ") UniqueCount");
+		
+		return output.toString();
+	}
+	
+	/***
+	 * SQL Statement that returns the field RecordCount
+	 * @param Database Name of Table (Optional, but omitted if schema is omitted)
+	 * @param Scema Name of Table (Optional)
+	 * @param tableName
+	 * @param Column Name
+	 * @return
+	 */
+	public static String sqlUniqueCount(String dbName, String schema, String tableName, String columnName) {
+		String output = null;
+		String from = null;
+		
+		//if talbleName not valid, allb ets off
+		from = SqlServerDiscovery.sqlFromClean(dbName, schema, tableName);
+		
+		output = "SELECT COUNT(DISTINCT "+ SqlServerDiscovery.sqlObjBracket(columnName) +") RecordCount FROM " + from;
+		return output;
+	}
+	
+	
+	/***
+	 * 
+	 * @param Database Name of Table (Optional, but omitted if schema is omitted)
+	 * @param Scema Name of Table (Optional)
+	 * @param tableName
+	 * @param Column Name
+	 * @return
+	 */
+	public static String sqlBlankCount(String dbName, String schema, String tableName, String columnName) {
+		String output = null;
+		
+		output = sqlRecordCount(dbName, schema, tableName) 
+				+ "  WHERE " + SqlServerDiscovery.sqlObjBracket(columnName) + " = ''";
+		return output;
+	}
+	
+	
+	/***
+	 * SQL Statement that returns the field RecordCount
+	 * @param Database Name of Table (Optional, but omitted if schema is omitted)
+	 * @param Scema Name of Table (Optional)
+	 * @param tableName
+	 * @param Column Name
+	 * @return
+	 */
+	public static String sqlNullCount(String dbName, String schema, String tableName, String columnName) {
+		String output = null;
+		
+		output = sqlRecordCount(dbName, schema, tableName) 
+				+ "  WHERE " + SqlServerDiscovery.sqlObjBracket(columnName) + " IS NULL";
+		return output;
+	}
+	
+	/***
+	 * SQL Statement that returns the field RecordCount
 	 * @param Database Name of Table (Optional, but omitted if schema is omitted)
 	 * @param Scema Name of Table (Optional)
 	 * @param tableName
@@ -587,27 +769,14 @@ public class SqlServerDbScour {
 		String output = null;
 		String from = null;
 		
-		//if talbleName not valid, allb ets off
-		if(tableName != null && tableName.length() > 0) {
-			from = SqlServerDiscovery.sqlObjBracket(tableName);
-			
-			if(schema != null && schema.length() > 0) {
-				from = SqlServerDiscovery.sqlObjBracket(schema) + "." + from;
-				
-				if(dbName != null && dbName.length() > 0) {
-					from = SqlServerDiscovery.sqlObjBracket(dbName) + "." + from;
-				}
-			}
-			
-		}
-		else return output;
+		from = SqlServerDiscovery.sqlFromClean(dbName, schema, tableName);
 		
 		output = "SELECT COUNT(*) RecordCount FROM " + from;
 		return output;
 	}
 	
 	/***
-	 * 
+	 * SQL Statement that returns the field RecordCount
 	 * @param srcCnString
 	 * @param srcDbName
 	 * @param schema
@@ -829,7 +998,7 @@ public class SqlServerDbScour {
 	
 	public class ColStatsRecord {
 		public ColStatsRecord(String cnString, String dbName, String schName, String tblName, String colName,
-				Long nullCount, Long blankCount, Long uniqeuCount, Double queryTimeSeconds) {
+				Long nullCount, Long blankCount, Long uniqueCount, Double queryTimeSeconds) {
 			super();
 			this.cnString = cnString;
 			this.dbName = dbName;
@@ -838,9 +1007,36 @@ public class SqlServerDbScour {
 			this.colName = colName;
 			this.nullCount = nullCount;
 			this.blankCount = blankCount;
-			this.uniqeuCount = uniqeuCount;
+			this.uniqueCount = uniqueCount;
 			this.queryTimeSeconds = queryTimeSeconds;
 		}
+		public ColStatsRecord(String cnString, String dbName, String schName, String tblName, String colName) {
+			super();
+			this.cnString = cnString;
+			this.dbName = dbName;
+			this.schName = schName;
+			this.tblName = tblName;
+			this.colName = colName;
+			// TODO Auto-generated constructor stub
+		}
+		
+		public String toSqlInsert(String schema) {
+			StringBuilder sqlInsert = new StringBuilder(); 
+			sqlInsert.append("INSERT INTO " + schema + ".ColStats (");
+			sqlInsert.append("CnString,DbName,SchName,TblName,ColName,NullCount,BlankCount,UniqueCount,"
+					+ "QueryTimeSeconds)  VALUES (");
+			sqlInsert.append(SqlServerDiscovery.sqlStringClean(cnString) + ",");
+			sqlInsert.append(SqlServerDiscovery.sqlStringClean(dbName) + ",");
+			sqlInsert.append(SqlServerDiscovery.sqlStringClean(schName) + ",");
+			sqlInsert.append(SqlServerDiscovery.sqlStringClean(tblName) + ",");
+			sqlInsert.append(SqlServerDiscovery.sqlStringClean(colName) + ",");
+			sqlInsert.append(SqlServerDiscovery.sqlLongClean(nullCount) + ",");
+			sqlInsert.append(SqlServerDiscovery.sqlLongClean(blankCount) + ",");
+			sqlInsert.append(SqlServerDiscovery.sqlLongClean(uniqueCount) + ",");
+			sqlInsert.append(SqlServerDiscovery.sqlDoubleClean(queryTimeSeconds) + ")");
+			return sqlInsert.toString();
+		}
+		
 		public String getCnString() {
 			return cnString;
 		}
@@ -883,11 +1079,11 @@ public class SqlServerDbScour {
 		public void setBlankCount(Long blankCount) {
 			this.blankCount = blankCount;
 		}
-		public Long getUniqeuCount() {
-			return uniqeuCount;
+		public Long getUniqueCount() {
+			return uniqueCount;
 		}
-		public void setUniqeuCount(Long uniqeuCount) {
-			this.uniqeuCount = uniqeuCount;
+		public void setUniqueCount(Long uniqueCount) {
+			this.uniqueCount = uniqueCount;
 		}
 		public Double getQueryTimeSeconds() {
 			return queryTimeSeconds;
@@ -903,7 +1099,7 @@ public class SqlServerDbScour {
 		String colName;
 		Long nullCount;
 		Long blankCount;
-		Long uniqeuCount;
+		Long uniqueCount;
 		Double queryTimeSeconds;
 		
 	}

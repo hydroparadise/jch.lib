@@ -24,6 +24,43 @@ public class JchLib_DbScourTest {
 		
 	}
 	
+	
+	
+	/***
+	 * Gets basic column statistics and updates ColStats table
+	 * PASSED
+	 */
+	public static void testUpdateColumnStats() {
+		SqlServerCnString srcCnString = new SqlServerCnString();
+		SqlServerCnString destCnString = new SqlServerCnString();
+		
+		srcCnString.setCnStringIntegratedSecurity("VM-TEMENOS", null , "Akcelerant");
+		destCnString.setCnStringIntegratedSecurity("vm-devanalytics", null , "dev01");
+		
+		SqlServerDbScour dbsSource = new SqlServerDbScour();
+		SqlServerDbScour dbsDestination = new SqlServerDbScour();
+		
+		
+		RowSet tblStats = dbsDestination.getDestVwTblStats(
+				srcCnString.getCnString(),		//Grab table list based source connection string (filter value)
+				destCnString.getCnString(), 	//Used to make connection where vwTblStats resides
+				destCnString.getDatabaseName(), //Used to make connection where vwTblStats resides
+				"dbo");							//Used to make connection where vwTblStats resides
+		
+		dbsDestination.updateDestinationColStats(
+				srcCnString.getCnString(), 		//
+				destCnString.getCnString(), 	//
+				destCnString.getDatabaseName(), //
+				"dbo", 							//
+				tblStats);						//
+		
+	}
+	
+	
+	/***
+	 * Gets record counts of tables and updates TblStats table
+	 * PASSED
+	 */
 	public static void testUpdateRecordCounts() {
 		SqlServerCnString srcCnString = new SqlServerCnString();
 		SqlServerCnString destCnString = new SqlServerCnString();
