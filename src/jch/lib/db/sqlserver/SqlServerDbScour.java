@@ -20,6 +20,127 @@ public class SqlServerDbScour {
 	
 	
 	
+	
+	public boolean insertColSearchResults(String searchTerm, String dataTypeCategory, String srcCnString, 
+			String destCnString, String destDbName, String destSchema, RowSet tblStats) {
+		boolean success = false;
+		
+		ThreadPoolExecutor exe = null;
+		
+		try {
+    		if(destSchema == null || destSchema.length() == 0) destSchema = "dbo";
+    		else destSchema = SqlServerDiscovery.sqlObjBracket(destSchema);
+    		       	
+        	//Instantiate Thread pooler
+        	exe = (ThreadPoolExecutor) Executors.newFixedThreadPool(threadPoolSize);
+        	
+            //Begin RowSet Iteration
+			while(tblStats.next()) {
+				
+				//Instantiate a new UpdateColStatsThead for asynchronous execution
+				InsertColSearchResultsThread t = new InsertColSearchResultsThread(
+						 searchTerm,
+						 dataTypeCategory,
+						 tblStats.getString("CnString"),
+						 tblStats.getString("TableCatalog"),
+						 tblStats.getString("TableSchema"),
+						 tblStats.getString("TableName"),
+						 destCnString,  
+						 destDbName,  
+						 destSchema);
+				
+				//queue in thread pool
+				exe.submit(t);		//invokes run() method of InsertColSearchResultsThread
+
+			}
+		}
+        catch (SQLException ex) {ex.printStackTrace();success = false;} 
+		
+		exe.shutdown();
+		return success;	
+	}
+	
+	
+	class InsertColSearchResultsThread extends Thread {
+		
+		 public InsertColSearchResultsThread(String searchTerm, String dataTypeCategory, 
+				 String srcCnString, String srcDbName, String srcSchema, String srcTableName,
+				 String destCnString, String destDbName, String destSchema) {
+			super();
+			this.searchTerm = searchTerm;
+			this.dataTypeCategory = dataTypeCategory;
+			this.srcCnString = srcCnString;
+			this.srcDatabaseName = srcDbName;
+			this.srcSchema = srcSchema;
+			this.srcTableName = srcTableName;
+			this.destCnString = destCnString;
+			this.destDbName = destDbName;
+			this.destSchema = destSchema;
+		}
+		
+		@Override
+		public void run() {
+			
+			Connection destCn = null;
+			try {
+				//establish source connection
+	        	destCn = DriverManager.getConnection(destCnString);  
+	        	
+	        	//render SQL string to get column information for specific table
+	        	String sqlTableColumns = sqlTableInformationSchema(
+	        			srcCnString, 		//srcCnString, 
+	        			srcDatabaseName,	//srcDatabaseName, 
+	        			srcSchema,			//srcSchema, 
+	        			srcTableName,		//srcTableName, 
+	        			destDbName, 
+	        			destSchema);
+	        	
+	        	//TODO: create a log object to pass over instead of debug printing here
+	        	System.out.println(SqlServerDiscovery.sqlPrint(sqlTableColumns));
+	        	
+		        Statement sta = destCn.createStatement(ResultSet.TYPE_FORWARD_ONLY,ResultSet.CONCUR_READ_ONLY);
+		        ResultSet res = sta.executeQuery(sqlTableColumns);
+		        
+		        //convert ResultSet to RowSet
+		        RowSetFactory rsf = RowSetProvider.newFactory();
+		        CachedRowSet rs = rsf.createCachedRowSet();
+		        rs.populate(res);
+		        
+		        //RowSet is now populated, go ahead and close db connection
+		        destCn.close();
+		        
+		        //start iterating through columns to search
+				while(rs.next()) {
+					
+					//first check to see if column is of a consistent datatype to search
+					if(dataTypeCategory.equals(rs.getString("DataTypeCategory"))) {
+
+					}
+				}
+			}
+			//close connection
+	        catch (SQLException ex) {ex.printStackTrace();} 
+	        finally {
+	        	try {if (destCn != null && !destCn.isClosed()) destCn.close();} 
+	        	catch (SQLException ex) {ex.printStackTrace();}
+			}
+		}
+		
+
+
+		 
+		final String searchTerm;
+		final String dataTypeCategory;
+		final String srcCnString;
+		final String srcDatabaseName;
+		final String srcSchema;
+		final String srcTableName;
+		final String destCnString;
+		final String destDbName;
+		final String destSchema;
+	}
+	
+	
 	/***
 	 * 
 	 * @param srcCnString
@@ -32,30 +153,66 @@ public class SqlServerDbScour {
 	public boolean updateDestinationColStats(String srcCnString, String destCnString, 
 			String destDbName, String destSchema, RowSet tblStats) {
 		
+		boolean success = false;
+		Connection destCn = null;
+		
+
+		try {
+			destDbName = SqlServerDiscovery.sqlObjBracket(destDbName);
+			if(destSchema == null || destSchema.length() == 0) destSchema = "dbo";
+			else destSchema = SqlServerDiscovery.sqlObjBracket(destSchema);
+		
+			destCn = DriverManager.getConnection(destCnString);            
+	    	Statement sta = destCn.createStatement(); 
+	    	//makes sure we're on the right database before attempting any record modifications
+	    	sta.execute("USE " + destDbName);
+	    	//remove records based on the source connection string to reupdate to account for any changes.
+	    	sta.execute("DELETE FROM " + destSchema + ".ColStats WHERE CnString = " + SqlServerDiscovery.sqlStringClean(srcCnString));
+	    	
+	    	destCn.close();
+	    	
+	    	success  = insertDestinationColStats(srcCnString, destCnString, destDbName, destSchema, tblStats);
+		}
+        catch (SQLException ex) {ex.printStackTrace();success = false;} 
+        //close connection
+        finally {
+        	try {if (destCn != null && !destCn.isClosed()) destCn.close();} 
+        	catch (SQLException ex) {ex.printStackTrace();}
+		}
+    	
+		return success;
+	}
+	
+	
+	
+	/***
+	 * 
+	 * @param srcCnString
+	 * @param destCnString
+	 * @param destDbName
+	 * @param destSchema
+	 * @param tblStats
+	 * @return
+	 */
+	public boolean insertDestinationColStats(String srcCnString, String destCnString, 
+			String destDbName, String destSchema, RowSet tblStats) {
+		
 		boolean success = true;
 		Connection destCn = null;
 		ThreadPoolExecutor exe = null;
 		
 		try {
+			destDbName = SqlServerDiscovery.sqlObjBracket(destDbName);
     		if(destSchema == null || destSchema.length() == 0) destSchema = "dbo";
     		else destSchema = SqlServerDiscovery.sqlObjBracket(destSchema);
     		       	
         	//Instantiate Thread pooler
         	exe = (ThreadPoolExecutor) Executors.newFixedThreadPool(threadPoolSize);
         	
-        	//Open Db Connection
-        	destCn = DriverManager.getConnection(destCnString);            
-        	Statement sta = destCn.createStatement();    		
-    		    		
-        	//makes sure we're on the right database before attempting any record modifications
-        	sta.execute("USE " + destDbName);
-        	//remove records based on the source connection string to reupdate to account for any changes.
-        	sta.execute("DELETE FROM " + destSchema + ".ColStats WHERE CnString = " + SqlServerDiscovery.sqlStringClean(srcCnString));
-        	
             //Begin RowSet Iteration
 			while(tblStats.next()) {
 				
-				//Get fields from RowSet row
+				//Get fields from RowSet row to 
 				TblStatsRecord tsr = new TblStatsRecord(
 						tblStats.getString("CnString"),
 						tblStats.getString("TableCatalog"),
@@ -64,22 +221,19 @@ public class SqlServerDbScour {
 						tblStats.getInt("FieldCount")
 				);
 				
-				UpdateColStatsThread t = new UpdateColStatsThread(
-						 srcCnString,
+				//Instantiate a new UpdateColStatsThead for asynchronous execution
+				InsertColStatsThread t = new InsertColStatsThread(
+						 srcCnString,	//
 						 destCnString,  
 						 destDbName,  
 						 destSchema, 
-						 tsr);
+						 tsr);			//TblStatsRecord that will generate INSERT statement
 				
+				//queue in thread pool
 				exe.submit(t);
 			}
 		}
         catch (SQLException ex) {ex.printStackTrace();success = false;} 
-        //close connection
-        finally {
-        	try {if (destCn != null && !destCn.isClosed()) destCn.close();} 
-        	catch (SQLException ex) {ex.printStackTrace();}
-		}
 		
 		exe.shutdown();
 		return success;
@@ -91,7 +245,7 @@ public class SqlServerDbScour {
 	 * @author harrisonc
 	 *
 	 */
-	class UpdateColStatsThread extends Thread {
+	class InsertColStatsThread extends Thread {
 		/***
 		 * 
 		 * @param srcCnString
@@ -100,7 +254,7 @@ public class SqlServerDbScour {
 		 * @param destSchema
 		 * @param record
 		 */
-		public UpdateColStatsThread(String srcCnString,	String destCnString, String destDbName, String destSchema, 
+		public InsertColStatsThread(String srcCnString,	String destCnString, String destDbName, String destSchema, 
 				TblStatsRecord record) {
 			
 			this.srcCnString = srcCnString;
@@ -128,6 +282,7 @@ public class SqlServerDbScour {
 	        			destDbName, 
 	        			destSchema);
 	        	
+	        	//TODO: create a log object to pass over instead of debug printing here
 	        	System.out.println(SqlServerDiscovery.sqlPrint(sqlTableColumns));
 	        	
 		        Statement sta = destCn.createStatement(ResultSet.TYPE_FORWARD_ONLY,ResultSet.CONCUR_READ_ONLY);
@@ -150,7 +305,7 @@ public class SqlServerDbScour {
 							);
 					
 					//send column stat record and the datatype category of it
-					this.columnUpdate(columnStats, rs.getString("DataTypeCategory"));
+					this.columnInsert(columnStats, rs.getString("DataTypeCategory"));
 				}
 			}
 			//close connection
@@ -163,7 +318,7 @@ public class SqlServerDbScour {
 			
 		}
 		
-		void columnUpdate(ColStatsRecord columnStats, String dataTypeCategory) {
+		void columnInsert(ColStatsRecord columnStats, String dataTypeCategory) {
 			Connection srcCn = null;
 			
 			//render SQL string for col stats
@@ -174,6 +329,7 @@ public class SqlServerDbScour {
 	        			columnStats.getColName(),
 	        			dataTypeCategory);
 			
+			//TODO: create a log object to pass over instead of debug printing here
 			System.out.println(SqlServerDiscovery.sqlPrint(sqlColStats));
 			
 			try {
@@ -207,7 +363,7 @@ public class SqlServerDbScour {
 	        	catch (SQLException ex) {ex.printStackTrace();}
 			}
 			
-			
+			//TODO: create a log object to pass over instead of debug printing here
 			System.out.println(columnStats.toSqlInsert(destSchema));
 			//next, insert in TblStats table
 			
@@ -238,6 +394,51 @@ public class SqlServerDbScour {
 	}
 	
 	
+	/***
+	 * 
+	 * @param srcCnString
+	 * @param destCnString
+	 * @param destDbName
+	 * @param destSchema
+	 * @param tblStats
+	 * @return
+	 */
+	public boolean updateDestinationTableStats(String srcCnString,	String destCnString, 
+			String destDbName, String destSchema, RowSet tblStats) {
+		
+		boolean success = true;
+		Connection destCn = null;
+
+		//Open connection
+        try {
+            destDbName = SqlServerDiscovery.sqlObjBracket(destDbName);
+    		if(destSchema == null || destSchema.length() == 0) destSchema = "dbo";
+    		else destSchema = SqlServerDiscovery.sqlObjBracket(destSchema);
+    		       	
+        	destCn = DriverManager.getConnection(destCnString);            
+        	Statement sta = destCn.createStatement();    		
+    		    		
+        	//makes sure we're on the right database before attempting any record modifications
+        	sta.execute("USE " + destDbName);
+        	//remove records based on the source connection string to reupdate to account for any changes.
+        	sta.execute("DELETE FROM " + destSchema + ".TblStats WHERE CnString = " + SqlServerDiscovery.sqlStringClean(srcCnString));
+        	
+        	//close connection to avoid needless connections before attempting a new operation
+        	destCn.close();
+        	
+        	success = insertDestinationTableStats(srcCnString, destCnString, destDbName, destSchema, tblStats);
+        	
+        } 
+        catch (SQLException ex) {ex.printStackTrace();success = false;} 
+        //close connection
+        finally {
+        	try {if (destCn != null && !destCn.isClosed()) destCn.close();} 
+        	catch (SQLException ex) {ex.printStackTrace();}
+		}
+
+        //finish all threads before moving on
+        return success; 
+	}
 	
 	
 	/***
@@ -250,7 +451,7 @@ public class SqlServerDbScour {
 	 * @param RowSet from vwTblStats rendered from destination table InformationSchema
 	 * @return
 	 */
-	public boolean updateDestinationTableStats(String srcCnString,	String destCnString, 
+	public boolean insertDestinationTableStats(String srcCnString,	String destCnString, 
 			String destDbName, String destSchema, RowSet tblStats) {
 		
 		boolean success = true;
@@ -286,7 +487,7 @@ public class SqlServerDbScour {
 						tblStats.getInt("FieldCount")
 				);
 				
-				UpdateTblStatsThread t = new UpdateTblStatsThread(
+				InsertTblStatsThread t = new InsertTblStatsThread(
 						 srcCnString,
 						 destCnString,  
 						 destDbName,  
@@ -313,7 +514,7 @@ public class SqlServerDbScour {
 	 * A thread implemented class to allow for updating 
 	 * @author harrisonc
 	 */
-	class UpdateTblStatsThread extends Thread {
+	class InsertTblStatsThread extends Thread {
 		/***
 		 * 
 		 * @param srcCnString
@@ -322,7 +523,7 @@ public class SqlServerDbScour {
 		 * @param destSchema
 		 * @param record
 		 */
-		public UpdateTblStatsThread(String srcCnString,	String destCnString, String destDbName, String destSchema, 
+		public InsertTblStatsThread(String srcCnString,	String destCnString, String destDbName, String destSchema, 
 				TblStatsRecord record ) {
 			
 			this.srcCnString = srcCnString;
@@ -374,7 +575,10 @@ public class SqlServerDbScour {
 	        	destCn = DriverManager.getConnection(destCnString);
 	        	
 	        	Statement sta = destCn.createStatement();
+	        	
+	        	//TODO: create a log object to pass over instead of debug printing here
 	        	System.out.println(record.toSqlInsert(destSchema));
+	        	
 	        	sta.execute("USE " + destDbName);
 	        	sta.executeUpdate(record.toSqlInsert(destSchema));
 			}
@@ -463,6 +667,7 @@ public class SqlServerDbScour {
             sta.execute("USE " + destDbName);
             
             //remove records based on the source connection string to reupdate to account for any changes.
+            //TODO: create a log object to pass over instead of debug printing here
             //System.out.println("DELETE FROM " + destSchema + ".InformationdestSchema WHERE CnString = " + SqlServerDiscovery.sqlStringClean(srcCnString));
             sta.execute("DELETE FROM " + destSchema + ".InformationSchema WHERE CnString = " 
             		+ SqlServerDiscovery.sqlStringClean(srcCnString));
@@ -534,7 +739,8 @@ public class SqlServerDbScour {
 				sqlInsert.append(SqlServerDiscovery.sqlStringClean(characterSetSchema) + ", ");
 				sqlInsert.append(SqlServerDiscovery.sqlStringClean(dataTypeCat) + ")");
 				
-				//System.out.println(sqlInsert.toString());
+				//TODO: create a log object to pass over instead of debug printing here
+				System.out.println(sqlInsert.toString());
 				sta.executeUpdate(sqlInsert.toString());
 				success = true;
 			}
@@ -585,10 +791,6 @@ public class SqlServerDbScour {
         }
         return rs; 
 	}
-	
-	
-	
-
 	
 	/***
 	 * Creates table to store results from INFORMATION_SCHEMA from 
@@ -659,6 +861,51 @@ public class SqlServerDbScour {
         }
         return success;
 	}
+
+	
+	/***
+	 * 
+	 * @param searchString
+	 * @param srcDatabaseName
+	 * @param srcSchema
+	 * @param srcTableName
+	 * @param srcColumnName
+	 * @return
+	 */
+	public static String sqlSelectSearchNumeric(String searchString, String databaseName, String schema, String tableName, 
+			String columnName) {
+		String output = null;
+		String from = SqlServerDiscovery.sqlFromClean(databaseName, schema, tableName);
+		
+		output = "SELECT " + SqlServerDiscovery.sqlObjBracket(columnName) + ", COUNT(*) RecordCount"
+			   + "  FROM " + from
+			   + "  WHERE " + SqlServerDiscovery.sqlObjBracket(columnName) + " = " + searchString 
+			   + "  GROUP BY " + SqlServerDiscovery.sqlObjBracket(columnName);
+		
+		return output;
+	}
+	
+	/***
+	 * 
+	 * @param searchString
+	 * @param srcDatabaseName
+	 * @param srcSchema
+	 * @param srcTableName
+	 * @param srcColumnName
+	 * @return
+	 */
+	public static String sqlSelectSearchText(String searchString, String databaseName, String schema, String tableName, 
+			String columnName) {
+		String output = null;
+		String from = SqlServerDiscovery.sqlFromClean(databaseName, schema, tableName);
+		
+		output = "SELECT " + SqlServerDiscovery.sqlObjBracket(columnName) + ", COUNT(*) RecordCount"
+			   + "  FROM " + from
+			   + "  WHERE " + SqlServerDiscovery.sqlObjBracket(columnName) + " LIKE '%" + searchString + "%'"
+			   + "  GROUP BY " + SqlServerDiscovery.sqlObjBracket(columnName);
+		
+		return output;
+	}
 	
 	/***
 	 * 
@@ -689,6 +936,15 @@ public class SqlServerDbScour {
 		return output;
 	}
 	
+	/***
+	 * 
+	 * @param dbName
+	 * @param schema
+	 * @param tableName
+	 * @param columnName
+	 * @param dataTypeCategory
+	 * @return
+	 */
 	public static String sqlColStats(String dbName, String schema, String tableName, String columnName, String dataTypeCategory) {
 
 		StringBuilder output = new StringBuilder();
@@ -720,7 +976,7 @@ public class SqlServerDbScour {
 		//if talbleName not valid, allb ets off
 		from = SqlServerDiscovery.sqlFromClean(dbName, schema, tableName);
 		
-		output = "SELECT COUNT(DISTINCT "+ SqlServerDiscovery.sqlObjBracket(columnName) +") RecordCount FROM " + from;
+		output = "SELECT COUNT(DISTINCT " + SqlServerDiscovery.sqlObjBracket(columnName) + ") RecordCount FROM " + from;
 		return output;
 	}
 	
@@ -909,8 +1165,10 @@ public class SqlServerDbScour {
 		  + "		TblName VARCHAR(256) NOT NULL,  "
 		  + "		ColName VARCHAR(256) NOT NULL,  "
 		  + "		SearchTerm VARCHAR(MAX) NOT NULL,  "
+		  + "		SearchDataTypeCategory VARCHAR(256) NOT NULL,  "
 		  + "		ResultValue VARCHAR(MAX) NULL,  "
 		  + "		ResultCount BIGINT NULL,  "
+		  + "		QueryTimeSeconds FLOAT(53) NULL,  "
 		  + "		MeasureDate DATETIME DEFAULT GETDATE()  "
 		  + ")";
 		
@@ -995,6 +1253,119 @@ public class SqlServerDbScour {
 		return output;
 	}
 	
+	
+	/***
+	 * 
+	 * @author harrisonc
+	 *
+	 */
+	public class ColSearchResultsRecord {
+		public ColSearchResultsRecord(String cnString, String dbName, String schName, String tblName, String colName,
+				String searchTerm, String searchDataTypeCategory, String sesultValue, long resultCount,
+				Double queryTimeSeconds) {
+			super();
+			this.cnString = cnString;
+			this.dbName = dbName;
+			this.schName = schName;
+			this.tblName = tblName;
+			this.colName = colName;
+			this.searchTerm = searchTerm;
+			this.searchDataTypeCategory = searchDataTypeCategory;
+			this.sesultValue = sesultValue;
+			this.resultCount = resultCount;
+			this.queryTimeSeconds = queryTimeSeconds;
+		}
+		
+		public String toSqlInsert(String schema) {
+			StringBuilder sqlInsert = new StringBuilder(); 
+			sqlInsert.append("INSERT INTO " + schema + ".ColSearchResults (");
+			sqlInsert.append("CnString,DbName,SchName,TblName,ColName,SearchTerm,SearchDataTypeCategory,ResultValue"
+					+ ",ResultCount,QueryTimeSeconds)  VALUES (");
+			sqlInsert.append(SqlServerDiscovery.sqlStringClean(cnString) + ",");
+			sqlInsert.append(SqlServerDiscovery.sqlStringClean(dbName) + ",");
+			sqlInsert.append(SqlServerDiscovery.sqlStringClean(schName) + ",");
+			sqlInsert.append(SqlServerDiscovery.sqlStringClean(tblName) + ",");
+			sqlInsert.append(SqlServerDiscovery.sqlStringClean(colName) + ",");
+			sqlInsert.append(SqlServerDiscovery.sqlStringClean(searchTerm) + ",");
+			sqlInsert.append(SqlServerDiscovery.sqlStringClean(searchDataTypeCategory) + ",");
+			sqlInsert.append(SqlServerDiscovery.sqlStringClean(sesultValue) + ",");
+			sqlInsert.append(SqlServerDiscovery.sqlLongClean(resultCount) + ",");
+			sqlInsert.append(SqlServerDiscovery.sqlDoubleClean(queryTimeSeconds) + ")");
+			return sqlInsert.toString();
+		}
+		
+		public String getCnString() {
+			return cnString;
+		}
+		public void setCnString(String cnString) {
+			this.cnString = cnString;
+		}
+		public String getDbName() {
+			return dbName;
+		}
+		public void setDbName(String dbName) {
+			this.dbName = dbName;
+		}
+		public String getSchName() {
+			return schName;
+		}
+		public void setSchName(String schName) {
+			this.schName = schName;
+		}
+		public String getTblName() {
+			return tblName;
+		}
+		public void setTblName(String tblName) {
+			this.tblName = tblName;
+		}
+		public String getColName() {
+			return colName;
+		}
+		public void setColName(String colName) {
+			this.colName = colName;
+		}
+		public String getSearchTerm() {
+			return searchTerm;
+		}
+		public void setSearchTerm(String searchTerm) {
+			this.searchTerm = searchTerm;
+		}
+		public String getSearchDataTypeCategory() {
+			return searchDataTypeCategory;
+		}
+		public void setSearchDataTypeCategory(String searchDataTypeCategory) {
+			this.searchDataTypeCategory = searchDataTypeCategory;
+		}
+		public String getSesultValue() {
+			return sesultValue;
+		}
+		public void setSesultValue(String sesultValue) {
+			this.sesultValue = sesultValue;
+		}
+		public long getResultCount() {
+			return resultCount;
+		}
+		public void setResultCount(long resultCount) {
+			this.resultCount = resultCount;
+		}
+		public Double getQueryTimeSeconds() {
+			return queryTimeSeconds;
+		}
+		public void setQueryTimeSeconds(Double queryTimeSeconds) {
+			this.queryTimeSeconds = queryTimeSeconds;
+		}
+
+		String cnString	;
+		String dbName;
+		String schName;
+		String tblName;
+		String colName;
+		String searchTerm;
+		String searchDataTypeCategory;
+		String sesultValue;
+		long resultCount;
+		Double queryTimeSeconds;
+	}
 	
 	public class ColStatsRecord {
 		public ColStatsRecord(String cnString, String dbName, String schName, String tblName, String colName,
@@ -1489,8 +1860,6 @@ public class SqlServerDbScour {
 		public void setDataTypeCat(String dataTypeCat) {
 			this.dataTypeCat = dataTypeCat;
 		}
-
-
 
 		String cnString;
 		String tableType;							//TableType

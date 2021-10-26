@@ -25,6 +25,36 @@ public class JchLib_DbScourTest {
 	}
 	
 	
+	public static void testSearchText() {
+		SqlServerCnString srcCnString = new SqlServerCnString();
+		SqlServerCnString destCnString = new SqlServerCnString();
+		
+		srcCnString.setCnStringIntegratedSecurity("VM-TEMENOS", null , "Akcelerant");
+		destCnString.setCnStringIntegratedSecurity("vm-devanalytics", null , "dev01");
+		
+		SqlServerDbScour dbsSource = new SqlServerDbScour();
+		SqlServerDbScour dbsDestination = new SqlServerDbScour();
+		
+		String searchTerm = "Jerry";
+		String dataTypeCategory = "TEXT";
+		
+		RowSet tblStats = dbsDestination.getDestVwTblStats(
+				srcCnString.getCnString(),		//Grab table list based source connection string (filter value)
+				destCnString.getCnString(), 	//Used to make connection where vwTblStats resides
+				destCnString.getDatabaseName(), //Used to make connection where vwTblStats resides
+				"dbo");							//Used to make connection where vwTblStats resides
+		
+		dbsDestination.insertColSearchResults(
+				searchTerm,
+				dataTypeCategory,
+				srcCnString.getCnString(), 		//
+				destCnString.getCnString(), 	//
+				destCnString.getDatabaseName(), //
+				"dbo", 							//
+				tblStats);						//
+				
+				
+	}
 	
 	/***
 	 * Gets basic column statistics and updates ColStats table
@@ -40,19 +70,20 @@ public class JchLib_DbScourTest {
 		SqlServerDbScour dbsSource = new SqlServerDbScour();
 		SqlServerDbScour dbsDestination = new SqlServerDbScour();
 		
-		
+		//Get a list of tables as each table will get its own thread up to the thread pool size
 		RowSet tblStats = dbsDestination.getDestVwTblStats(
 				srcCnString.getCnString(),		//Grab table list based source connection string (filter value)
 				destCnString.getCnString(), 	//Used to make connection where vwTblStats resides
 				destCnString.getDatabaseName(), //Used to make connection where vwTblStats resides
 				"dbo");							//Used to make connection where vwTblStats resides
 		
+		
 		dbsDestination.updateDestinationColStats(
 				srcCnString.getCnString(), 		//
 				destCnString.getCnString(), 	//
 				destCnString.getDatabaseName(), //
 				"dbo", 							//
-				tblStats);						//
+				tblStats);						//used to produce each thread
 		
 	}
 	
@@ -71,6 +102,7 @@ public class JchLib_DbScourTest {
 		SqlServerDbScour dbsSource = new SqlServerDbScour();
 		SqlServerDbScour dbsDestination = new SqlServerDbScour();
 		
+		//Get a list of tables as each table will get its own thread up to the thread pool size
 		RowSet tblStats = dbsDestination.getDestVwTblStats(
 				srcCnString.getCnString(),		//Grab table list based source connection string (filter value)
 				destCnString.getCnString(), 	//Used to make connection where vwTblStats resides
