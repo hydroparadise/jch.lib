@@ -36,7 +36,9 @@ public class Main {
 		//JchLib_DbScourTest.testGetBasicStats();
 		
 		//JchLib_DbScourTest.testUpdateRecordCounts();
-		JchLib_DbScourTest.testUpdateColumnStats();
+		//JchLib_DbScourTest.testUpdateColumnStats();
+		
+		JchLib_DbScourTest.testSearchText();
 		
 
 	}

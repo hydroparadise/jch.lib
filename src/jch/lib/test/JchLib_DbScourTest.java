@@ -25,7 +25,7 @@ public class JchLib_DbScourTest {
 	}
 	
 	
-	public static void testSearchText() {
+	public static void search(String searchTerm, String dataTypeCategory) {
 		SqlServerCnString srcCnString = new SqlServerCnString();
 		SqlServerCnString destCnString = new SqlServerCnString();
 		
@@ -35,8 +35,8 @@ public class JchLib_DbScourTest {
 		SqlServerDbScour dbsSource = new SqlServerDbScour();
 		SqlServerDbScour dbsDestination = new SqlServerDbScour();
 		
-		String searchTerm = "Jerry";
-		String dataTypeCategory = "TEXT";
+		//String searchTerm = "20";
+		//String dataTypeCategory = "NUMERIC";
 		
 		RowSet tblStats = dbsDestination.getDestVwTblStats(
 				srcCnString.getCnString(),		//Grab table list based source connection string (filter value)
@@ -51,9 +51,46 @@ public class JchLib_DbScourTest {
 				destCnString.getCnString(), 	//
 				destCnString.getDatabaseName(), //
 				"dbo", 							//
-				tblStats);						//
-				
-				
+				tblStats);						//The collection of tables to search through
+			
+	}
+	
+	
+	/***
+	 * Search values and store results
+	 * PASSED
+	 */
+	public static void testSearchText() {
+		SqlServerCnString srcCnString = new SqlServerCnString();
+		SqlServerCnString destCnString = new SqlServerCnString();
+		
+		srcCnString.setCnStringIntegratedSecurity("VM-TEMENOS", null , "Akcelerant");
+		destCnString.setCnStringIntegratedSecurity("vm-devanalytics", null , "dev01");
+		
+		SqlServerDbScour dbsSource = new SqlServerDbScour();
+		SqlServerDbScour dbsDestination = new SqlServerDbScour();
+		
+		String searchTerm = "Jerry";
+		String dataTypeCategory = "TEXT";
+		
+		//String searchTerm = "20";
+		//String dataTypeCategory = "NUMERIC";
+		
+		RowSet tblStats = dbsDestination.getDestVwTblStats(
+				srcCnString.getCnString(),		//Grab table list based source connection string (filter value)
+				destCnString.getCnString(), 	//Used to make connection where vwTblStats resides
+				destCnString.getDatabaseName(), //Used to make connection where vwTblStats resides
+				"dbo");							//Used to make connection where vwTblStats resides
+		
+		dbsDestination.insertColSearchResults(
+				searchTerm,
+				dataTypeCategory,
+				srcCnString.getCnString(), 		//
+				destCnString.getCnString(), 	//
+				destCnString.getDatabaseName(), //
+				"dbo", 							//
+				tblStats);						//The collection of tables to search through
+			
 	}
 	
 	/***

@@ -16,7 +16,7 @@ import com.sun.prism.impl.Disposer.Record;
  */
 public class SqlServerDbScour {
 	
-	int threadPoolSize = 3;
+	int threadPoolSize = 5;
 	
 	
 	
@@ -96,25 +96,25 @@ public class SqlServerDbScour {
 	        			destSchema);
 	        	
 	        	//TODO: create a log object to pass over instead of debug printing here
-	        	System.out.println(SqlServerDiscovery.sqlPrint(sqlTableColumns));
+	        	//System.out.println(SqlServerDiscovery.sqlPrint(sqlTableColumns));
 	        	
 		        Statement sta = destCn.createStatement(ResultSet.TYPE_FORWARD_ONLY,ResultSet.CONCUR_READ_ONLY);
-		        ResultSet res = sta.executeQuery(sqlTableColumns);
+		        ResultSet resColumns = sta.executeQuery(sqlTableColumns);
 		        
 		        //convert ResultSet to RowSet
 		        RowSetFactory rsf = RowSetProvider.newFactory();
-		        CachedRowSet rs = rsf.createCachedRowSet();
-		        rs.populate(res);
+		        CachedRowSet rsColumns = rsf.createCachedRowSet();
+		        rsColumns.populate(resColumns);
 		        
 		        //RowSet is now populated, go ahead and close db connection
 		        destCn.close();
 		        
 		        //start iterating through columns to search
-				while(rs.next()) {
+				while(rsColumns.next()) {
 					
 					//first check to see if column is of a consistent datatype to search
-					if(dataTypeCategory.equals(rs.getString("DataTypeCategory"))) {
-
+					if(dataTypeCategory.equals(rsColumns.getString("DataTypeCategory"))) {
+						executeSearch(rsColumns);
 					}
 				}
 			}
@@ -127,7 +127,88 @@ public class SqlServerDbScour {
 		}
 		
 
+		void executeSearch(RowSet rsColumns) throws SQLException {
+			String sqlSearch = null;
+			
+			//TEXT base SQL query
+			if(rsColumns.getString("DataTypeCategory").equals("TEXT") ) {
+				final String searchTextTerm = searchTerm.replace("'", "''");
+				sqlSearch = sqlSelectSearchText(
+						searchTextTerm, 
+						rsColumns.getString("TableCatalog"),	//srcDatabaseName, 
+						rsColumns.getString("TableSchema"),	//srcSchema, 
+						rsColumns.getString("TableName"),	//tableName, 
+						rsColumns.getString("ColumnName"));	//columnName);
+			}
+			
+			//NUMERIC base SQL query
+			if(rsColumns.getString("DataTypeCategory").equals("NUMERIC") ) {
+				final String searchNumericTerm = searchTerm;
+				sqlSearch = sqlSelectSearchNumeric(
+						searchNumericTerm, 
+						rsColumns.getString("TableCatalog"),	//srcDatabaseName, 
+						rsColumns.getString("TableSchema"),	//srcSchema, 
+						rsColumns.getString("TableName"),	//tableName, 
+						rsColumns.getString("ColumnName"));	//columnName);
+			}
+			
+			System.out.println(SqlServerDiscovery.sqlPrint(sqlSearch));
+			
+			//create source connection
+			Connection srcCn = DriverManager.getConnection(srcCnString);
+			
+        	//start time measure
+        	double start = System.currentTimeMillis();
+			
+			//execute SQL statement
+	        Statement staRead = srcCn.createStatement(ResultSet.TYPE_FORWARD_ONLY,ResultSet.CONCUR_READ_ONLY);
+	        ResultSet resSearchResult = staRead.executeQuery(sqlSearch);
+	        
+        	//stop time measure
+			double stop = System.currentTimeMillis();
+	        
+	        //convert ResultSet to RowSet
+	        RowSetFactory rsf = RowSetProvider.newFactory();
+	        CachedRowSet rsSearchResult = rsf.createCachedRowSet();
+	        rsSearchResult.populate(resSearchResult);
+	        
+	        srcCn.close();
+	        
+	        Connection destCn = null;
+	        Statement staInsert;
+	        //Connection destCn = DriverManager.getConnection(destCnString);  
+	        //System.out.println("print results " + rsSearchResult.size());
+			while(rsSearchResult.next()) {
 
+				ColSearchResultsRecord r = new ColSearchResultsRecord (
+						rsColumns.getString("CnString"),
+						rsColumns.getString("TableCatalog"),	//srcDatabaseName, 
+						rsColumns.getString("TableSchema"),	//srcSchema, 
+						rsColumns.getString("TableName"),	//tableName, 
+						rsColumns.getString("ColumnName"),	//columnName);
+						searchTerm,
+						dataTypeCategory,
+						rsSearchResult.getString("ColumnName"),
+						rsSearchResult.getLong("RecordCount"),
+						(stop - start)/1000.0
+				);
+				
+	        	destCn = DriverManager.getConnection(destCnString);
+	        	
+	        	staInsert = destCn.createStatement();
+
+	        	staInsert.execute("USE " + destDbName);
+	        	staInsert.executeUpdate(r.toSqlInsert(destSchema));
+	        	
+				
+				System.out.println(r.toSqlInsert("dbo"));
+				
+				
+			}
+			
+			destCn.close();
+		}
+		
 		 
 		final String searchTerm;
 		final String dataTypeCategory;
@@ -877,7 +958,7 @@ public class SqlServerDbScour {
 		String output = null;
 		String from = SqlServerDiscovery.sqlFromClean(databaseName, schema, tableName);
 		
-		output = "SELECT " + SqlServerDiscovery.sqlObjBracket(columnName) + ", COUNT(*) RecordCount"
+		output = "SELECT " + SqlServerDiscovery.sqlObjBracket(columnName) + " ColumnName, COUNT(*) RecordCount"
 			   + "  FROM " + from
 			   + "  WHERE " + SqlServerDiscovery.sqlObjBracket(columnName) + " = " + searchString 
 			   + "  GROUP BY " + SqlServerDiscovery.sqlObjBracket(columnName);
@@ -899,7 +980,7 @@ public class SqlServerDbScour {
 		String output = null;
 		String from = SqlServerDiscovery.sqlFromClean(databaseName, schema, tableName);
 		
-		output = "SELECT " + SqlServerDiscovery.sqlObjBracket(columnName) + ", COUNT(*) RecordCount"
+		output = "SELECT " + SqlServerDiscovery.sqlObjBracket(columnName) + " ColumnName, COUNT(*) RecordCount"
 			   + "  FROM " + from
 			   + "  WHERE " + SqlServerDiscovery.sqlObjBracket(columnName) + " LIKE '%" + searchString + "%'"
 			   + "  GROUP BY " + SqlServerDiscovery.sqlObjBracket(columnName);
