@@ -19,9 +19,9 @@ import java.util.TreeMap;
 import jch.lib.common.chunk.ChunkList;
 import jch.lib.common.chunk.StringChunkLink;
 
-public class JchLib_ChunkTests {
+public class JchLib_ChunkTest {
 
-	public JchLib_ChunkTests() {
+	public JchLib_ChunkTest() {
 		// TODO Auto-generated constructor stub
 	}
 

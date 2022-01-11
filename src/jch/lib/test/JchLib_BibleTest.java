@@ -17,9 +17,9 @@ import jch.lib.analytics.text.book.dictionary.WebstersUnabridgedDictionary;
 import jch.lib.analytics.text.book.dictionary.WordDictionary;
 import jch.lib.common.chunk.ChunkList;
 
-public class JchLib_BibleTests {
+public class JchLib_BibleTest {
 
-	public JchLib_BibleTests() {
+	public JchLib_BibleTest() {
 		// TODO Auto-generated constructor stub
 	}
 

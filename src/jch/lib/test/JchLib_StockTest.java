@@ -18,9 +18,9 @@ import jch.lib.analytics.investment.stock.StatFrame;
 import jch.lib.analytics.investment.stock.StatFrameSet;
 import jch.lib.analytics.investment.stock.StockDay;
 
-public class JchLib_StockTests {
+public class JchLib_StockTest {
 
-	public JchLib_StockTests() {
+	public JchLib_StockTest() {
 		// TODO Auto-generated constructor stub
 		Application.launch(StockViewer.class);
 	}

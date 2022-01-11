@@ -31,7 +31,7 @@ public class JchLib_FileTests {
 	}
 
 	public static void testmnrr() {
-		String startLocation2 = "\\\\teams.firstmarkcu.org\\projects\\project_management\\Shared Documents\\Business Intelligence\\";
+		String startLocation2 = "\\Shared Documents\\Business Intelligence\\";
 		String startLocation = "C:\\";
 		magicNumberRecursiveRide(startLocation);
 	}

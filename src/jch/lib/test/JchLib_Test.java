@@ -61,7 +61,7 @@ import java.util.TreeMap;
 */
 
 
-public class JchLib_Tests {
+public class JchLib_Test {
 	
 
 	

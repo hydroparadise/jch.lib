@@ -16,7 +16,7 @@ import com.sun.prism.impl.Disposer.Record;
  */
 public class SqlServerDbScour {
 	
-	int threadPoolSize = 5;
+	int threadPoolSize = 2;
 	
 	
 	
@@ -126,87 +126,110 @@ public class SqlServerDbScour {
 			}
 		}
 		
-
-		void executeSearch(RowSet rsColumns) throws SQLException {
+		
+		void executeSearch(RowSet rsColumns)  {
 			String sqlSearch = null;
-			
-			//TEXT base SQL query
-			if(rsColumns.getString("DataTypeCategory").equals("TEXT") ) {
-				final String searchTextTerm = searchTerm.replace("'", "''");
-				sqlSearch = sqlSelectSearchText(
-						searchTextTerm, 
-						rsColumns.getString("TableCatalog"),	//srcDatabaseName, 
-						rsColumns.getString("TableSchema"),	//srcSchema, 
-						rsColumns.getString("TableName"),	//tableName, 
-						rsColumns.getString("ColumnName"));	//columnName);
-			}
-			
-			//NUMERIC base SQL query
-			if(rsColumns.getString("DataTypeCategory").equals("NUMERIC") ) {
-				final String searchNumericTerm = searchTerm;
-				sqlSearch = sqlSelectSearchNumeric(
-						searchNumericTerm, 
-						rsColumns.getString("TableCatalog"),	//srcDatabaseName, 
-						rsColumns.getString("TableSchema"),	//srcSchema, 
-						rsColumns.getString("TableName"),	//tableName, 
-						rsColumns.getString("ColumnName"));	//columnName);
-			}
-			
-			System.out.println(SqlServerDiscovery.sqlPrint(sqlSearch));
-			
-			//create source connection
-			Connection srcCn = DriverManager.getConnection(srcCnString);
-			
-        	//start time measure
-        	double start = System.currentTimeMillis();
-			
-			//execute SQL statement
-	        Statement staRead = srcCn.createStatement(ResultSet.TYPE_FORWARD_ONLY,ResultSet.CONCUR_READ_ONLY);
-	        ResultSet resSearchResult = staRead.executeQuery(sqlSearch);
-	        
-        	//stop time measure
-			double stop = System.currentTimeMillis();
-	        
-	        //convert ResultSet to RowSet
-	        RowSetFactory rsf = RowSetProvider.newFactory();
-	        CachedRowSet rsSearchResult = rsf.createCachedRowSet();
-	        rsSearchResult.populate(resSearchResult);
-	        
-	        srcCn.close();
-	        
+			Connection srcCn = null;
 	        Connection destCn = null;
-	        Statement staInsert;
-	        //Connection destCn = DriverManager.getConnection(destCnString);  
-	        //System.out.println("print results " + rsSearchResult.size());
-			while(rsSearchResult.next()) {
+	        CachedRowSet rsSearchResult = null;
+	        double start = 0,stop = 0;
+	        
+			try {
 
-				ColSearchResultsRecord r = new ColSearchResultsRecord (
-						rsColumns.getString("CnString"),
-						rsColumns.getString("TableCatalog"),	//srcDatabaseName, 
-						rsColumns.getString("TableSchema"),	//srcSchema, 
-						rsColumns.getString("TableName"),	//tableName, 
-						rsColumns.getString("ColumnName"),	//columnName);
-						searchTerm,
-						dataTypeCategory,
-						rsSearchResult.getString("ColumnName"),
-						rsSearchResult.getLong("RecordCount"),
-						(stop - start)/1000.0
-				);
+				//TEXT base SQL query
+				if(rsColumns.getString("DataTypeCategory").equals("TEXT") ) {
+					final String searchTextTerm = searchTerm.replace("'", "''");
+					sqlSearch = sqlSelectSearchText(
+							searchTextTerm, 
+							rsColumns.getString("TableCatalog"),	//srcDatabaseName, 
+							rsColumns.getString("TableSchema"),	//srcSchema, 
+							rsColumns.getString("TableName"),	//tableName, 
+							rsColumns.getString("ColumnName"));	//columnName);
+				}
 				
-	        	destCn = DriverManager.getConnection(destCnString);
-	        	
-	        	staInsert = destCn.createStatement();
+				//NUMERIC base SQL query
+				if(rsColumns.getString("DataTypeCategory").equals("NUMERIC") ) {
+					final String searchNumericTerm = searchTerm;
+					sqlSearch = sqlSelectSearchNumeric(
+							searchNumericTerm, 
+							rsColumns.getString("TableCatalog"),	//srcDatabaseName, 
+							rsColumns.getString("TableSchema"),	//srcSchema, 
+							rsColumns.getString("TableName"),	//tableName, 
+							rsColumns.getString("ColumnName"));	//columnName);
+				}
+				
+				
+				//create source connection
+				srcCn = DriverManager.getConnection(srcCnString);
+				
+	        	//start time measure
+	        	start = System.currentTimeMillis();
+				
+				//execute SQL statement
+		        Statement staRead = srcCn.createStatement(ResultSet.TYPE_FORWARD_ONLY,ResultSet.CONCUR_READ_ONLY);
+		        ResultSet resSearchResult = staRead.executeQuery(sqlSearch);
+		        
+	        	//stop time measure
+				stop = System.currentTimeMillis();
+		        
+		        //convert ResultSet to RowSet
+		        RowSetFactory rsf = RowSetProvider.newFactory();
+		        rsSearchResult = rsf.createCachedRowSet();
+		        rsSearchResult.populate(resSearchResult);
+	        
+			}
+	        catch (SQLException ex) {
+	        	ex.printStackTrace();
+	        	System.out.println(SqlServerDiscovery.sqlPrint(sqlSearch));
+			} 
+	        //close connection
+	        finally {
+	        	try {if (srcCn != null && !srcCn.isClosed()) srcCn.close();} 
+	        	catch (SQLException ex) {ex.printStackTrace();}
+			}
+	    	
+			
+			try {
 
-	        	staInsert.execute("USE " + destDbName);
-	        	staInsert.executeUpdate(r.toSqlInsert(destSchema));
-	        	
-				
-				System.out.println(r.toSqlInsert("dbo"));
-				
+				Statement staInsert;
+		        //Connection destCn = DriverManager.getConnection(destCnString);  
+		        //System.out.println("print results " + rsSearchResult.size());
+				while(rsSearchResult.next()) {
+	
+					ColSearchResultsRecord r = new ColSearchResultsRecord (
+							rsColumns.getString("CnString"),
+							rsColumns.getString("TableCatalog"),	//srcDatabaseName, 
+							rsColumns.getString("TableSchema"),	//srcSchema, 
+							rsColumns.getString("TableName"),	//tableName, 
+							rsColumns.getString("ColumnName"),	//columnName);
+							searchTerm,
+							dataTypeCategory,
+							rsSearchResult.getString("ColumnName"),
+							rsSearchResult.getLong("RecordCount"),
+							(stop - start)/1000.0
+					);
+					
+		        	destCn = DriverManager.getConnection(destCnString);
+		        	
+		        	staInsert = destCn.createStatement();
+	
+		        	staInsert.execute("USE " + destDbName);
+		        	staInsert.executeUpdate(r.toSqlInsert(destSchema));        	
+					
+					System.out.println(r.toSqlInsert(destSchema));
+					
+				}
 				
 			}
+	        catch (SQLException ex) {ex.printStackTrace();} 
+	        //close connection
+	        finally {
+	        	try {if (destCn != null && !destCn.isClosed()) destCn.close();} 
+	        	catch (SQLException ex) {ex.printStackTrace();}
+			}
+	    	
 			
-			destCn.close();
+	       
 		}
 		
 		 

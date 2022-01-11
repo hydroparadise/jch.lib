@@ -13,24 +13,35 @@ package jch.lib.test;
  *
  */
 
+
+
 import java.sql.*;
 import javax.sql.*;
 import jch.lib.db.sqlserver.*;
 
+import java.util.Scanner;
+
+
 public class JchLib_DbScourTest {
 	JchLib_DbScourTest(){
-		//constructor
+		//constructor		
+	}
 
+	//searches databa
+	public static void akcelerantSearch() {
+		akcelerantSearch("$1879.71","TEXT");
+		akcelerantSearch("112336","NUMERIC");
 		
 	}
 	
-	
-	public static void search(String searchTerm, String dataTypeCategory) {
+	public static void akcelerantSearch(String searchTerm, String dataTypeCategory) {
+		//instantiate connection string generator objects
 		SqlServerCnString srcCnString = new SqlServerCnString();
 		SqlServerCnString destCnString = new SqlServerCnString();
 		
-		srcCnString.setCnStringIntegratedSecurity("VM-TEMENOS", null , "Akcelerant");
-		destCnString.setCnStringIntegratedSecurity("vm-devanalytics", null , "dev01");
+		//set hostname, sql server instances name, and database
+		srcCnString.setCnStringIntegratedSecurity("TEMENOS", null , "Akcelerant");
+		destCnString.setCnStringIntegratedSecurity("devanalytics", null , "dev01");
 		
 		SqlServerDbScour dbsSource = new SqlServerDbScour();
 		SqlServerDbScour dbsDestination = new SqlServerDbScour();
@@ -43,6 +54,8 @@ public class JchLib_DbScourTest {
 				destCnString.getCnString(), 	//Used to make connection where vwTblStats resides
 				destCnString.getDatabaseName(), //Used to make connection where vwTblStats resides
 				"dbo");							//Used to make connection where vwTblStats resides
+		
+		
 		
 		dbsDestination.insertColSearchResults(
 				searchTerm,
@@ -64,13 +77,13 @@ public class JchLib_DbScourTest {
 		SqlServerCnString srcCnString = new SqlServerCnString();
 		SqlServerCnString destCnString = new SqlServerCnString();
 		
-		srcCnString.setCnStringIntegratedSecurity("VM-TEMENOS", null , "Akcelerant");
-		destCnString.setCnStringIntegratedSecurity("vm-devanalytics", null , "dev01");
+		srcCnString.setCnStringIntegratedSecurity("TEMENOS", null , "Akcelerant");
+		destCnString.setCnStringIntegratedSecurity("devanalytics", null , "dev01");
 		
 		SqlServerDbScour dbsSource = new SqlServerDbScour();
 		SqlServerDbScour dbsDestination = new SqlServerDbScour();
 		
-		String searchTerm = "Jerry";
+		String searchTerm = "Tom";
 		String dataTypeCategory = "TEXT";
 		
 		//String searchTerm = "20";
@@ -81,6 +94,21 @@ public class JchLib_DbScourTest {
 				destCnString.getCnString(), 	//Used to make connection where vwTblStats resides
 				destCnString.getDatabaseName(), //Used to make connection where vwTblStats resides
 				"dbo");							//Used to make connection where vwTblStats resides
+		
+		
+		try {
+			
+			while(tblStats.next()) {
+				System.out.println(tblStats.getString("TableSchema") + "." + tblStats.getString("TableName"));
+			}
+			tblStats.beforeFirst();
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		Scanner myObj = new Scanner(System.in);
+		String getline = myObj.nextLine();
 		
 		dbsDestination.insertColSearchResults(
 				searchTerm,
@@ -101,8 +129,8 @@ public class JchLib_DbScourTest {
 		SqlServerCnString srcCnString = new SqlServerCnString();
 		SqlServerCnString destCnString = new SqlServerCnString();
 		
-		srcCnString.setCnStringIntegratedSecurity("VM-TEMENOS", null , "Akcelerant");
-		destCnString.setCnStringIntegratedSecurity("vm-devanalytics", null , "dev01");
+		srcCnString.setCnStringIntegratedSecurity("TEMENOS", null , "Akcelerant");
+		destCnString.setCnStringIntegratedSecurity("devanalytics", null , "dev01");
 		
 		SqlServerDbScour dbsSource = new SqlServerDbScour();
 		SqlServerDbScour dbsDestination = new SqlServerDbScour();
@@ -133,8 +161,8 @@ public class JchLib_DbScourTest {
 		SqlServerCnString srcCnString = new SqlServerCnString();
 		SqlServerCnString destCnString = new SqlServerCnString();
 		
-		srcCnString.setCnStringIntegratedSecurity("VM-TEMENOS", null , "Akcelerant");
-		destCnString.setCnStringIntegratedSecurity("vm-devanalytics", null , "dev01");
+		srcCnString.setCnStringIntegratedSecurity("TEMENOS", null , "Akcelerant");
+		destCnString.setCnStringIntegratedSecurity("devanalytics", null , "dev01");
 		
 		SqlServerDbScour dbsSource = new SqlServerDbScour();
 		SqlServerDbScour dbsDestination = new SqlServerDbScour();
@@ -166,8 +194,8 @@ public class JchLib_DbScourTest {
 		SqlServerCnString destCnString = new SqlServerCnString();
 		
 		//store source and destination host information to generate jdbc connection string
-		srcCnString.setCnStringIntegratedSecurity("VM-TEMENOS", null , "Akcelerant");
-		destCnString.setCnStringIntegratedSecurity("vm-devanalytics", null , "dev01");
+		srcCnString.setCnStringIntegratedSecurity("TEMENOS", null , "Akcelerant");
+		destCnString.setCnStringIntegratedSecurity("devanalytics", null , "dev01");
 		
 		SqlServerDbScour dbsSource = new SqlServerDbScour();
 		SqlServerDbScour dbsDestination = new SqlServerDbScour();
@@ -200,7 +228,7 @@ public class JchLib_DbScourTest {
 		
 		//hostname:port, sql server instance name, database name
 		System.out.println("Using the following connection string:");
-		System.out.println(destCn.setCnStringIntegratedSecurity("vm-devanalytics:1433", null , "dev01"));
+		System.out.println(destCn.setCnStringIntegratedSecurity("devanalytics:1433", null , "dev01"));
 		
 		System.out.println("Dropping all objects (will fail if they do not exist):");
 		if(SqlServerDbScour.dropDbScourOjbects(destCn.getCnString(),destCn.getDatabaseName(),"dbo")) 
@@ -219,7 +247,7 @@ public class JchLib_DbScourTest {
 	 */
 	public static void testDbSourCreateObjects() {
 		
-		String cnString = "jdbc:sqlserver://vm-devanalytics;databaseName=dev01;integratedSecurity=true";
+		String cnString = "jdbc:sqlserver://devanalytics;databaseName=dev01;integratedSecurity=true";
 		if(SqlServerDbScour.createDbScourOjbects(cnString,"dev01","dbo")) {
 			System.out.println("Success!");
 		}
@@ -245,7 +273,7 @@ public class JchLib_DbScourTest {
         	//Windows
         	//be sure to copy mssql-jdbc_auth-9.4.0.x64.dll to %PATH% directory
         	//cmd: echo %PATH%
-        	String dbURL = "jdbc:sqlserver://vm-devanalytics;integratedSecurity=true";
+        	String dbURL = "jdbc:sqlserver://devanalytics;integratedSecurity=true";
             conn = DriverManager.getConnection(dbURL);
             if (conn != null) {
                 DatabaseMetaData dm = (DatabaseMetaData) conn.getMetaData();

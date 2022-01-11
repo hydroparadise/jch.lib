@@ -13,9 +13,9 @@ import jch.lib.analytics.text.StringStatEntryList.StringStatEntry;
 import jch.lib.analytics.text.book.SyntaxDatasetEntry;
 import jch.lib.analytics.text.book.bible.KingJamesVersionBible;
 
-public class JchLib_GhostWriterTests {
+public class JchLib_GhostWriterTest {
 
-	public JchLib_GhostWriterTests() {
+	public JchLib_GhostWriterTest() {
 		// TODO Auto-generated constructor stub
 	}
 	

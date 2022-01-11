@@ -46,9 +46,9 @@ import com.google.cloud.language.v1.AnalyzeSyntaxResponse;
 
 
 
-public class JchLib_GoogleTests {
+public class JchLib_GoogleTest {
 
-	public JchLib_GoogleTests() {
+	public JchLib_GoogleTest() {
 		// TODO Auto-generated constructor stub
 		int i;
 	}

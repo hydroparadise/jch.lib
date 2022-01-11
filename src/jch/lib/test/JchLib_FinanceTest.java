@@ -14,9 +14,9 @@ import jch.lib.analytics.text.StringStatEntryList.StringStatEntry;
 import jch.lib.common.ReadWorker;
 import jch.lib.common.chunk.ChunkList;
 
-public class JchLib_FinanceTests {
+public class JchLib_FinanceTest {
 
-	public JchLib_FinanceTests() {
+	public JchLib_FinanceTest() {
 		// TODO Auto-generated constructor stub
 	}
 
@@ -33,7 +33,7 @@ public class JchLib_FinanceTests {
 		
 		outFileName = outFileName + outFileDateName;
 
-		String seedLocation = "J:/Chad's ACH files/" + processDate + "/";
+		String seedLocation = "J:/files/" + processDate + "/";
 		
 		String ds[] = new String[] { 
 
@@ -124,8 +124,8 @@ public class JchLib_FinanceTests {
 
 
 	public static void test23() {
-		String loadPath = "J:\\Chad\\EXTRACT.LOANTRANSACTION";
-		//String loadPath = "J:\\Load\\*_69259_1_1050541_All_12202018132025.csv";
+		String loadPath = "J:\\tran";
+		
 		ReadWorker read = null;
 		
 		try {
@@ -173,7 +173,7 @@ public class JchLib_FinanceTests {
 	 */
 	public static void test22() {
 		String loadPath = "J:\\Load\\test\\test.csv";
-		//String loadPath = "J:\\Load\\*_69259_1_1050541_All_12202018132025.csv";
+		
 		ReadWorker read = null;
 		try {
 			read = new ReadWorker(loadPath);
@@ -208,7 +208,7 @@ public class JchLib_FinanceTests {
 	 * 
 	 */
 	public static void testReplaceWithin3() {
-		String loadPath = "J:\\Load\\*54420_1_1040962_All_06192017160512.csv";
+		String loadPath = "J:\\Load\\0512.csv";
 
 		ReadWorker read;
 		try {
@@ -233,8 +233,8 @@ public class JchLib_FinanceTests {
 	public static void testReplaceWithin2() {
 		
 
-		//String loadPath = "J:\\Load\\*_54420_1_1040962_All_06192017160512.csv";
-		String loadPath = "J:\\Load\\*_69259_1_1050541_All_12202018132025.csv";
+
+		String loadPath = "J:\\Load\\2025.csv";
 		ReadWorker read;
 		try {
 			read = new ReadWorker(loadPath);
@@ -277,7 +277,7 @@ public class JchLib_FinanceTests {
 	 * 3) Phrase by phrase analysis
 	 * 
 	 */
-	static String tdLoc = "R:\\_Analytics\\Analysis\\20201118 Member Tran Analysis\\Tran Locs Prev 180\\TranTypes\\";
+	static String tdLoc = "20201118 Analysis\\Tran Locs Prev 180\\TranTypes\\";
 	static String tdFiles[] = {
 			"01_Sig\\Sig_WB.txt",
 			"02_POS\\POS_WB.txt",

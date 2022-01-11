@@ -31,15 +31,12 @@ public class Main {
 		//JchLib_DbScourTest.testSQL();
 		//JchLib_DbScourTest.testDbSourCreateObjects();
 		//System.out.println(SqlServerDiscovery.sqlPrint(SqlServerDiscovery.sqlAllTableColumns("Akcelerant")));
-		
 		//JchLib_DbScourTest.testDbScourCreateCnStrings();
 		//JchLib_DbScourTest.testGetBasicStats();
-		
 		//JchLib_DbScourTest.testUpdateRecordCounts();
 		//JchLib_DbScourTest.testUpdateColumnStats();
-		
-		JchLib_DbScourTest.testSearchText();
-		
+		//JchLib_DbScourTest.testSearchText();
+		JchLib_DbScourTest.akcelerantSearch();
 
 	}
 	
