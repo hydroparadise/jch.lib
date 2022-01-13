@@ -85,7 +85,7 @@ public class JchLib_FileTests {
 				try {
 					
 					writer.append(read.prettyPrintString_F1() + "\t");
-				} catch (NullPointerException |IOException e) {
+				} catch (NullPointerException | IOException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
@@ -492,6 +492,7 @@ public class JchLib_FileTests {
 			e.printStackTrace();
 		}
 	}
+	
 	public static String[] getMedDelims() {
 		String[] output = {new String(new char[]{0}),
 						   new String(new char[]{1}),

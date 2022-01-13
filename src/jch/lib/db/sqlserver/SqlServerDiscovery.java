@@ -71,6 +71,9 @@ public class SqlServerDiscovery {
 	 * Data Type Categories: TEXT, NUMERIC, DATETIME, OTHER
 	 * @param databaseName String
 	 * @return SQL String
+	 * 
+	 * 
+	 * 
 	 */
 	static String sqlDbTableViewColumnsBase(String databaseName) {
 		String output = null;
@@ -110,7 +113,7 @@ public class SqlServerDiscovery {
 		String output = null;
 		output = sqlDbTableViewColumnsBase(databaseName);
 		if(output != null) {
-			output = output + "  ORDER BY T.TABLE_TYPE,T.TABLE_CATALOG,T.TABLE_NAME,T.TABLE_SCHEMA,C.ORDINAL_POSITION";
+			output = output + "  ORDER BY T.TABLE_TYPE,T.TABLE_CATALOG,T.TABLE_SCHEMA,T.TABLE_NAME,C.ORDINAL_POSITION";
 		}
 		return output;
 	}
@@ -128,11 +131,28 @@ public class SqlServerDiscovery {
 			output = output 
 					+ "  WHERE T.TABLE_NAME = " + sqlStringClean(tableName)
 					+ "  	AND T.TABLE_SCHEMA = " + sqlStringClean(schemaName)
-					+ "  ORDER BY T.TABLE_TYPE,T.TABLE_CATALOG,T.TABLE_NAME,T.TABLE_SCHEMA,C.ORDINAL_POSITION";
+					+ "  ORDER BY T.TABLE_TYPE,T.TABLE_CATALOG,T.TABLE_SCHEMA,T.TABLE_NAME,C.ORDINAL_POSITION";
 		}
 		return output;
 	}
 	
+	/***
+	 * 
+	 * @param databaseName
+	 * @return
+	 */
+	public static String sqlDbTables(String databaseName) {
+		String output = null;
+		output = sqlDbTableViewColumnsBase(databaseName);
+		if(output != null) {
+			output = 
+			  "SELECT TABLE_TYPE, TABLE_CATALOG, TABLE_SCHEMA, TABLE_NAME FROM (" + output 
+			+ " WHERE T.TABLE_TYPE = 'BASE TABLE') A"
+			+ " GROUP BY TABLE_TYPE, TABLE_CATALOG, TABLE_SCHEMA, TABLE_NAME";
+		}
+		
+		return output;
+	}
 	
 	/*** 
 	 * 
@@ -148,6 +168,24 @@ public class SqlServerDiscovery {
 		}
 		return output;
 	}
+	
+	/*** 
+	 * 
+	 * @param databaseName String
+	 * @return SQL String
+	 */
+	public static String sqlDbTableColumns(String databaseName, String schemaName, String tableName) {
+		String output = null;
+		output = sqlDbTableViewColumnsBase(databaseName);
+		if(output != null) {
+			output = output
+					+ "  WHERE T.TABLE_NAME = " + sqlStringClean(tableName)
+					+ "  	AND T.TABLE_SCHEMA = " + sqlStringClean(schemaName)
+					+ "  ORDER BY T.TABLE_TYPE,T.TABLE_CATALOG,T.TABLE_NAME,T.TABLE_SCHEMA,C.ORDINAL_POSITION";
+		}
+		return output;
+	}
+	
 	
 	/***
 	 * 

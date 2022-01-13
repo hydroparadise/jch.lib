@@ -854,9 +854,46 @@ public class SqlServerDbScour {
 		return success;
 	}
 	
-	
 	/***
 	 * 
+	 */
+	public RowSet getSrcTables(String srcCnString, String srcDbName) {
+        //String sqlAllDatabase = SqlServerDiscovery.sqlAllUserDatabases();
+
+		Connection cn = null;  //connection
+		CachedRowSet rs = null;
+		
+		//Open connection, run drop sql statements
+        try {
+            cn = DriverManager.getConnection(srcCnString);  
+            
+            //Either grab only user tables or both tables and views.
+            String sql;
+            
+            //check statement
+            //System.out.println(SqlServerDiscovery.sqlDbTables(srcDbName));
+            
+            sql = SqlServerDiscovery.sqlDbTables(srcDbName);
+	        Statement sta = cn.createStatement(ResultSet.TYPE_FORWARD_ONLY,ResultSet.CONCUR_READ_ONLY);
+	        ResultSet res = sta.executeQuery(sql);
+	        
+	        RowSetFactory rsf = RowSetProvider.newFactory();
+	        rs = rsf.createCachedRowSet();
+	        rs.populate(res);
+ 
+        } 
+        catch (SQLException ex) {ex.printStackTrace();} 
+        finally {
+	        try {
+	            if (cn != null && !cn.isClosed()) {cn.close();}
+	        } 
+	        catch (SQLException ex) {ex.printStackTrace();}
+        }
+        return rs; 
+	}
+	
+	/***
+	 * Returns schema information on all tables (and optionally vies) and columns 
 	 * @param Source  String
 	 * @param Source Database Name
 	 * @param Boolean includeViews
@@ -871,12 +908,55 @@ public class SqlServerDbScour {
 		//Open connection, run drop sql statements
         try {
         	
+        	
             cn = DriverManager.getConnection(srcCnString);  
             
             //Either grab only user tables or both tables and views.
             String sql;
             if(includeViews == true) sql = SqlServerDiscovery.sqlDbTableViewColumns(srcDbName);
             else sql = SqlServerDiscovery.sqlDbTableColumns(srcDbName);
+            
+	        Statement sta = cn.createStatement(ResultSet.TYPE_FORWARD_ONLY,ResultSet.CONCUR_READ_ONLY);
+	        ResultSet res = sta.executeQuery(sql);
+	        
+	        RowSetFactory rsf = RowSetProvider.newFactory();
+	        rs = rsf.createCachedRowSet();
+	        rs.populate(res);
+
+        } 
+        catch (SQLException ex) {ex.printStackTrace();} 
+        finally {
+	        try {
+	            if (cn != null && !cn.isClosed()) {cn.close();}
+	        } 
+	        catch (SQLException ex) {ex.printStackTrace();}
+        }
+        return rs; 
+	}
+	
+
+	
+	/***
+	 * Returns schema information on all tables (and optionally vies) and columns 
+	 * @param Source  String
+	 * @param Source Database Name
+	 * @param Boolean includeViews
+	 * @return Information Schema RowSet
+	 */
+	public RowSet getSrcInformationSchema(String srcCnString, String srcDbName, String schema, String tableName) {
+        //String sqlAllDatabase = SqlServerDiscovery.sqlAllUserDatabases();
+
+		Connection cn = null;  //connection
+		CachedRowSet rs = null;
+		
+		//Open connection, run drop sql statements
+        try {
+        	
+            cn = DriverManager.getConnection(srcCnString);  
+            
+            //Either grab only user tables or both tables and views.
+            String sql;
+            sql = SqlServerDiscovery.sqlDbTableViewColumns(srcDbName, schema, tableName);
             
 	        Statement sta = cn.createStatement(ResultSet.TYPE_FORWARD_ONLY,ResultSet.CONCUR_READ_ONLY);
 	        ResultSet res = sta.executeQuery(sql);
