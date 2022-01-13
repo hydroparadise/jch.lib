@@ -15,11 +15,12 @@ import java.io.*;
 import java.nio.*;
 import java.time.*;
 import java.nio.file.*;
-
+import java.sql.Statement;
 import java.util.*;
 import java.util.Map.Entry;
 
 import jch.lib.test.*;
+import net.snowflake.client.jdbc.internal.org.jsoup.Connection;
 import jch.lib.analytics.apps.*;
 import jch.lib.db.sqlserver.SqlServerDiscovery;
 
@@ -36,7 +37,16 @@ public class Main {
 		
 		try {
 			
-			JchLib_SnowflakeTest.createAllTablesDatabase("gcarcu080119","ARCUSYM000");
+			//Passed!
+			//JchLib_SnowflakeTest.createDatabase("gcarcu080119","ARCUSYM000");
+			
+			//Passed!
+			//JchLib_SnowflakeTest.createDatabase("gcarcu080119","FMCUAnalytics");
+			
+			JchLib_SnowflakeTest.createDatabase("gcarcu080119","CFSConnectors");
+			
+			//JchLib_SnowflakeTest.createAllDatabaseSchemas("gcarcu080119","ARCUSYM000");
+			//JchLib_SnowflakeTest.createAllTablesDatabase("gcarcu080119","ARCUSYM000");
 			//JchLib_SnowflakeTest.createAccountTableTest();
 			//JchLib_SnowflakeTest.snowflakeDriverTest();
 			
@@ -46,7 +56,6 @@ public class Main {
 			e.printStackTrace();
 		}
 			
-
 	}
 	
 }

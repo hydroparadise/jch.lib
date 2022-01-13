@@ -856,6 +856,10 @@ public class SqlServerDbScour {
 	
 	/***
 	 * 
+	 * Fields: TABLE_TYPE, TABLE_CATALOG, TABLE_SCHEMA, TABLE_NAME
+	 * @param srcCnString
+	 * @param srcDbName
+	 * @return
 	 */
 	public RowSet getSrcTables(String srcCnString, String srcDbName) {
         //String sqlAllDatabase = SqlServerDiscovery.sqlAllUserDatabases();
@@ -893,7 +897,54 @@ public class SqlServerDbScour {
 	}
 	
 	/***
+	 * 
+	 * Fields: TABLE_CATALOG, TABLE_SCHEMA
+	 * @param srcCnString
+	 * @param srcDbName
+	 * @return
+	 */
+	public RowSet getSrcSchemas(String srcCnString, String srcDbName) {
+        //String sqlAllDatabase = SqlServerDiscovery.sqlAllUserDatabases();
+
+		Connection cn = null;  //connection
+		CachedRowSet rs = null;
+		
+		//Open connection, run drop sql statements
+        try {
+            cn = DriverManager.getConnection(srcCnString);  
+            
+            //Either grab only user tables or both tables and views.
+            String sql;
+            
+            //check statement
+            //System.out.println(SqlServerDiscovery.sqlDbTables(srcDbName));
+            
+            sql = SqlServerDiscovery.sqlDbSchemas(srcDbName);
+	        Statement sta = cn.createStatement(ResultSet.TYPE_FORWARD_ONLY,ResultSet.CONCUR_READ_ONLY);
+	        ResultSet res = sta.executeQuery(sql);
+	        
+	        RowSetFactory rsf = RowSetProvider.newFactory();
+	        rs = rsf.createCachedRowSet();
+	        rs.populate(res);
+ 
+        } 
+        catch (SQLException ex) {ex.printStackTrace();} 
+        finally {
+	        try {
+	            if (cn != null && !cn.isClosed()) {cn.close();}
+	        } 
+	        catch (SQLException ex) {ex.printStackTrace();}
+        }
+        return rs; 
+	}
+	
+	/***
 	 * Returns schema information on all tables (and optionally vies) and columns 
+	 * 
+	 * Fields: TABLE_TYPE, TABLE_CATALOG, TABLE_SCHEMA, TABLE_NAME, COLUMN_NAME, CONSTRAINT_NAME, DATA_TYPE, ORDINAL_POSITION,
+	 * 	COLUMN_DEFAULT, IS_NULLABLE, CHARACTER_MAXIMUM_LENGTH, CHARACTER_OCTET_LENGTH, NUMERIC_PRECISION, NUMERIC_PRECISION_RADIX,
+	 * 	NUMERIC_SCALE, DATETIME_PRECISION, CHARACTER_SET_NAME, COLLATION_CATALOG, COLLATION_SCHEMA, COLLATION_NAME, DOMAIN_CATALOG,
+	 * 	DOMAIN_SCHEMA, DOMAIN_NAME, CHARACTER_SET_CATALOG, CHARACTER_SET_SCHEMA, DATA_TYPE_CA
 	 * @param Source  String
 	 * @param Source Database Name
 	 * @param Boolean includeViews

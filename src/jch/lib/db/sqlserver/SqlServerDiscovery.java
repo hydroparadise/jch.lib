@@ -154,6 +154,42 @@ public class SqlServerDiscovery {
 		return output;
 	}
 	
+	/***
+	 * 
+	 * @param databaseName
+	 * @return
+	 */
+	public static String sqlDbViews(String databaseName) {
+		String output = null;
+		output = sqlDbTableViewColumnsBase(databaseName);
+		if(output != null) {
+			output = 
+			  "SELECT TABLE_TYPE, TABLE_CATALOG, TABLE_SCHEMA, TABLE_NAME FROM (" + output 
+			+ " WHERE T.TABLE_TYPE = 'VIEW') A"
+			+ " GROUP BY TABLE_TYPE, TABLE_CATALOG, TABLE_SCHEMA, TABLE_NAME";
+		}
+		
+		return output;
+	}
+	
+	/***
+	 * 
+	 * @param databaseName
+	 * @return
+	 */
+	public static String sqlDbSchemas(String databaseName) {
+		String output = null;
+		output = sqlDbTableViewColumnsBase(databaseName);
+		if(output != null) {
+			output = 
+			  "SELECT TABLE_CATALOG, TABLE_SCHEMA FROM (" + output 
+			+ " ) A"
+			+ " GROUP BY TABLE_CATALOG, TABLE_SCHEMA";
+		}
+		
+		return output;
+	}
+	
 	/*** 
 	 * 
 	 * @param databaseName String

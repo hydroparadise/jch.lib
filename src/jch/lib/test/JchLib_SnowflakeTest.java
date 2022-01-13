@@ -22,6 +22,25 @@ import jch.lib.db.sqlserver.SqlServerDbScour;
 import java.util.ArrayList;
 
 public class JchLib_SnowflakeTest {
+
+	
+	//java.sql.Connection cn = null;
+	//Statement statement = cn.createStatement();
+	
+	//Pass
+	//cn = JchLib_SnowflakeTest.getConnection("H:\\snowflake_creds.json", "FMCUANALYTICSTEST", "dbo");
+	
+	//Pass
+	//cn = JchLib_SnowflakeTest.getConnection("H:\\snowflake_creds.json", "FMCUANALYTICSTEST");
+	//pass
+	//statement.executeUpdate("CREATE SCHEMA arcu");
+	//Pass
+	//statement.executeUpdate("create or replace table arcu.demo(C1 STRING)");
+	
+	//Pass
+	//cn = JchLib_SnowflakeTest.getConnection("H:\\snowflake_creds.json");
+	//Pass
+	//statement.executeUpdate("CREATE DATABASE test");
 	
 	/***
 	 * host
@@ -29,14 +48,89 @@ public class JchLib_SnowflakeTest {
 	 * 	 schemas
 	 *    tables
 	 *     columns
-	 * 
+	 */
+	
+	
+	public static void createDatabase(String srcHost, String srcDatabase) {
+		java.sql.Connection cn = null;
+		
+		
+		try {	
+			//Create Snowflake Databas
+			cn = JchLib_SnowflakeTest.getConnection("H:\\snowflake_creds.json");
+			Statement statement = cn.createStatement();
+			statement.executeUpdate("CREATE DATABASE " + srcDatabase);
+			statement.close();
+			cn.close();
+			
+			
+			
+			cn = JchLib_SnowflakeTest.getConnection("H:\\snowflake_creds.json", srcDatabase);
+			
+			//Create Schemas and Tables
+			System.out.println("Create Shemas...");
+			createAllDatabaseSchemas(cn, srcHost, srcDatabase);
+			
+			System.out.println("Create Tables...");
+			createAllDatabaseTables(cn, srcHost, srcDatabase);
+			
+			cn.close();
+			
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		//
+		
+		
+	}
+	
+	/***
 	 * 
 	 * @param host
 	 * @param database
 	 */
-	public static void createAllTablesDatabase(String host, String database) {
+	public static void createAllDatabaseSchemas(java.sql.Connection snowflakeCn, String srcHost, String srcDatabase)  throws SQLException {
 		SqlServerCnString srcCnString = new SqlServerCnString();
-		srcCnString.setCnStringIntegratedSecurity(host, null , database);
+		srcCnString.setCnStringIntegratedSecurity(srcHost, null , srcDatabase);
+		
+		SqlServerDbScour dbsSource = new SqlServerDbScour();
+		
+		//get tables for given database
+		RowSet schemas = dbsSource.getSrcSchemas(
+				srcCnString.getCnString(), 			//Source host to get InformationSchema
+				srcCnString.getDatabaseName());	
+		
+		try {
+			//object the excutes to snowflake
+			Statement statement = snowflakeCn.createStatement();
+			
+			while(schemas.next()) {
+				StringBuilder createStatement = new StringBuilder();
+				
+				createStatement.append("CREATE SCHEMA " + schemas.getString("TABLE_SCHEMA"));
+				
+				System.out.println(createStatement.toString());
+				statement.executeUpdate(createStatement.toString());
+			}
+			
+			statement.close();
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+	
+	
+	/***
+	 *  
+	 * @param host
+	 * @param database
+	 */
+	public static void createAllDatabaseTables(java.sql.Connection snowflakeCn, String srcHost, String srcDatabase) throws SQLException {
+		SqlServerCnString srcCnString = new SqlServerCnString();
+		srcCnString.setCnStringIntegratedSecurity(srcHost, null , srcDatabase);
 		
 		SqlServerDbScour dbsSource = new SqlServerDbScour();
 		
@@ -46,12 +140,12 @@ public class JchLib_SnowflakeTest {
 				srcCnString.getDatabaseName());
 		
 		try {
+			//object the excutes to snowflake
+			Statement statement = snowflakeCn.createStatement();
+			
 			//loop through tables
 			while(tables.next()) {
 				StringBuilder createStatement = new StringBuilder();
-				
-				
-				System.out.println(tables.getString("TABLE_NAME"));
 				
 				//get column of current table
 				RowSet cols = dbsSource.getSrcInformationSchema(
@@ -59,51 +153,91 @@ public class JchLib_SnowflakeTest {
 						srcCnString.getDatabaseName(), 
 						tables.getString("TABLE_SCHEMA"), 
 						tables.getString("TABLE_NAME"));
-				
-				
-				
+							
+				//get table name
+				String tblName = tables.getString("TABLE_NAME");
+				//check for weird characters: if true, wrap with double quotes (snowflake likes for literals)
+				if(tblName.contains("[") == true || 
+				   tblName.contains("]") == true ||	
+			       tblName.contains(".") == true || 
+			       tblName.contains(" ") == true) {
+					tblName = "\"" + tblName + "\"";
+				}
 				//create statement
-				createStatement.append("CREATE TABLE " + tables.getString("TABLE_SCHEMA") + "." +  tables.getString("TABLE_NAME") + " (\n");
+				createStatement.append("CREATE TABLE " + tables.getString("TABLE_SCHEMA") + "." + tblName + " (\n");
 				
-				//used collect primary keys along the way
+				//used collect primary keys along the way (getSrcInfromationSchema is sorted by ordinal)
 				ArrayList<String> primaryKeys = new ArrayList<String>();
 				
+				//ensure 1 column per ordinal position.  
+				int ordinal = 0, prevOrdinal = 0;
+								
 				//iterate through columns
 				int colCnt = 0;
 				while(cols.next()) {
-					colCnt++;
+
 					
-					//add comma to previous and newline to previous field, skip first line
-					if(colCnt > 1) {
-						createStatement.append(",\n");
+					ordinal = cols.getInt("ORDINAL_POSITION");
+					
+					//ensures column names won't be repeated
+					if(ordinal != prevOrdinal ) {
+						
+						colCnt++;
+					
+						//add comma to previous and newline to previous field, skip first line
+						if(colCnt > 1) {
+							createStatement.append(",\n");
+						}
+						
+						
+						//column name
+						String colName = cols.getString("COLUMN_NAME");
+						//check if colname doesnt have special characters or reserved word
+						if(colName.contains(" ") == true ||
+						   colName.toLowerCase().equals("row")) {
+							colName = "\"" + colName + "\"";
+						}
+						createStatement.append("\t" + colName);
+						
+						//convert data type to snowflake compatible
+						String datatype = convertDataType(
+								cols.getString("DATA_TYPE_CAT"),
+								cols.getString("DATA_TYPE"),
+								cols.getInt("NUMERIC_PRECISION"),
+								cols.getInt("NUMERIC_SCALE"),
+								cols.getInt("CHARACTER_MAXIMUM_LENGTH"),
+								cols.getString("COLUMN_DEFAULT"));
+						createStatement.append("\t" + datatype);
+						
+						//check default
+						if(cols.getString("COLUMN_DEFAULT") != null) {
+							String colDefault = cols.getString("COLUMN_DEFAULT");
+							
+							//make sure there aren't any SQL Server specific commands going across
+							if(colDefault.toLowerCase().contains("newsequentialid()") == false &&
+							   colDefault.toLowerCase().contains("user_name()") == false &&
+							   colDefault.toLowerCase().contains("app_name()") == false	) {
+								createStatement.append("\tDEFAULT " + colDefault);
+							}
+						}
+						
+						//is field nullable
+						String nullable = isNullable(cols.getString("IS_NULLABLE"));
+						createStatement.append("\t" + nullable);
+						
+						//if constraint is not null, it is likely a primary key
+						if(cols.getString("CONSTRAINT_NAME") != null) {
+							primaryKeys.add(cols.getString("COLUMN_NAME"));
+						}
 					}
 					
-					//column name
-					createStatement.append("\t" + cols.getString("COLUMN_NAME"));
-					
-					//convert data type to snowflake compatible
-					String datatype = convertDataType(
-							cols.getString("DATA_TYPE_CAT"),
-							cols.getString("DATA_TYPE"),
-							cols.getInt("NUMERIC_PRECISION"),
-							cols.getInt("NUMERIC_SCALE"),
-							cols.getInt("CHARACTER_MAXIMUM_LENGTH"));
-					createStatement.append("\t" + datatype);
-					
-					//is field nullable
-					String nullable = isNullable(cols.getString("IS_NULLABLE"));
-					createStatement.append("\t" + nullable);
-					
-					//if constraint is not null, it is likely a primary key
-					if(cols.getString("CONSTRAINT_NAME") != null) {
-						primaryKeys.add(cols.getString("COLUMN_NAME"));
-					}
+					prevOrdinal = cols.getInt("ORDINAL_POSITION");
 				}
 					
 				//add primary keys
 				if(primaryKeys.size() > 0) {
 					createStatement.append(",\n");
-					createStatement.append("\tPRIMARY KEYS(");
+					createStatement.append("\tPRIMARY KEY(");
 					for(int i = 0; primaryKeys.size() > i; i++) {
 						if(i > 0) createStatement.append(",");
 						createStatement.append(primaryKeys.get(i));
@@ -113,12 +247,12 @@ public class JchLib_SnowflakeTest {
 				
 				//cap off create statement
 				createStatement.append(")\n");
-				//defaults
-				
-				
 				
 				System.out.println(createStatement.toString());
+				statement.execute(createStatement.toString());
 			}
+			
+			statement.close();
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -171,9 +305,6 @@ public class JchLib_SnowflakeTest {
 				
 				tableName = infSchema.getString("TABLE_SCHEMA") + "." + infSchema.getString("TABLE_NAME");
 				
-				
-				
-				
 				if(tableName.compareTo("dbo.ACCOUNT") ==0) {
 					
 					line++;
@@ -194,7 +325,8 @@ public class JchLib_SnowflakeTest {
 										 infSchema.getString("DATA_TYPE"),
 										 infSchema.getInt("NUMERIC_PRECISION"),
 										 infSchema.getInt("NUMERIC_SCALE"),
-										 infSchema.getInt("CHARACTER_MAXIMUM_LENGTH"));
+										 infSchema.getInt("CHARACTER_MAXIMUM_LENGTH"),
+										 infSchema.getString("COLUMN_DEFAULT") );
 					
 					String nullable = isNullable(infSchema.getString("IS_NULLABLE"));
 					
@@ -229,6 +361,11 @@ public class JchLib_SnowflakeTest {
 		
 	}
 	
+	/***
+	 * 
+	 * @param isNullable
+	 * @return
+	 */
 	static String isNullable(String isNullable) {
 		String output = "";
 		
@@ -246,7 +383,7 @@ public class JchLib_SnowflakeTest {
 	 * @return
 	 */
 	static String convertDataType(String dataTypeCategory, String dataType, int numericPrecision, int numericScale, 
-			int charMaxLength) {
+			int charMaxLength, String colDefault) {
 		/*
 			DATE	smalldatetime
 			DATE	date
@@ -276,7 +413,9 @@ public class JchLib_SnowflakeTest {
 			case "TEXT":
 				if(dataType.equalsIgnoreCase("varchar") || dataType.equalsIgnoreCase("nvarchar")
 					 || dataType.equalsIgnoreCase("text")) {
-					output = "VARCHAR(" + charMaxLength + ")";
+					
+					if(charMaxLength < 1) output = "VARCHAR";
+					else output = "VARCHAR(" + charMaxLength + ")";
 				}
 				if(dataType.equalsIgnoreCase("char") || dataType.equalsIgnoreCase("nchar")) {
 					output = "CHAR(" + charMaxLength + ")";
@@ -303,6 +442,10 @@ public class JchLib_SnowflakeTest {
 			case "DATETIME":
 				if(dataType.equalsIgnoreCase("date")) {
 					output = "DATE";
+					
+					//getdate() in Snowflake will break DATE type, so make DATETIME instead
+					if(colDefault != null &&
+					   colDefault.toLowerCase().contains("getdate()") == true) output = "DATETIME";
 				}
 				if(dataType.equalsIgnoreCase("smalldatetime") || dataType.equalsIgnoreCase("datetime")
 						|| dataType.equalsIgnoreCase("datetime2")) {
@@ -327,7 +470,7 @@ public class JchLib_SnowflakeTest {
 	public static void snowflakeDriverTest() throws Exception {
 	    // get connection
 	    System.out.println("Create Snowflake JDBC connection");
-	    Connection connection = getConnection();
+	    Connection connection = getConnectionTest();
 	    System.out.println("Done creating JDBC connection");
 	    
 	    // create statement
@@ -339,7 +482,7 @@ public class JchLib_SnowflakeTest {
 	    System.out.println("Create demo table");
 	    statement.executeUpdate("create or replace table demo(C1 STRING)");
 	    //statement.close();
-	    System.out.println("Done creating demo tablen");
+	    System.out.println("Done creating demo table");
 	    
 	    // insert a row
 	    System.out.println("Insert 'hello world'");
@@ -372,7 +515,162 @@ public class JchLib_SnowflakeTest {
 	    statement.close();
 	}
 	
-	private static Connection getConnection() throws SQLException {
+	
+	/***
+	 * 
+	 * @param credentialPath
+	 * @return
+	 * @throws SQLException
+	 */
+	public static Connection getConnection(String credentialPath) throws SQLException  {
+	    try {
+	    	Class.forName("net.snowflake.client.jdbc.SnowflakeDriver");
+	    }
+	    catch (ClassNotFoundException ex){
+	    	System.err.println("Driver not found");
+	    }
+	    
+	    //use JSON object to pull sensitive information instead of hardcoding
+	    JSONObject jsonObj = null;
+		try {
+			String jsonString = Files.readString(Path.of(credentialPath));
+			JSONParser jsonParser = new JSONParser();
+			jsonObj =  (JSONObject) jsonParser.parse(jsonString);
+			
+		} catch (ParseException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	    
+	    // build connection properties
+	    Properties properties = new Properties();
+	    properties.put("user", jsonObj.get("user"));     // replace "" with your username
+	    properties.put("password", jsonObj.get("password")); // replace "" with your password
+	    properties.put("account", jsonObj.get("account"));  // replace "" with your account name
+
+	    // create a new connection
+	    String connectStr = System.getenv("SF_JDBC_CONNECT_STRING");
+	    // use the default connection string if it is not set in environment
+	    if(connectStr == null) {
+	    	// replace accountName with your account name
+	    	connectStr = (String)jsonObj.get("cnstring"); 
+	    }
+	    
+	    return DriverManager.getConnection(connectStr, properties);
+	}
+	
+	/***
+	 * 
+	 * @param credentialPath
+	 * @param database
+	 * @return
+	 * @throws SQLException
+	 */
+	public static Connection getConnection(String credentialPath, String database) throws SQLException {
+	    try {
+	    	Class.forName("net.snowflake.client.jdbc.SnowflakeDriver");
+	    }
+	    catch (ClassNotFoundException ex){
+	    	System.err.println("Driver not found");
+	    }
+	    
+	    //use JSON object to pull sensitive information instead of hardcoding
+	    JSONObject jsonObj = null;
+		try {
+			String jsonString = Files.readString(Path.of(credentialPath));
+			JSONParser jsonParser = new JSONParser();
+			jsonObj =  (JSONObject) jsonParser.parse(jsonString);
+			
+		} catch (ParseException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	    
+	    // build connection properties
+	    Properties properties = new Properties();
+	    properties.put("user", jsonObj.get("user"));     // replace "" with your username
+	    properties.put("password", jsonObj.get("password")); // replace "" with your password
+	    properties.put("account", jsonObj.get("account"));  // replace "" with your account name
+	    properties.put("db", database);       // replace "" with target database name
+	    //properties.put("tracing", "on");
+
+	    // create a new connection
+	    String connectStr = System.getenv("SF_JDBC_CONNECT_STRING");
+	    // use the default connection string if it is not set in environment
+	    if(connectStr == null) {
+	    	// replace accountName with your account name
+	    	connectStr = (String)jsonObj.get("cnstring"); 
+	    }
+	    
+	    return DriverManager.getConnection(connectStr, properties);
+	}
+	
+	/***
+	 * 
+	 * @param credentialPath
+	 * @param database
+	 * @param schema
+	 * @return
+	 * @throws SQLException
+	 */
+	public static Connection getConnection(String credentialPath, String database, String schema) throws SQLException {
+	    try {
+	    	Class.forName("net.snowflake.client.jdbc.SnowflakeDriver");
+	    }
+	    catch (ClassNotFoundException ex){
+	    	System.err.println("Driver not found");
+	    }
+	    
+	    //use JSON object to pull sensitive information instead of hardcoding
+	    JSONObject jsonObj = null;
+		try {
+			String jsonString = Files.readString(Path.of(credentialPath));
+			JSONParser jsonParser = new JSONParser();
+			jsonObj =  (JSONObject) jsonParser.parse(jsonString);
+			
+		} catch (ParseException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	    
+	    // build connection properties
+	    Properties properties = new Properties();
+	    properties.put("user", jsonObj.get("user"));     // replace "" with your username
+	    properties.put("password", jsonObj.get("password")); // replace "" with your password
+	    properties.put("account", jsonObj.get("account"));  // replace "" with your account name
+	    properties.put("db", database);       // replace "" with target database name
+	    properties.put("schema", schema);   // replace "" with target schema name
+	    
+	    //properties.put("tracing", "on");
+
+	    // create a new connection
+	    String connectStr = System.getenv("SF_JDBC_CONNECT_STRING");
+	    // use the default connection string if it is not set in environment
+	    if(connectStr == null) {
+	    	// replace accountName with your account name
+	    	connectStr = (String)jsonObj.get("cnstring"); 
+	    }
+	    System.out.println(connectStr);
+	    
+	    return DriverManager.getConnection(connectStr, properties);
+	}
+	
+	
+	/***
+	 * 
+	 * @return
+	 * @throws SQLException
+	 */
+	private static Connection getConnectionTest() throws SQLException {
 	    try
 	    {
 	    	Class.forName("net.snowflake.client.jdbc.SnowflakeDriver");
@@ -381,9 +679,6 @@ public class JchLib_SnowflakeTest {
 	    {
 	    	System.err.println("Driver not found");
 	    }
-	    
-	    
-	    
 	    
 	    //use JSON object to pull sensitive information instead of hardcoding
 	    JSONObject jsonObj = null;
@@ -410,7 +705,6 @@ public class JchLib_SnowflakeTest {
 			}
 		 */
 		
-		
 	    // build connection properties
 	    Properties properties = new Properties();
 	    properties.put("user", jsonObj.get("user"));     // replace "" with your username
@@ -422,13 +716,14 @@ public class JchLib_SnowflakeTest {
 
 	    // create a new connection
 	    String connectStr = System.getenv("SF_JDBC_CONNECT_STRING");
+	    
 	    // use the default connection string if it is not set in environment
 	    if(connectStr == null) {
 	    	// replace accountName with your account name
 	    	connectStr = (String)jsonObj.get("cnstring"); 
 	    }
 	    
-	    return DriverManager.getConnection(connectStr, properties);
-	 
+	    return DriverManager.getConnection(connectStr, properties); 
 	}
+	
 }
