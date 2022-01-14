@@ -36,6 +36,13 @@ public class Main {
 		
 		
 		try {
+			JchLib_SnowflakeTest.copyTableData(
+					"H:\\snowflake_creds.json",
+					"gcarcu080119",
+					"ARCUSYM000",
+					"dbo",
+					"ACCOUNT"
+			);
 			
 			//Passed!
 			//JchLib_SnowflakeTest.createDatabase("gcarcu080119","ARCUSYM000");
@@ -43,7 +50,8 @@ public class Main {
 			//Passed!
 			//JchLib_SnowflakeTest.createDatabase("gcarcu080119","FMCUAnalytics");
 			
-			JchLib_SnowflakeTest.createDatabase("gcarcu080119","CFSConnectors");
+			//Passed!
+			//JchLib_SnowflakeTest.createDatabase("gcarcu080119","CFSConnectors");
 			
 			//JchLib_SnowflakeTest.createAllDatabaseSchemas("gcarcu080119","ARCUSYM000");
 			//JchLib_SnowflakeTest.createAllTablesDatabase("gcarcu080119","ARCUSYM000");

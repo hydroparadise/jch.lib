@@ -104,6 +104,21 @@ public class SqlServerDiscovery {
 		return output;
 	}
 	
+	
+	/***
+	 * 
+	 * @param databaseName
+	 * @return
+	 */
+	static String sqlDbTableViewColumnsBaseOrdered(String databaseName) {
+		String output = sqlDbTableViewColumnsBase(databaseName);
+		if(output != null) {
+			output = output + " ORDER BY T.TABLE_TYPE,T.TABLE_CATALOG,T.TABLE_SCHEMA,T.TABLE_NAME,C.ORDINAL_POSITION";
+		}
+		
+		return output;
+	}
+	
 	/*** 
 	 * 
 	 * @param databaseName String

@@ -12,6 +12,9 @@ import java.sql.Statement;
 import java.util.Properties;
 
 import javax.sql.RowSet;
+import javax.sql.rowset.CachedRowSet;
+import javax.sql.rowset.RowSetFactory;
+import javax.sql.rowset.RowSetProvider;
 
 import org.json.simple.*;
 import org.json.simple.parser.*;
@@ -22,7 +25,100 @@ import jch.lib.db.sqlserver.SqlServerDbScour;
 import java.util.ArrayList;
 
 public class JchLib_SnowflakeTest {
+	
+	/* Snowflake Script examples
+	 
+		CREATE TABLE TESTINS (
+		    INSDATE1 DATE,
+		    INSDATE2 DATETIME,
+		    INSCHAR1 VARCHAR,
+		    INTINT INT
+		)
+		
+		//Passed
+		INSERT INTO TESTINS (INSDATE1,INSDATE2,INSCHAR1,INTINT) 
+		VALUES ('1/1/2021','1/1/2021','Test insert',23)
+		
+		//Passed
+		INSERT INTO TESTINS (INSDATE1,INSDATE2,INSCHAR1,INTINT) 
+		VALUES ('1/1/2021','2013-05-08T23:39:20.123','Test insert',23)
+	 */
 
+	/*
+	 * 
+	 * snowflakeCreds \
+	 *                 --- database, schema, table -> match fields
+	 * srcSQLHost     /
+	 * 
+	 */
+	public static void copyTableData(String snowflakeCreds, String srcSqlHost, 
+			String database, String schema, String table) throws SQLException {
+		
+		StringBuilder intoColumns;
+		StringBuilder intoFields;
+		
+		//Get Sql Server RowSet
+		SqlServerCnString srcCnString = new SqlServerCnString();
+		srcCnString.setCnStringIntegratedSecurity(srcSqlHost, null , database);
+		SqlServerDbScour dbsSource = new SqlServerDbScour();
+		//get tables for given database
+		RowSet ssCols = dbsSource.getSrcInformationSchema(
+				srcCnString.getCnString(), 
+				srcCnString.getDatabaseName(), 
+				schema, 
+				table);
+		
+		
+		//Get Snowflake RowSet
+		java.sql.Connection sfCn = null;
+		sfCn = JchLib_SnowflakeTest.getConnection("H:\\snowflake_creds.json");
+		Statement statement = sfCn.createStatement();
+		
+		System.out.println(sqlSfDatabaseTableInformationShema(database,schema,table));
+	    ResultSet sfColsRs = statement.executeQuery(
+	    		sqlSfDatabaseTableInformationShema(database,schema,table));
+		
+        RowSetFactory rsf = RowSetProvider.newFactory();
+        CachedRowSet sfCols = rsf.createCachedRowSet();
+        sfCols.populate(sfColsRs);
+        
+        while(sfCols.next()) {
+        	System.out.println(sfCols.getString("COLUMN_NAME"));
+        }
+	}
+	
+	
+	/***
+	 * Snowflake database schema information
+	 * 
+	 * Fields:
+	 * TABLE_CATALOG, TABLE_SCHEMA, TABLE_NAME, COLUMN_NAME, ORDINAL_POSITION, COLUMN_DEFAULT, IS_NULLABLE,
+	 * DATA_TYPE, CHARACTER_MAXIMUM_LENGTH, CHARACTER_OCTET_LENGTH, NUMERIC_PRECISION, NUMERIC_PRECISION_RADIX,
+	 * NUMERIC_SCALE, DATETIME_PRECISION, INTERVAL_TYPE, INTERVAL_PRECISION, CHARACTER_SET_CATALOG,
+	 * CHARACTER_SET_SCHEMA, CHARACTER_SET_NAME, COLLATION_CATALOG, COLLATION_SCHEMA, COLLATION_NAME,
+	 * DOMAIN_CATALOG, DOMAIN_SCHEMA, DOMAIN_NAME, UDT_CATALOG, UDT_SCHEMA, UDT_NAME, SCOPE_CATALOG, SCOPE_SCHEMA,
+	 * SCOPE_NAME, MAXIMUM_CARDINALITY, DTD_IDENTIFIER, IS_SELF_REFERENCING, IS_IDENTITY, IDENTITY_GENERATION,
+	 * IDENTITY_START, IDENTITY_INCREMENT, IDENTITY_MAXIMUM, IDENTITY_MINIMUM, IDENTITY_CYCLE, COMMENT
+	 * 
+	 * @param database
+	 * @return
+	 */
+	String sqlSfDatabaseAllInformationShema(String database) {
+		String output = "SELECT * FROM \"" + database.toUpperCase() + "\".INFORMATION_SCHEMA.COLUMNS "+
+				"ORDER BY TABLE_SCHEMA, TABLE_NAME, ORDINAL_POSITION";
+		return output;
+	}
+	
+	
+	static String sqlSfDatabaseTableInformationShema(String database, String schema, String table) {
+		String output = "SELECT * FROM \"" + database.toUpperCase() + "\".INFORMATION_SCHEMA.COLUMNS "
+				+ "WHERE TABLE_SCHEMA = '" + schema.toUpperCase() 
+				+ "' AND TABLE_NAME = '" + table.toUpperCase() + "' "
+				+ "ORDER BY ORDINAL_POSITION";
+		return output;
+	}
+	
+	//main
 	
 	//java.sql.Connection cn = null;
 	//Statement statement = cn.createStatement();
@@ -42,15 +138,43 @@ public class JchLib_SnowflakeTest {
 	//Pass
 	//statement.executeUpdate("CREATE DATABASE test");
 	
+	
+	
+	//Passed!
+	//JchLib_SnowflakeTest.createDatabase("gcarcu080119","ARCUSYM000");
+	
+	//Passed!
+	//JchLib_SnowflakeTest.createDatabase("gcarcu080119","FMCUAnalytics");
+	
+	//Passed!
+	//JchLib_SnowflakeTest.createDatabase("gcarcu080119","CFSConnectors");
+	
+	//JchLib_SnowflakeTest.createAllDatabaseSchemas("gcarcu080119","ARCUSYM000");
+	//JchLib_SnowflakeTest.createAllTablesDatabase("gcarcu080119","ARCUSYM000");
+	//JchLib_SnowflakeTest.createAccountTableTest();
+	//JchLib_SnowflakeTest.snowflakeDriverTest();
+	
 	/***
+	 * Copies database schema and tables from a SQL Server host up to Snowflake instance.
+	 * 
 	 * host
 	 * 	database
 	 * 	 schemas
 	 *    tables
 	 *     columns
 	 */
+	public static void copyTableSchemas() {
+		createDatabase("gcarcu080119","ARCUSYM000");
+		createDatabase("gcarcu080119","FMCUAnalytics");
+		createDatabase("gcarcu080119","CFSConnectors");
+	}
 	
-	
+	/***
+	 * Creates a copy of database, schema, and tables from a SQL Server host to a Snowflake instance
+	 * 
+	 * @param Source SQL Server host name (String)
+	 * @param Source SQL Server database of the previously specified host name (String)
+	 */
 	public static void createDatabase(String srcHost, String srcDatabase) {
 		java.sql.Connection cn = null;
 		
@@ -62,8 +186,6 @@ public class JchLib_SnowflakeTest {
 			statement.executeUpdate("CREATE DATABASE " + srcDatabase);
 			statement.close();
 			cn.close();
-			
-			
 			
 			cn = JchLib_SnowflakeTest.getConnection("H:\\snowflake_creds.json", srcDatabase);
 			
@@ -80,16 +202,15 @@ public class JchLib_SnowflakeTest {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		
-		//
-		
-		
 	}
 	
 	/***
+	 * Copies schemas from a source SQL Server host to a Snowflake instance 
 	 * 
-	 * @param host
-	 * @param database
+	 * @param An established Snowflake connection to execute Snowflake SQL statements (java.sql.Connection)
+	 * @param Source SQL Server host name (String)
+	 * @param Source SQL Server database of the previously specified host name (String)
+	 * @throws SQLException
 	 */
 	public static void createAllDatabaseSchemas(java.sql.Connection snowflakeCn, String srcHost, String srcDatabase)  throws SQLException {
 		SqlServerCnString srcCnString = new SqlServerCnString();
@@ -124,9 +245,12 @@ public class JchLib_SnowflakeTest {
 	
 	
 	/***
+	 * Copies schemas from a source SQL Server host to a Snowflake instance by performing a syntax conversion
+	 * Creates a series of create statements
+	 * Currently supported: Column Names, Data Types, Default Values, Nullable, and Primary Keys 
 	 *  
-	 * @param host
-	 * @param database
+	 * @param Source SQL Server host name (String)
+	 * @param Source SQL Server database of the previously specified host name (String)
 	 */
 	public static void createAllDatabaseTables(java.sql.Connection snowflakeCn, String srcHost, String srcDatabase) throws SQLException {
 		SqlServerCnString srcCnString = new SqlServerCnString();
@@ -467,6 +591,12 @@ public class JchLib_SnowflakeTest {
 		return output;
 	}
 	
+	
+	/****
+	 * Snowflake demo script pulled from website
+	 * https://docs.snowflake.com/en/user-guide/jdbc-configure.html
+	 * @throws Exception
+	 */
 	public static void snowflakeDriverTest() throws Exception {
 	    // get connection
 	    System.out.println("Create Snowflake JDBC connection");
@@ -515,11 +645,25 @@ public class JchLib_SnowflakeTest {
 	    statement.close();
 	}
 	
+	/***
+	 * snowflake_creds.json
+	 * <start file>
+	 	{
+			"user":"user", 
+			"password":"secret", 
+			"account":"accountNumber", 
+			"db":"optional database", 
+			"schema":"optional shema"
+			"cnstring":"jdbc:snowflake://snowflake_url"
+		}
+	 * <end file>
+	 */
+	
 	
 	/***
 	 * 
 	 * @param credentialPath
-	 * @return
+	 * @return 
 	 * @throws SQLException
 	 */
 	public static Connection getConnection(String credentialPath) throws SQLException  {

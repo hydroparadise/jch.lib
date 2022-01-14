@@ -20,7 +20,18 @@ public class SqlServerDbScour {
 	
 	
 	
-	
+	/***
+	 * 
+	 * 
+	 * @param searchTerm
+	 * @param dataTypeCategory
+	 * @param srcCnString
+	 * @param destCnString
+	 * @param destDbName
+	 * @param destSchema
+	 * @param tblStats
+	 * @return
+	 */
 	public boolean insertColSearchResults(String searchTerm, String dataTypeCategory, String srcCnString, 
 			String destCnString, String destDbName, String destSchema, RowSet tblStats) {
 		boolean success = false;
@@ -60,7 +71,11 @@ public class SqlServerDbScour {
 		return success;	
 	}
 	
-	
+	/***
+	 * 
+	 * @author harrisonc
+	 *
+	 */
 	class InsertColSearchResultsThread extends Thread {
 		
 		 public InsertColSearchResultsThread(String searchTerm, String dataTypeCategory, 
@@ -368,6 +383,9 @@ public class SqlServerDbScour {
 			this.record = record;
 		}
 		
+		/***
+		 * 
+		 */
 		@Override
 		public void run() {
 			
@@ -422,6 +440,12 @@ public class SqlServerDbScour {
 			
 		}
 		
+		
+		/***
+		 * 
+		 * @param columnStats
+		 * @param dataTypeCategory
+		 */
 		void columnInsert(ColStatsRecord columnStats, String dataTypeCategory) {
 			Connection srcCn = null;
 			
