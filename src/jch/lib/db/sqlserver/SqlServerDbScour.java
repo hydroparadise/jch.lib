@@ -689,6 +689,7 @@ public class SqlServerDbScour {
 				record.setQueryTimeSeconds((stop - start)/1000.0);
 				
 			}
+			
 			//close connection
 	        catch (SQLException ex) {ex.printStackTrace();} 
 	        finally {

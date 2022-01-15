@@ -1,5 +1,7 @@
 package jch.lib.test;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -10,6 +12,7 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Properties;
+import java.util.TreeMap;
 
 import javax.sql.RowSet;
 import javax.sql.rowset.CachedRowSet;
@@ -21,10 +24,21 @@ import org.json.simple.parser.*;
 
 import jch.lib.db.sqlserver.SqlServerCnString;
 import jch.lib.db.sqlserver.SqlServerDbScour;
+import jch.lib.db.sqlserver.SqlServerDiscovery;
+import net.snowflake.client.jdbc.SnowflakeStatement;
 
 import java.util.ArrayList;
+import java.util.Map;
+
+/*
+ * Snowflake concurrent statements
+ * MAX_CONCURRENCY_LEVEL = 8
+ */
+
+
 
 public class JchLib_SnowflakeTest {
+	static int PACK_SIZE = 1900000;
 	
 	/* Snowflake Script examples
 	 
@@ -44,6 +58,7 @@ public class JchLib_SnowflakeTest {
 		VALUES ('1/1/2021','2013-05-08T23:39:20.123','Test insert',23)
 	 */
 
+	
 	/*
 	 * 
 	 * snowflakeCreds \
@@ -52,7 +67,7 @@ public class JchLib_SnowflakeTest {
 	 * 
 	 */
 	public static void copyTableData(String snowflakeCreds, String srcSqlHost, 
-			String database, String schema, String table) throws SQLException {
+		String database, String schema, String table) throws SQLException, IOException {
 		
 		StringBuilder intoColumns;
 		StringBuilder intoFields;
@@ -72,21 +87,193 @@ public class JchLib_SnowflakeTest {
 		//Get Snowflake RowSet
 		java.sql.Connection sfCn = null;
 		sfCn = JchLib_SnowflakeTest.getConnection("H:\\snowflake_creds.json");
-		Statement statement = sfCn.createStatement();
+		Statement sfStatement = sfCn.createStatement();
 		
-		System.out.println(sqlSfDatabaseTableInformationShema(database,schema,table));
-	    ResultSet sfColsRs = statement.executeQuery(
+		//System.out.println(sqlSfDatabaseTableInformationShema(database,schema,table));
+	    ResultSet sfColsRs = sfStatement.executeQuery(
 	    		sqlSfDatabaseTableInformationShema(database,schema,table));
 		
         RowSetFactory rsf = RowSetProvider.newFactory();
         CachedRowSet sfCols = rsf.createCachedRowSet();
         sfCols.populate(sfColsRs);
+        sfStatement.close();
+        //;
         
-        while(sfCols.next()) {
-        	System.out.println(sfCols.getString("COLUMN_NAME"));
+        //generate list of matching columns between Sql Server and Snowflake tables
+        ArrayList<String> cols = rowsetColCompare(ssCols,sfCols);
+        
+        //load up a treemap to quickly reslove datatypes
+
+        TreeMap<String, String> colDatatypeCat = new TreeMap<String, String>();
+        ssCols.beforeFirst();
+        while(ssCols.next()) {
+        	//System.out.println(ssCols.getString("COLUMN_NAME") + ", " + ssCols.getString("DATA_TYPE_CAT"));
+        	colDatatypeCat.put(ssCols.getString("COLUMN_NAME").toUpperCase(), 
+        			           ssCols.getString("DATA_TYPE_CAT"));
         }
+        
+        sfCols.close();
+        //System.out.println(cols.size());
+        //System.out.println(ssGenerateSelect(database,schema,table, cols));
+        System.out.println(colDatatypeCat.size());
+        
+        
+        Connection srcCn = DriverManager.getConnection(srcCnString.getCnString()); 
+        Statement ssStatment = srcCn.createStatement(ResultSet.TYPE_FORWARD_ONLY,ResultSet.CONCUR_READ_ONLY);
+        ResultSet resColumns = ssStatment.executeQuery(ssGenerateSelect(database,schema,table, cols));
+        
+        String sqlInsertInto = sfGenerateInsertInto(schema.toUpperCase(), table.toUpperCase(), cols);
+        
+        
+        //spin up snowflake connection with database context
+		java.sql.Connection cn = null;
+		cn = JchLib_SnowflakeTest.getConnection(snowflakeCreds,database.toUpperCase());
+		Statement statement = cn.createStatement();
+        
+		long cCnt = 0;	//count calls
+        long aCnt = 0;	//count all records
+        long pCnt = 0;	//count packed records
+        StringBuilder values = new StringBuilder();
+        StringBuilder sql = new StringBuilder();
+        
+        //start grabbing values
+        while(resColumns.next()) {
+        	aCnt++;pCnt++;
+        	
+        	if(pCnt>1) values.append(",");        	
+        	values.append("(");
+        	for(int i = 0; i < cols.size(); i++) {
+        		if(i > 0) values.append(",");
+        		values.append(sfSqlValuePrep(resColumns.getString(cols.get(i)), colDatatypeCat.get(cols.get(i))));
+        	}		
+        	values.append(")");
+
+        	//System.out.println(values.length() + " vs " + values.toString().length());
+        	if(sqlInsertInto.length() + values.length() > PACK_SIZE) {
+        		cCnt++;
+        		
+        		sql.append(sqlInsertInto + " VALUES  " + values.toString());
+        		System.out.println("cCnt: " + cCnt+ ", pCnt: " + pCnt + ", len: " + sql.length() + ", aCnt: " + aCnt);
+        		
+        		//System.out.println(sql.toString());
+        	    //BufferedWriter writer = new BufferedWriter(new FileWriter("C:\\temp\\out.txt"));
+        	    //writer.write(sql.toString());
+        	    //writer.close();
+        		
+        		//Synchronous Call
+        		//statement.executeUpdate(sql.toString());
+        		
+        		//Asynchronous Call
+        		statement.unwrap(SnowflakeStatement.class).executeAsyncQuery(sql.toString());
+        		
+        		values.setLength(0);
+        		pCnt = 0;
+        		sql.setLength(0);
+        	}
+        	
+        }
+        values.append(")");
+        sql.append(sqlInsertInto + " VALUES  " + values.toString());
+        
+        
+		//Synchronous Call
+		//statement.executeUpdate(sql.toString());
+		
+		//Asynchronous Call
+		statement.unwrap(SnowflakeStatement.class).executeAsyncQuery(sql.toString());
+        
+        statement.close();
+        cn.close();
 	}
 	
+	
+	public static String sfSqlValuePrep(String value, String datatypeCat ) {
+		String output = "";
+		
+		//DATA_TYPE_CAT: TEXT, NUMERIC, DATETIME, OTHER
+		if(value == null) output = "null";
+		else if (datatypeCat.equals("TEXT")) output = "$$" + value + "$$";
+		else if (datatypeCat.equals("DATETIME")) output = "'" + value + "'";
+		else if (datatypeCat.equals("NUMERIC")) output = value;
+		else if (datatypeCat.equals("OTHER")) output = "null";
+		
+		return output; 
+	}
+	
+	public static String sfGenerateInsertInto(String schema, String table,ArrayList<String> cols) {
+		StringBuilder output = new StringBuilder();
+		
+		output.append("INSERT INTO \"" + schema.toUpperCase() + "\".\"" + table.toUpperCase() + "\" (");
+		for(int i = 0; i < cols.size(); i++) {
+			if(i > 0) output.append(",");
+			output.append("\"" + cols.get(i) + "\"");
+		}
+		output.append(")");
+		
+		return output.toString();
+	}
+	
+	/***
+	 * 
+	 * @param database
+	 * @param schema
+	 * @param table
+	 * @param cols
+	 * @return
+	 */
+	public static String ssGenerateSelect(String database, String schema, String table, 
+			ArrayList<String> cols) {
+		String output = null;
+		StringBuilder colList = new StringBuilder();
+		
+		if(database != null && schema != null && 
+			table != null && cols != null && cols.size() > 0) {
+			
+			for(int i = 0; i < cols.size(); i++) {
+				if(i > 0) colList.append(",");
+
+				colList.append(SqlServerDiscovery.sqlObjBracket(cols.get(i)));
+
+			}
+			
+			output = "SELECT " + colList.toString() + " FROM " 
+				   + SqlServerDiscovery.sqlObjBracket(database) + "."
+				   + SqlServerDiscovery.sqlObjBracket(schema) + "."
+				   + SqlServerDiscovery.sqlObjBracket(table)				   ;
+		}
+		
+		return output;
+	}
+	
+	
+	/***
+	 * 
+	 * @param ssRowSet
+	 * @param sfRowSet
+	 * @return
+	 * @throws SQLException
+	 */
+	public static ArrayList<String> rowsetColCompare(RowSet ssRowSet, RowSet sfRowSet) throws SQLException {
+		ArrayList<String> output = new ArrayList<String>();
+		String ssCol = "";
+		String sfCol = "";
+		
+		while(sfRowSet.next()) {
+			sfCol = sfRowSet.getString("COLUMN_NAME").toUpperCase();
+			
+			ssRowSet.beforeFirst();
+			while(ssRowSet.next() && sfCol.compareToIgnoreCase(ssCol) != 0) {
+				ssCol = ssRowSet.getString("COLUMN_NAME").toUpperCase();
+				
+				if(sfCol.compareToIgnoreCase(ssCol) == 0) {
+					output.add(sfCol);
+				}
+			}
+			
+		}
+		
+		return output;
+	}
 	
 	/***
 	 * Snowflake database schema information

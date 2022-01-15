@@ -331,6 +331,7 @@ public class SqlServerDiscovery {
 	}
 	
 	
+	
 	public static String sqlPrint(String dbScourSql) {
 		return dbScourSql.replace("  ", "\n");
 	}
