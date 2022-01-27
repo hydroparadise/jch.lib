@@ -1,6 +1,7 @@
 package jch.lib.db.sqlserver;
 
 import java.sql.*;
+import java.util.ArrayList;
 
 
 /***
@@ -46,6 +47,63 @@ public class SqlServerDiscovery {
 	 * is_memory_optimized_elevate_to_snapshot_on
 	 * @return String
 	 */
+	
+	
+	
+	/***
+	 * 
+	 * @param database
+	 * @param schema
+	 * @param table
+	 * @return
+	 */
+	public static String sqlGenerateSelect(String database, String schema, String table) {
+		String output = null;
+		StringBuilder colList = new StringBuilder();
+		
+		if(database != null && schema != null && table != null)  {
+			
+			output = "SELECT * FROM " 
+				   + SqlServerDiscovery.sqlObjBracket(database) + "."
+				   + SqlServerDiscovery.sqlObjBracket(schema) + "."
+				   + SqlServerDiscovery.sqlObjBracket(table);
+		}
+		
+		return output;
+	}	
+	
+	/***
+	 * 
+	 * @param database
+	 * @param schema
+	 * @param table
+	 * @param cols
+	 * @return
+	 */
+	public static String sqlGenerateSelect(String database, String schema, String table, 
+			ArrayList<String> cols) {
+		String output = null;
+		StringBuilder colList = new StringBuilder();
+		
+		if(database != null && schema != null && 
+			table != null && cols != null && cols.size() > 0) {
+			
+			for(int i = 0; i < cols.size(); i++) {
+				if(i > 0) colList.append(",");
+
+				colList.append(SqlServerDiscovery.sqlObjBracket(cols.get(i)));
+
+			}
+			
+			output = "SELECT " + colList.toString() + " FROM " 
+				   + SqlServerDiscovery.sqlObjBracket(database) + "."
+				   + SqlServerDiscovery.sqlObjBracket(schema) + "."
+				   + SqlServerDiscovery.sqlObjBracket(table);
+		}
+		
+		return output;
+	}
+	
 	
 	/**
 	 * Grabs all available databases for a SQL server instance.

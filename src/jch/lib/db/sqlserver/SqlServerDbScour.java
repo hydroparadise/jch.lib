@@ -964,6 +964,60 @@ public class SqlServerDbScour {
 	}
 	
 	/***
+	 * 
+	 * @param srcCnString
+	 * @param sqlSelect
+	 * @return
+	 */
+	public RowSet executeSqlRowSet(String srcCnString, String sqlSelect) {
+        //String sqlAllDatabase = SqlServerDiscovery.sqlAllUserDatabases();
+		
+		CachedRowSet output = null; //ResultSet
+		Connection cn = null;  	//connection
+		
+		//Open connection, run drop sql statements
+        try {
+            cn = DriverManager.getConnection(srcCnString);  
+
+	        
+	        ResultSet res = executeSqlResultSet(srcCnString, sqlSelect);
+	        
+	        RowSetFactory rsf = RowSetProvider.newFactory();
+	        output = rsf.createCachedRowSet();
+	        output.populate(res);
+
+        } 
+        catch (SQLException ex) {ex.printStackTrace();} 
+
+        return output; 
+	}
+	
+	/***
+	 * 
+	 * @param srcCnString
+	 * @param sqlSelect
+	 * @return
+	 */
+	public ResultSet executeSqlResultSet(String srcCnString, String sqlSelect) {
+        //String sqlAllDatabase = SqlServerDiscovery.sqlAllUserDatabases();
+		
+		ResultSet output = null; //ResultSet
+		Connection cn = null;  	//connection
+		
+		//Open connection, run drop sql statements
+        try {
+            cn = DriverManager.getConnection(srcCnString);  
+
+	        Statement sta = cn.createStatement(ResultSet.TYPE_FORWARD_ONLY,ResultSet.CONCUR_READ_ONLY);
+	        output = sta.executeQuery(sqlSelect);
+
+        } 
+        catch (SQLException ex) {ex.printStackTrace();} 
+        return output; 
+	}
+	
+	
+	/***
 	 * Returns schema information on all tables (and optionally vies) and columns 
 	 * 
 	 * Fields: TABLE_TYPE, TABLE_CATALOG, TABLE_SCHEMA, TABLE_NAME, COLUMN_NAME, CONSTRAINT_NAME, DATA_TYPE, ORDINAL_POSITION,

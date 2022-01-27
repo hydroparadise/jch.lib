@@ -13,6 +13,8 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Properties;
 import java.util.TreeMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
 
 import javax.sql.RowSet;
 import javax.sql.rowset.CachedRowSet;
@@ -33,12 +35,226 @@ import java.util.Map;
 /*
  * Snowflake concurrent statements
  * MAX_CONCURRENCY_LEVEL = 8
+ * 
+ * File Sizing Best Practices and Limitations
+ * For best load performance and to avoid size limitations, consider the following data file sizing 
+ * guidelines. Note that these recommendations apply to bulk data loads as well as continuous loading using Snowpipe.
+ *
+ * General File Sizing Recommendations
+ * The number of load operations that run in parallel cannot exceed the number of data files to be 
+ * loaded. To optimize the number of parallel operations for a load, we recommend aiming to produce 
+ * data files roughly 100-250 MB (or larger) in size compressed.
+ * https://docs.snowflake.com/en/user-guide/data-load-considerations-prepare.html#label-data-load-file-sizing-best-practices
+ * 
  */
 
 
 
 public class JchLib_SnowflakeTest {
 	static int PACK_SIZE = 1900000;
+	static int MAX_CONCURRENCY_LEVEL = 4;
+	
+	static public void copyTableData(String srcSqlHost, String srcDatabse, String srcSchema, String srcTable,
+			String sfCredsLoc, String sfDatabase, String sfSchema, String sfTable) {
+		
+		//Get Sql Server Schema Rowset
+		SqlServerCnString srcCnString = new SqlServerCnString();
+		srcCnString.setCnStringIntegratedSecurity(srcSqlHost, null , srcDatabse);
+		SqlServerDbScour dbsSource = new SqlServerDbScour();
+		RowSet ssSchemaRowSet = dbsSource.getSrcInformationSchema(
+				srcCnString.getCnString(), srcCnString.getDatabaseName(), srcSchema, srcTable);
+		
+		
+		//Get Snowflake Schema RowSet
+		java.sql.Connection sfCn = null;
+		sfCn = JchLib_SnowflakeTest.getConnection("H:\\snowflake_creds.json");
+		String sqlSfSchema = sqlSfDatabaseTableInformationShema(sfDatabase, sfSchema, sfTable);
+		RowSet sfSchemaRowSet = executeRowSetSnowflakeCommand(sqlSfSchema, sfCn);
+		
+		
+        //generate list of column datatype categories
+        TreeMap<String, String> datatypeCategories = setDataTypeCategories(ssSchemaRowSet);		
+		
+        //generate list of matching columns between Sql Server and Snowflake tables
+        ArrayList<String> cols = rowsetColCompare(ssSchemaRowSet,sfSchemaRowSet);
+        String sqlSsTable = SqlServerDiscovery.sqlGenerateSelect(srcDatabse, srcSchema, srcTable, cols);
+        
+        //test portion
+        sqlSsTable = sqlSsTable + " WHERE Processdate = 20211213";
+        
+        System.out.println(sqlSsTable);
+        ResultSet ssTable = dbsSource.executeSqlResultSet(srcCnString.getCnString(), sqlSsTable);
+
+        try {
+        	sfCn = JchLib_SnowflakeTest.getConnection("H:\\snowflake_creds.json",sfDatabase);
+			copyTableDataIterate(cols, ssTable, sfCn, sfSchema, sfTable, datatypeCategories);
+			sfCn.close();
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+        
+
+	}
+	
+	static void copyTableDataIterate(ArrayList<String> colSet, ResultSet srcTableResultSet, 
+			java.sql.Connection sfConnection, String sfSchema, String sfTable, 
+			TreeMap<String, String> datatypeCategories) throws SQLException {
+
+		long cCnt = 0;	//count calls
+        long aCnt = 0;	//count all records
+        long pCnt = 0;	//count packed records
+        
+        String sqlInsertInto = sqlSfGenerateInsertInto(sfSchema.toUpperCase(), sfTable.toUpperCase(), colSet);
+    	
+        StringBuilder values = new StringBuilder();
+    	StringBuilder sql = new StringBuilder();
+    	
+    	//Instantiate Thread pooler
+    	ThreadPoolExecutor exe = (ThreadPoolExecutor) Executors.newFixedThreadPool(MAX_CONCURRENCY_LEVEL);
+    	
+		while(srcTableResultSet.next() ) {
+			aCnt++;pCnt++;
+			
+			//if more than one record, add comma separator 
+        	if(pCnt>1) values.append(","); 
+        	
+        	values.append("(");
+        	
+        	//iterate columns and grab column values
+        	for(int i = 0; i < colSet.size(); i++) {
+        		if(i > 0) values.append(",");
+        		
+        		//wrap and append values
+        		values.append(sfSqlValuePrep(srcTableResultSet.getString(colSet.get(i)), 
+        				datatypeCategories.get(colSet.get(i))));
+        	}		
+        	values.append(")");
+			
+        	if(sqlInsertInto.length() + values.length() > PACK_SIZE) {
+        		cCnt++;
+        		sql.append(sqlInsertInto + " VALUES " + values.toString());
+        		System.out.println("cCnt: " + cCnt+ ", pCnt: " + pCnt + ", len: " + sql.length() + ", aCnt: " + aCnt);
+        		
+        		//queue in thread pool
+        		ExecuteUpdateSnowflakeCommand t = 
+        				new ExecuteUpdateSnowflakeCommand(sql.toString(), sfConnection, cCnt);
+				exe.submit(t);	
+				
+				System.out.println(exe.getTaskCount() + " tasks!");
+        		
+        		values.setLength(0);
+        		pCnt = 0;
+        		sql.setLength(0);
+        	}
+			
+		}
+		
+		sql.append(sqlInsertInto + " VALUES " + values.toString());
+		ExecuteUpdateSnowflakeCommand t = new ExecuteUpdateSnowflakeCommand(sql.toString(), sfConnection, cCnt);
+		exe.submit(t);	
+		
+		
+
+	}
+	
+	static class ExecuteUpdateSnowflakeCommand extends Thread {
+		public ExecuteUpdateSnowflakeCommand(String sqlCommand, java.sql.Connection sfConnection, long cCnt) {
+			this.sqlCommand = sqlCommand;
+			this.sfConnection = sfConnection;
+			this.cCnt = cCnt;
+		}
+		
+		@Override
+		public void run() {
+			Statement stmnt = null;
+			
+			try {
+				if(sfConnection != null &&
+				   sfConnection.isClosed() != true) {
+					stmnt = sfConnection.createStatement();
+				}
+			} catch (SQLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			
+			try {
+				stmnt.executeUpdate(sqlCommand);
+				System.out.println(cCnt + " executed!");
+			} catch (SQLException e) {
+				// TODO Auto-generated catch block
+				System.out.println(cCnt + " exception!");
+				e.printStackTrace();
+			}
+			
+			try {
+				stmnt.close();
+			} catch (SQLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		
+		
+		String sqlCommand;
+		java.sql.Connection sfConnection;
+		long cCnt;
+	}
+	
+	/***
+	 * 
+	 * @param sqlCommand
+	 * @param sfConnection
+	 * @return
+	 */
+	public static RowSet executeRowSetSnowflakeCommand(String sqlCommand, java.sql.Connection sfConnection) {
+		Statement stmnt = null;
+		CachedRowSet output = null;
+		try {
+			if(sfConnection != null &&
+			   sfConnection.isClosed() != true) {
+				stmnt = sfConnection.createStatement();
+			    ResultSet sfResultSet = stmnt.executeQuery(sqlCommand);
+			    		
+		        RowSetFactory rsf = RowSetProvider.newFactory();
+		        output = rsf.createCachedRowSet();
+		        output.populate(sfResultSet);
+		        stmnt.close();
+		        sfConnection.close();
+		        
+			}
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		return output;
+	}
+	
+	/***
+	 * 
+	 * @param shema
+	 * @return
+	 */
+	public static TreeMap<String, String> setDataTypeCategories(RowSet shema) {
+        TreeMap<String, String> output;
+        output = new TreeMap<String, String>();
+        try {
+			shema.beforeFirst();
+			
+	        while(shema.next()) {
+	        	//System.out.println(ssCols.getString("COLUMN_NAME") + ", " + ssCols.getString("DATA_TYPE_CAT"));
+	        	output.put(shema.getString("COLUMN_NAME").toUpperCase(), 
+	        			   shema.getString("DATA_TYPE_CAT"));
+	        }			
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+        return output;
+	}
+	
 	
 	/* Snowflake Script examples
 	 
@@ -55,7 +271,7 @@ public class JchLib_SnowflakeTest {
 		
 		//Passed
 		INSERT INTO TESTINS (INSDATE1,INSDATE2,INSCHAR1,INTINT) 
-		VALUES ('1/1/2021','2013-05-08T23:39:20.123','Test insert',23)
+		VALUES ('1/1/2021','2013-05-08T23:39:20.123',$$Test insert$$,23)
 	 */
 
 	
@@ -120,9 +336,10 @@ public class JchLib_SnowflakeTest {
         
         Connection srcCn = DriverManager.getConnection(srcCnString.getCnString()); 
         Statement ssStatment = srcCn.createStatement(ResultSet.TYPE_FORWARD_ONLY,ResultSet.CONCUR_READ_ONLY);
-        ResultSet resColumns = ssStatment.executeQuery(ssGenerateSelect(database,schema,table, cols));
+        ResultSet resColumns = ssStatment.executeQuery(
+        		SqlServerDiscovery.sqlGenerateSelect(database,schema,table, cols));
         
-        String sqlInsertInto = sfGenerateInsertInto(schema.toUpperCase(), table.toUpperCase(), cols);
+        String sqlInsertInto = sqlSfGenerateInsertInto(schema.toUpperCase(), table.toUpperCase(), cols);
         
         
         //spin up snowflake connection with database context
@@ -200,7 +417,7 @@ public class JchLib_SnowflakeTest {
 		return output; 
 	}
 	
-	public static String sfGenerateInsertInto(String schema, String table,ArrayList<String> cols) {
+	public static String sqlSfGenerateInsertInto(String schema, String table,ArrayList<String> cols) {
 		StringBuilder output = new StringBuilder();
 		
 		output.append("INSERT INTO \"" + schema.toUpperCase() + "\".\"" + table.toUpperCase() + "\" (");
@@ -213,37 +430,7 @@ public class JchLib_SnowflakeTest {
 		return output.toString();
 	}
 	
-	/***
-	 * 
-	 * @param database
-	 * @param schema
-	 * @param table
-	 * @param cols
-	 * @return
-	 */
-	public static String ssGenerateSelect(String database, String schema, String table, 
-			ArrayList<String> cols) {
-		String output = null;
-		StringBuilder colList = new StringBuilder();
-		
-		if(database != null && schema != null && 
-			table != null && cols != null && cols.size() > 0) {
-			
-			for(int i = 0; i < cols.size(); i++) {
-				if(i > 0) colList.append(",");
 
-				colList.append(SqlServerDiscovery.sqlObjBracket(cols.get(i)));
-
-			}
-			
-			output = "SELECT " + colList.toString() + " FROM " 
-				   + SqlServerDiscovery.sqlObjBracket(database) + "."
-				   + SqlServerDiscovery.sqlObjBracket(schema) + "."
-				   + SqlServerDiscovery.sqlObjBracket(table)				   ;
-		}
-		
-		return output;
-	}
 	
 	
 	/***
@@ -253,23 +440,28 @@ public class JchLib_SnowflakeTest {
 	 * @return
 	 * @throws SQLException
 	 */
-	public static ArrayList<String> rowsetColCompare(RowSet ssRowSet, RowSet sfRowSet) throws SQLException {
+	public static ArrayList<String> rowsetColCompare(RowSet ssRowSet, RowSet sfRowSet) {
 		ArrayList<String> output = new ArrayList<String>();
 		String ssCol = "";
 		String sfCol = "";
 		
-		while(sfRowSet.next()) {
-			sfCol = sfRowSet.getString("COLUMN_NAME").toUpperCase();
-			
-			ssRowSet.beforeFirst();
-			while(ssRowSet.next() && sfCol.compareToIgnoreCase(ssCol) != 0) {
-				ssCol = ssRowSet.getString("COLUMN_NAME").toUpperCase();
+		try {
+			while(sfRowSet.next()) {
+				sfCol = sfRowSet.getString("COLUMN_NAME").toUpperCase();
 				
-				if(sfCol.compareToIgnoreCase(ssCol) == 0) {
-					output.add(sfCol);
+				ssRowSet.beforeFirst();
+				while(ssRowSet.next() && sfCol.compareToIgnoreCase(ssCol) != 0) {
+					ssCol = ssRowSet.getString("COLUMN_NAME").toUpperCase();
+					
+					if(sfCol.compareToIgnoreCase(ssCol) == 0) {
+						output.add(sfCol);
+					}
 				}
+				
 			}
-			
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
 		
 		return output;
@@ -853,7 +1045,9 @@ public class JchLib_SnowflakeTest {
 	 * @return 
 	 * @throws SQLException
 	 */
-	public static Connection getConnection(String credentialPath) throws SQLException  {
+	public static Connection getConnection(String credentialPath)  {
+		java.sql.Connection output = null;
+		
 	    try {
 	    	Class.forName("net.snowflake.client.jdbc.SnowflakeDriver");
 	    }
@@ -890,7 +1084,14 @@ public class JchLib_SnowflakeTest {
 	    	connectStr = (String)jsonObj.get("cnstring"); 
 	    }
 	    
-	    return DriverManager.getConnection(connectStr, properties);
+	    try {
+			output = DriverManager.getConnection(connectStr, properties);
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	    
+	    return output;
 	}
 	
 	/***
@@ -900,8 +1101,10 @@ public class JchLib_SnowflakeTest {
 	 * @return
 	 * @throws SQLException
 	 */
-	public static Connection getConnection(String credentialPath, String database) throws SQLException {
-	    try {
+	public static Connection getConnection(String credentialPath, String database) {
+		java.sql.Connection output = null;
+		
+		try {
 	    	Class.forName("net.snowflake.client.jdbc.SnowflakeDriver");
 	    }
 	    catch (ClassNotFoundException ex){
@@ -939,7 +1142,14 @@ public class JchLib_SnowflakeTest {
 	    	connectStr = (String)jsonObj.get("cnstring"); 
 	    }
 	    
-	    return DriverManager.getConnection(connectStr, properties);
+	    try {
+			output = DriverManager.getConnection(connectStr, properties);
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	    
+	    return output;
 	}
 	
 	/***
@@ -950,8 +1160,10 @@ public class JchLib_SnowflakeTest {
 	 * @return
 	 * @throws SQLException
 	 */
-	public static Connection getConnection(String credentialPath, String database, String schema) throws SQLException {
-	    try {
+	public static Connection getConnection(String credentialPath, String database, String schema) {
+		java.sql.Connection output = null;
+		
+		try {
 	    	Class.forName("net.snowflake.client.jdbc.SnowflakeDriver");
 	    }
 	    catch (ClassNotFoundException ex){
@@ -992,7 +1204,14 @@ public class JchLib_SnowflakeTest {
 	    }
 	    System.out.println(connectStr);
 	    
-	    return DriverManager.getConnection(connectStr, properties);
+	    try {
+			output = DriverManager.getConnection(connectStr, properties);
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	    
+	    return output;
 	}
 	
 	
