@@ -117,12 +117,12 @@ public class SqlServerCnString {
 	}
 
 
-	public String getPassord() {
+	public String getPassword() {
 		return password;
 	}
 
 
-	public void setSrPassord(String Passord) {
+	public void setPassword(String password) {
 		this.password = password;
 	}
 

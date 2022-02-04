@@ -1145,6 +1145,7 @@ public class SqlServerDbScour {
         }
         return success;
 	}
+	
 
 	/***
 	 * Drops all database objects related to DB scour.
@@ -1240,12 +1241,12 @@ public class SqlServerDbScour {
 			   + "	NumericPrecisionRadix,NumericScale,DateTimePrecision,CharacterSetName,CollationCatalog,CollationSchema,  "
 			   + "	CollationName,DomainCatalog,DomainSchema,DomainName,CharacterSetCatalog,CharacterSetSchema,DataTypeCategory,  "
 			   + "	MeasureDate"
-			   + "  FROM " + from
-			   + "  WHERE TableName = " + SqlServerDiscovery.sqlStringClean(srcTableName)
+			   + "FROM " + from
+			   + "WHERE TableName = " + SqlServerDiscovery.sqlStringClean(srcTableName)
 			   + "  	AND TableSchema = " + SqlServerDiscovery.sqlStringClean(srcSchema)
 			   + "  	AND TableCatalog = " + SqlServerDiscovery.sqlStringClean(srcDatabaseName)
 			   + "  	AND CnString = " + SqlServerDiscovery.sqlStringClean(srcCnString)
-			   + "  ORDER BY OrdinalPosition";
+			   + "ORDER BY OrdinalPosition";
 		
 		return output;
 	}
@@ -2176,31 +2177,31 @@ public class SqlServerDbScour {
 		}
 
 		String cnString;
-		String tableType;							//TableType
+		String tableType;						//TableType
 		String tableCatalog;					//TableCatalog
 		String tableSchema;						//TableSchema
-		String tableName;							//TableName
+		String tableName;						//TableName
 		String columnName;						//ColumnName
-		String constraintName;				//ConstraintName
-		String dataType;							//DataType
+		String constraintName;					//ConstraintName
+		String dataType;						//DataType
 		Integer ordinalPosition;				//OrdinalPosition
 		String columnDefault;					//ColumnDefault
 		String isNullable;						//IsNullable
-		Integer characterMaximumLength;	//CharacterMaximumLength
-		Integer characterOctetLength;	 	//CharacterOctetLength
+		Integer characterMaximumLength;			//CharacterMaximumLength
+		Integer characterOctetLength;	 		//CharacterOctetLength
 		Integer numericPrecision;				//NumericPrecision
-		Integer numericPrecisionRadix;	//NumericPrecisionRadix
-		Integer numericScale;						//NumericScale
-		Integer dateTimePrecision;			//DateTimePrecision
-		String characterSetName;			//CharacterSetName
-		String collationCatalog;			//CollationCatalog
-		String collationSchema;				//CollationSchema
+		Integer numericPrecisionRadix;			//NumericPrecisionRadix
+		Integer numericScale;					//NumericScale
+		Integer dateTimePrecision;				//DateTimePrecision
+		String characterSetName;				//CharacterSetName
+		String collationCatalog;				//CollationCatalog
+		String collationSchema;					//CollationSchema
 		String collationName;					//CollationName
 		String domainCatalog;					//DomainCatalog
 		String domainSchema;					//DomainSchema
 		String domainName;						//DomainName
-		String characterSetCatalog;		//CharacterSetCatalog
-		String characterSetSchema;		//CharacterSetSchema
+		String characterSetCatalog;				//CharacterSetCatalog
+		String characterSetSchema;			//CharacterSetSchema
 		String dataTypeCat;						//DataTypeCategory
 	}
 	

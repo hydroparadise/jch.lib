@@ -2,9 +2,12 @@ package jch.lib.test;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.text.SimpleDateFormat;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
+import java.util.List;
 import java.util.Scanner;
 import java.util.TreeMap;
 
@@ -64,7 +67,30 @@ import java.util.TreeMap;
 public class JchLib_Test {
 	
 
+	static void testDatesParse() {
+		String dateString = "10/1/2022 09:53:17";
+		dateString = "10/1/22";
+		dateString = "20221001";
+		Date date = tryDateParse(dateString); // 2010-01-02
+		
+		
+		SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd");
+		df = new SimpleDateFormat("yyyyMMdd");
+		System.out.println(df.format(date));
+	}
 	
+	
+	static List<String> dateFormatStrings = 
+			Arrays.asList("MM/dd/yy","MM-dd-yy","MM/dd/yyyy","MM-dd-yyyy", "yyyyMMdd","yyyy-MM-dd");
+	static Date tryDateParse(String dateString) {
+	    for (String formatString : dateFormatStrings) {
+	        try {
+	            return new SimpleDateFormat(formatString).parse(dateString);
+	        }
+	        catch (java.text.ParseException e) {}
+	    }
+	    return null;
+	}
 
 	
 	static void localTimeTest1() {
