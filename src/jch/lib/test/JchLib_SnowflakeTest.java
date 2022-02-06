@@ -16,7 +16,7 @@ import java.text.SimpleDateFormat;
 import java.util.Properties;
 import java.util.TreeMap;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Semaphore;
+//import java.util.concurrent.Semaphore;
 import java.util.concurrent.ThreadPoolExecutor;
 
 import javax.sql.RowSet;
@@ -27,7 +27,6 @@ import javax.sql.rowset.RowSetProvider;
 import org.json.simple.*;
 import org.json.simple.parser.*;
 
-import com.google.type.Date;
 
 import jch.lib.db.sqlserver.SqlServerCnString;
 import jch.lib.db.sqlserver.SqlServerDbScour;
@@ -37,15 +36,15 @@ import net.snowflake.client.jdbc.SnowflakeStatement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
+//import java.util.Map;
 
 
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
+//import java.io.IOException;
+//import java.nio.charset.StandardCharsets;
+//import java.nio.file.Files;
+//import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.zip.GZIPOutputStream;
 /*
@@ -73,101 +72,6 @@ public class JchLib_SnowflakeTest {
 	
 	
 
-	public static class WriteCsvFromSqlServerTableTask implements Runnable {
-		//static Semaphore sem = new Semaphore(MAX_CONCURRENCY_LEVEL);
-		static Semaphore sem = new Semaphore(2);
-		
-		
-		public WriteCsvFromSqlServerTableTask(String filePath, String fileName, long maxFileSize,
-			 String srcSqlHost, String srcDatabase, String srcSchema, String srcTable,
-			 String rowDelim, String colDelim, String textQualifier, String escapeChar,
-			 String sfCredsLoc, String sfDatabase, String sfSchema, String sfTable) {
-			this.filePath = filePath;
-			this.fileName  = fileName;
-			this.maxFileSize = maxFileSize;
-			this.srcSqlHost = srcSqlHost;
-			this.srcDatabase = srcDatabase;
-			this.srcSchema = srcSchema;
-			this.srcTable = srcTable;
-			this.sfCredsLoc = sfCredsLoc;
-			this.sfDatabase = sfDatabase;
-			this.sfSchema = sfSchema;
-			this.sfTable = sfTable;
-			this.rowDelim = rowDelim;
-			this.colDelim = colDelim;
-			this.textQualifier = null;
-			this.escapeChar = null;
-			
-
-		}
-		
-		
-		public WriteCsvFromSqlServerTableTask(String filePath, String fileName, long maxFileSize,
-			 String srcSqlHost, String srcDatabase, String srcSchema, String srcTable,
-			 String sfCredsLoc, String sfDatabase, String sfSchema, String sfTable,
-			 String rowDelim, String colDelim, String textQualifier, String escapeChar,
-			 String valueLimiterCol, String valueLimit) {
-			this.filePath = filePath;
-			this.fileName  = fileName;
-			this.maxFileSize = maxFileSize;
-			this.srcSqlHost = srcSqlHost;
-			this.srcDatabase = srcDatabase;
-			this.srcSchema = srcSchema;
-			this.srcTable = srcTable;
-			this.sfCredsLoc = sfCredsLoc;
-			this.sfDatabase = sfDatabase;
-			this.sfSchema = sfSchema;
-			this.sfTable = sfTable;
-			this.rowDelim = rowDelim;
-			this.colDelim = colDelim;
-			this.textQualifier = textQualifier;
-			this.escapeChar = escapeChar;
-			this.valueLimiterCol = valueLimiterCol;
-			this.valueLimit = valueLimit;
-			
-		}
-		
-		@Override
-		public void run() {
-			if(valueLimiterCol != null && valueLimit != null) {
-				writeCsvFromSqlServerTable(filePath, fileName, maxFileSize, srcSqlHost, srcDatabase, srcSchema, srcTable,
-						 sfCredsLoc, sfDatabase, sfSchema, sfTable, rowDelim, colDelim, textQualifier, escapeChar,
-						 valueLimiterCol, valueLimit);
-			}
-			else if (rowDelim != null &&  colDelim != null) {
-				writeCsvFromSqlServerTable(filePath, fileName, maxFileSize, srcSqlHost, srcDatabase, srcSchema, srcTable,
-						 sfCredsLoc, sfDatabase, sfSchema, sfTable, rowDelim, colDelim, textQualifier, escapeChar);
-			}
-			else {
-				writeCsvFromSqlServerTable(filePath, fileName, maxFileSize, srcSqlHost, srcDatabase, srcSchema, srcTable,
-						 sfCredsLoc, sfDatabase, sfSchema, sfTable);
-			}
-			
-			
-			//sem.release();
-		}
-		
-		
-		String filePath;
-		String fileName; 
-		long maxFileSize;
-		String srcSqlHost; 
-		String srcDatabase;
-		String srcSchema; 
-		String srcTable;
-		String sfCredsLoc; 
-		String sfDatabase; 
-		String sfSchema; 
-		String sfTable;
-		String rowDelim; 
-		String colDelim; 
-		String textQualifier; 
-		String escapeChar;
-		String valueLimiterCol;
-		String valueLimit;
-	}
-	
-	
     /***
      * Compressess source to output file.
      * 
@@ -396,69 +300,98 @@ public class JchLib_SnowflakeTest {
         System.out.println(sqlSsTable);
         ResultSet ssTable = dbsSource.executeSqlResultSet(srcCnString.getCnString(), sqlSsTable);
         
-		long cCnt = 0;	//count calls
-        long aCnt = 0;	//count all records
-        long lCnt = 0;
-        long fCnt = 0;
-        long fSize = 0;
-        StringBuilder values = new StringBuilder();
+
         
         String outFileName = fileNamePrep(valueLimit,datatypeCategories.get(valueLimiterCol));
-        
+ 		String fullFileName = filePath + fileName + "_" + outFileName + ".csv";
+		FileWriter writer = null;
+		BufferedWriter buffer = null;
+		
 		try {
+			writer = new FileWriter(fullFileName);
+			buffer = new BufferedWriter(writer);
 			
-			fCnt++;
-			
-			String fullFileName = filePath + fileName + "_" + outFileName + ".csv";
-			FileWriter writer = new FileWriter(fullFileName);
-			BufferedWriter buffer = new BufferedWriter(writer);
-			
-			while(ssTable.next() ) {
-				aCnt++;cCnt++;lCnt++;
-				
-				//if more than one record, add comma separator 
-				if(lCnt>1) values.append(rowDelim); 
-				
-				//iterate columns and grab column values
-				for(int i = 0; i < cols.size(); i++) {
-					if(i > 0) values.append(colDelim);
-					
-					//wrap and append values
-					values.append(
-							sfCsvValuePrep(ssTable.getString(cols.get(i)),
-										   datatypeCategories.get(cols.get(i)),
-										   textQualifier,escapeChar));
-				}		
-				
-				buffer.write(values.toString());
-				
-				//System.out.println(values.toString());
-				if(aCnt%10000==0) System.out.println(fileName + " " + cCnt + ": " + values.toString());
-				
-				fSize = fSize + values.length();
-				if(fSize >= maxFileSize) {
-					buffer.close();
-					compressGzip(fullFileName, fullFileName + ".gz", true);
-					
-					lCnt = 0; 	//reset line count counter
-					fSize = 0;	//reset file size counter
-					fCnt++;		//increment file count counter
-					fullFileName = filePath + fileName + "_" + outFileName + "_" + String.format("%03d", fCnt) + ".csv";
-					writer = new FileWriter(fullFileName);
-					buffer = new BufferedWriter(writer);
-					
-				}
-				
-				values.setLength(0);
-			}
-					
-			buffer.close();
-			
-			compressGzip(fullFileName, fullFileName + ".gz", true);
-			
-		} catch (SQLException | IOException e) {
+		} catch (IOException e1) {
 			// TODO Auto-generated catch block
-			e.printStackTrace();
+			e1.printStackTrace();
+		}       
+		
+		if(buffer != null)  {
+			
+			long cCnt = 0;	//count calls
+	        long aCnt = 0;	//count all records
+	        long lCnt = 0;
+	        long fCnt = 0;
+	        long fSize = 0;
+	        StringBuilder values = new StringBuilder();
+	        
+			try {
+				
+				fCnt++;
+				
+				ThreadPoolExecutor exe = (ThreadPoolExecutor) Executors.newFixedThreadPool(MAX_CONCURRENCY_LEVEL);
+				
+				while(ssTable.next() ) {
+					aCnt++;cCnt++;lCnt++;
+					
+					//if more than one record, add comma separator 
+					if(lCnt>1) values.append(rowDelim); 
+					
+					//iterate columns and grab column values
+					for(int i = 0; i < cols.size(); i++) {
+						if(i > 0) values.append(colDelim);
+						
+						//wrap and append values
+						values.append(
+								sfCsvValuePrep(ssTable.getString(cols.get(i)),
+											   datatypeCategories.get(cols.get(i)),
+											   textQualifier,escapeChar));
+					}		
+					
+					buffer.write(values.toString());
+					
+					//System.out.println(values.toString());
+					if(aCnt%10000==0) System.out.println(fileName + " " + cCnt + ": " + values.toString());
+					
+					//keep track of growing file size 
+					fSize = fSize + values.length();
+					
+					//split file out after size exceeds size limit
+					if(fSize >= maxFileSize) {
+						buffer.close();
+						ExecuteCompressGzip t = new ExecuteCompressGzip(fullFileName, fullFileName + ".gz", true);
+						exe.submit(t);
+						
+						lCnt = 0; 	//reset line count counter
+						fSize = 0;	//reset file size counter
+						fCnt++;		//increment file count counter
+						fullFileName = filePath + fileName + "_" + outFileName + "_" + String.format("%03d", fCnt) + ".csv";
+						writer = new FileWriter(fullFileName);
+						buffer = new BufferedWriter(writer);
+						
+					}
+					
+					values.setLength(0);
+				}
+						
+				//close file
+				buffer.close();
+				
+				//compress file
+				ExecuteCompressGzip t = new ExecuteCompressGzip(fullFileName, fullFileName + ".gz", true);
+				exe.submit(t);
+				
+			} catch (SQLException | IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			finally {
+				//compiler complained for not having try/catch around buffer.close()
+				//bad form to have in finally?
+				try {
+					buffer.close();
+				} catch (IOException e) {} //silently fail
+			}
 		}
 	}
 	
@@ -500,98 +433,113 @@ public class JchLib_SnowflakeTest {
 		String sqlSfSchema = sqlSfDatabaseTableInformationShema(sfDatabase, sfSchema, sfTable);
 		RowSet sfSchemaRowSet = executeRowSetSnowflakeCommand(sqlSfSchema, sfCn);
 		
-		
         //generate list of column datatype categories
         TreeMap<String, String> datatypeCategories = setDataTypeCategories(ssSchemaRowSet);		
 		
         //generate list of matching columns between Sql Server and Snowflake tables
         ArrayList<String> cols = rowsetColCompare(ssSchemaRowSet,sfSchemaRowSet);
+        
+        //generate select statement for data extract
         String sqlSsTable = SqlServerDiscovery.sqlGenerateSelect(srcDatabase, srcSchema, srcTable, cols);
         
         System.out.println("Column Count: " + cols.size());
         
-        //test portion
-        //sqlSsTable = sqlSsTable + " WHERE Processdate = 20211213";
-        
+        //execute SELECT Table
         System.out.println(sqlSsTable);
         ResultSet ssTable = dbsSource.executeSqlResultSet(srcCnString.getCnString(), sqlSsTable);
         
-		long cCnt = 0;	//count calls
-        long aCnt = 0;	//count all records
-        long pCnt = 0;	//count packed records
-        long lCnt = 0;
-        long fCnt = 0;
-        long fSize = 0;
-        StringBuilder values = new StringBuilder();
-        
-        
+        long fCnt = 1;
+        String fullFileName = filePath + fileName  + "_"  + String.format("%03d", fCnt) + ".csv";
+		FileWriter writer = null;
+		BufferedWriter buffer = null;
+		
 		try {
-			fCnt++;
+			writer = new FileWriter(fullFileName);
+			buffer = new BufferedWriter(writer);
 			
-			ThreadPoolExecutor exe = (ThreadPoolExecutor) Executors.newFixedThreadPool(MAX_CONCURRENCY_LEVEL);
+		} catch (IOException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}       
+		
+		//continue if buffer was successfully created
+		if(buffer != null)  {
 			
-			String fullFileName = filePath + fileName  + "_"  + String.format("%03d", fCnt) + ".csv";
-			FileWriter writer = new FileWriter(fullFileName);
-			BufferedWriter buffer = new BufferedWriter(writer);
-			
-			while(ssTable.next() ) {
-				aCnt++;pCnt++;cCnt++;lCnt++;
+			long cCnt = 0;	//count calls
+	        long aCnt = 0;	//count all records
+	        long lCnt = 0;
+	        long fSize = 0;
+	        StringBuilder values = new StringBuilder();
+	        
+			try {
 				
-				//if more than one record, add comma separator 
-				if(lCnt>1) values.append(rowDelim); 
+				ThreadPoolExecutor exe = (ThreadPoolExecutor) Executors.newFixedThreadPool(MAX_CONCURRENCY_LEVEL);
 				
-				//iterate columns and grab column values
-				for(int i = 0; i < cols.size(); i++) {
-					if(i > 0) values.append(colDelim);
+				while(ssTable.next() ) {
+					aCnt++;cCnt++;lCnt++;
 					
-					//wrap and append values
-					values.append(
-							sfCsvValuePrep(ssTable.getString(cols.get(i)),
-										   datatypeCategories.get(cols.get(i)),
-										   textQualifier,escapeChar));
-				}		
-				
-				buffer.write(values.toString());
-				
-				//System.out.println(values.toString());
-				if(aCnt%10000==0) System.out.println(fileName + " " + cCnt + ": " + values.toString());
-				
-				fSize = fSize + values.length();
-				if(fSize >= maxFileSize) {
-					buffer.close();
+					//if more than one record, add comma separator 
+					if(lCnt>1) values.append(rowDelim); 
 					
-					ExecuteCompressGzip t = new ExecuteCompressGzip(fullFileName, fullFileName + ".gz", true);
-					exe.submit(t);
-
+					//iterate columns and grab column values
+					for(int i = 0; i < cols.size(); i++) {
+						if(i > 0) values.append(colDelim);
+						
+						//wrap and append values
+						values.append(
+								sfCsvValuePrep(ssTable.getString(cols.get(i)),
+											   datatypeCategories.get(cols.get(i)),
+											   textQualifier,escapeChar));
+					}		
 					
-					lCnt = 0; 	//reset line count counter
-					fSize = 0;	//reset file size counter
-					fCnt++;		//increment file count counter
-					fullFileName = filePath + fileName  + "_"  + String.format("%03d", fCnt) + ".csv";
+					buffer.write(values.toString());
 					
-					writer = new FileWriter(fullFileName);
-					buffer = new BufferedWriter(writer);
+					//System.out.println(values.toString());
+					if(aCnt%10000==0) System.out.println(fileName + " " + cCnt + ": " + values.toString());
+					
+					fSize = fSize + values.length();
+					if(fSize >= maxFileSize) {
+						buffer.close();
+						
+						ExecuteCompressGzip t = new ExecuteCompressGzip(fullFileName, fullFileName + ".gz", true);
+						exe.submit(t);
+	
+						
+						lCnt = 0; 	//reset line count counter
+						fSize = 0;	//reset file size counter
+						fCnt++;		//increment file count counter
+						fullFileName = filePath + fileName  + "_"  + String.format("%03d", fCnt) + ".csv";
+						
+						writer = new FileWriter(fullFileName);
+						buffer = new BufferedWriter(writer);
+					}
+					
+					values.setLength(0);
 				}
 				
-				values.setLength(0);
-				pCnt = 0;
+
+				buffer.close();
+				ExecuteCompressGzip t = new ExecuteCompressGzip(fullFileName, fullFileName + ".gz", true);
+				
+				exe.submit(t);
+				exe.shutdown();
+				
+			} catch (SQLException | IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
 			}
-			
-			
-			
-			buffer.close();
-			ExecuteCompressGzip t = new ExecuteCompressGzip(fullFileName, fullFileName + ".gz", true);
-			
-			exe.submit(t);
-			exe.shutdown();
-			
-		} catch (SQLException | IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			finally {
+				//compiler complained for not having try/catch around buffer.close()
+				//bad form to have in finally?
+				try {
+					buffer.close();
+				} catch (IOException e) {} //silently fail
+			}
 		}
 	}
 	
 	/***
+	 * Copy table via series of API calls to Snowflake
 	 * 
 	 * @param srcSqlHost
 	 * @param srcDatabse
@@ -786,12 +734,17 @@ public class JchLib_SnowflakeTest {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+		finally {
+			try {
+				stmnt.close();
+			} catch (SQLException e) {}
+		}
 		
 		return output;
 	}
 	
 	/***
-	 * 
+	 * Builds a tree map of Column names to Data Type Category f
 	 * @param shema
 	 * @return
 	 */
@@ -840,12 +793,9 @@ public class JchLib_SnowflakeTest {
 	 * srcSQLHost     /
 	 * 
 	 */
-	public static void copyTableData(String snowflakeCreds, String srcSqlHost, 
-		String database, String schema, String table) throws SQLException, IOException {
-		
-		StringBuilder intoColumns;
-		StringBuilder intoFields;
-		
+	public static void copyApiTableData(String snowflakeCreds, String srcSqlHost, 
+			String database, String schema, String table) throws SQLException, IOException {
+
 		//Get Sql Server RowSet
 		SqlServerCnString srcCnString = new SqlServerCnString();
 		srcCnString.setCnStringIntegratedSecurity(srcSqlHost, null , database);
@@ -871,7 +821,6 @@ public class JchLib_SnowflakeTest {
         CachedRowSet sfCols = rsf.createCachedRowSet();
         sfCols.populate(sfColsRs);
         sfStatement.close();
-        //;
         
         //generate list of matching columns between Sql Server and Snowflake tables
         ArrayList<String> cols = rowsetColCompare(ssCols,sfCols);
@@ -951,10 +900,10 @@ public class JchLib_SnowflakeTest {
         sql.append(sqlInsertInto + " VALUES  " + values.toString());
         
         
-		//Synchronous Call
+		//Synchronous Call: waits for round trip before proceeding (Safer and slower; will bomb on failure)
 		//statement.executeUpdate(sql.toString());
 		
-		//Asynchronous Call
+		//Asynchronous Call: doesn't wait for round trip (faster with but offers not guarantees on proper execution)
 		statement.unwrap(SnowflakeStatement.class).executeAsyncQuery(sql.toString());
         
         statement.close();
@@ -962,7 +911,14 @@ public class JchLib_SnowflakeTest {
 	}
 	
 	
-	
+	/***
+	 * 
+	 * @param value
+	 * @param datatypeCat
+	 * @param textQualifier
+	 * @param escapeChar
+	 * @return String
+	 */
 	public static String sfCsvValuePrep(
 			String value, String datatypeCat, String textQualifier, String escapeChar) {
 		
@@ -1014,6 +970,12 @@ public class JchLib_SnowflakeTest {
 	}
 	
 	
+	/***
+	 * 
+	 * @param value
+	 * @param datatypeCat
+	 * @return String
+	 */
 	public static String sqlValuePrep(String value, String datatypeCat) {
 		
 		String output = "";
@@ -1029,6 +991,15 @@ public class JchLib_SnowflakeTest {
 		return output; 
 	}
 	
+	
+	/***
+	 * Converts a Postdate String (ie,"12/31/2021") or Processdate (ie,"20221231") or String with special
+	 * characters to a file system friendly value to help with file naming.
+	 * 
+	 * @param value
+	 * @param datatypeCat
+	 * @return String
+	 */
 	public static String fileNamePrep(String value, String datatypeCat) {
 		
 		String output = "";
@@ -1058,6 +1029,12 @@ public class JchLib_SnowflakeTest {
 	
 	static List<String> dateFormatStrings = 
 			Arrays.asList("MM/dd/yy","MM-dd-yy","MM/dd/yyyy","MM-dd-yyyy", "yyyyMMdd","yyyy-MM-dd");
+	
+	/***
+	 * Tries to parse a String to Date
+	 * @param dateString
+	 * @return
+	 */
 	static java.util.Date tryDateParse(String dateString) {
 	    for (String formatString : dateFormatStrings) {
 	        try {
@@ -1136,70 +1113,21 @@ public class JchLib_SnowflakeTest {
 	 */
 	String sqlSfDatabaseAllInformationShema(String database) {
 		String output = "SELECT * FROM \"" + database.toUpperCase() + "\".INFORMATION_SCHEMA.COLUMNS "+
-				"ORDER BY TABLE_SCHEMA, TABLE_NAME, ORDINAL_POSITION";
+						"ORDER BY TABLE_SCHEMA, TABLE_NAME, ORDINAL_POSITION";
 		return output;
 	}
 	
 	
 	static String sqlSfDatabaseTableInformationShema(String database, String schema, String table) {
 		String output = "SELECT * FROM \"" + database.toUpperCase() + "\".INFORMATION_SCHEMA.COLUMNS "
-				+ "WHERE TABLE_SCHEMA = '" + schema.toUpperCase() 
-				+ "' AND TABLE_NAME = '" + table.toUpperCase() + "' "
-				+ "ORDER BY ORDINAL_POSITION";
+						+ "WHERE TABLE_SCHEMA = '" + schema.toUpperCase() 
+						+ "' AND TABLE_NAME = '" + table.toUpperCase() + "' "
+						+ "ORDER BY ORDINAL_POSITION";
 		return output;
 	}
 	
-	//main
-	
-	//java.sql.Connection cn = null;
-	//Statement statement = cn.createStatement();
-	
-	//Pass
-	//cn = JchLib_SnowflakeTest.getConnection("H:\\snowflake_creds.json", "FMCUANALYTICSTEST", "dbo");
-	
-	//Pass
-	//cn = JchLib_SnowflakeTest.getConnection("H:\\snowflake_creds.json", "FMCUANALYTICSTEST");
-	//pass
-	//statement.executeUpdate("CREATE SCHEMA arcu");
-	//Pass
-	//statement.executeUpdate("create or replace table arcu.demo(C1 STRING)");
-	
-	//Pass
-	//cn = JchLib_SnowflakeTest.getConnection("H:\\snowflake_creds.json");
-	//Pass
-	//statement.executeUpdate("CREATE DATABASE test");
-	
-	
-	
-	//Passed!
-	//JchLib_SnowflakeTest.createDatabase("gcarcu080119","ARCUSYM000");
-	
-	//Passed!
-	//JchLib_SnowflakeTest.createDatabase("gcarcu080119","FMCUAnalytics");
-	
-	//Passed!
-	//JchLib_SnowflakeTest.createDatabase("gcarcu080119","CFSConnectors");
-	
-	//JchLib_SnowflakeTest.createAllDatabaseSchemas("gcarcu080119","ARCUSYM000");
-	//JchLib_SnowflakeTest.createAllTablesDatabase("gcarcu080119","ARCUSYM000");
-	//JchLib_SnowflakeTest.createAccountTableTest();
-	//JchLib_SnowflakeTest.snowflakeDriverTest();
-	
-	/***
-	 * Copies database schema and tables from a SQL Server host up to Snowflake instance.
-	 * 
-	 * host
-	 * 	database
-	 * 	 schemas
-	 *    tables
-	 *     columns
-	 */
-	public static void copyTableSchemas() {
-		createDatabase("gcarcu080119","ARCUSYM000");
-		createDatabase("gcarcu080119","FMCUAnalytics");
-		createDatabase("gcarcu080119","CFSConnectors");
-	}
-	
+
+
 	/***
 	 * Creates a copy of database, schema, and tables from a SQL Server host to a Snowflake instance
 	 * 
@@ -1323,25 +1251,32 @@ public class JchLib_SnowflakeTest {
 	/***
 	 * Connect to an existing Generates a CREATE TABLE for Snowflake
 	 * 
-	 * @param srcSqlHost
-	 * @param srcDatabse
-	 * @param srcSchema
-	 * @param srcTable
+	 * Schema columns used from SQL Server
+	 * DATA_TYPE_CAT,DATA_TYPE,COLUMN_NAME,NUMERIC_PRECISION,NUMERIC_SCALE,
+	 * ORDINAL_POSITION,COLUMN_DEFAULT,CHARACTER_MAXIMUM_LENGTH
+	 * 
+	 * 
+	 * @param srcSqlHost String:
+	 * @param srcDatabse String:
+	 * @param srcSchema String: 
+	 * @param srcTable String:
 	 * @return
 	 */
 	public static String createSfTable(String srcSqlHost, String srcDatabase, String srcSchema, String srcTable) {
-		SqlServerCnString srcCnString = new SqlServerCnString();
+		
+		//make connection to source SQL Server
+		SqlServerCnString srcCnString = new SqlServerCnString();								
 		srcCnString.setCnStringIntegratedSecurity(srcSqlHost, null , srcDatabase);
 		
 		//get column of current table
 		SqlServerDbScour dbsSource = new SqlServerDbScour();
 		RowSet cols = dbsSource.getSrcInformationSchema(
-				srcCnString.getCnString(), 
-				srcCnString.getDatabaseName(), 
-				srcSchema, 
-				srcTable);
-		
-		//check for weird characters: if true, wrap with double quotes (snowflake likes for literals)
+							srcCnString.getCnString(), 
+							srcCnString.getDatabaseName(), 
+							srcSchema, 
+							srcTable);
+					
+		//check for unconventional characters in table name: if true, wrap with double quotes for Snowflake literals
 		if(srcTable.contains("[") == true || 
 		   srcTable.contains("]") == true ||	
 		   srcTable.contains(".") == true || 
@@ -1359,16 +1294,17 @@ public class JchLib_SnowflakeTest {
 		//ensure 1 column per ordinal position.  
 		int ordinal = 0, prevOrdinal = 0;
 						
-		//iterate through columns
+		
 		int colCnt = 0;
 		
 		try {
 			
+			//iterate through columns
 			while(cols.next()) {
 				
 				ordinal = cols.getInt("ORDINAL_POSITION");
 				
-				//ensures column names won't be repeated
+				//ensures column names won't be repeated if a constraint causes column to appear more than once
 				if(ordinal != prevOrdinal ) {
 					
 					colCnt++;
@@ -1387,8 +1323,8 @@ public class JchLib_SnowflakeTest {
 					}
 					createStatement.append("\t" + colName);
 					
-					//convert data type to snowflake compatible
-					String datatype = convertDataType(
+					//convert data type to Snowflake compatible
+					String datatype = convertSsToSfDataType(
 							cols.getString("DATA_TYPE_CAT"),
 							cols.getString("DATA_TYPE"),
 							cols.getInt("NUMERIC_PRECISION"),
@@ -1479,7 +1415,6 @@ public class JchLib_SnowflakeTest {
 				true);								//Grab only user tables
 		try {
 			String tableName = "";
-			String prevTableName = "";
 			int line = 0;
 			
 			ArrayList<String> pks = new ArrayList<String>();
@@ -1504,7 +1439,7 @@ public class JchLib_SnowflakeTest {
 					if(infSchema.getString("CONSTRAINT_NAME") != null) pks.add(infSchema.getString("COLUMN_NAME"));
 					
 					//pass over relevant SQL Server schema info to return a Snowflake friendly datatype
-					String datatype = convertDataType(
+					String datatype = convertSsToSfDataType(
 										 infSchema.getString("DATA_TYPE_CAT"),
 										 infSchema.getString("DATA_TYPE"),
 										 infSchema.getInt("NUMERIC_PRECISION"),
@@ -1520,8 +1455,6 @@ public class JchLib_SnowflakeTest {
 
 					System.out.print(str);
 				}
-				
-				prevTableName = tableName;
 			}
 			if(pks.size() > 0) {
 				System.out.println(",");
@@ -1537,7 +1470,6 @@ public class JchLib_SnowflakeTest {
 				
 			}
 			
-				
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -1560,38 +1492,26 @@ public class JchLib_SnowflakeTest {
 		return output;
 	}
 	
-	
 	/***
-	 * Converts SQL Server data type to Snowflake datatype
-	 * @param dataType
+	 * 	Converts SQL Server data type to Snowflake datatype
+	 * 
+	 * Data Type Categories (dataTypeCategory)
+	 * 	DATE	smalldatetime,date,datetime,datetime2,time
+	 *	NUMERIC	smallint,money,int,numeric,bigint,decimal,bit,float,tinyint,real
+	 *	TEXT	varchar,char,nvarchar,nchar,uniqueidentifier,text
+	 *	OTHER	varbinary
+	 *	
+	 * @param dataTypeCategory String:
+	 * @param dataType String:
+	 * @param numericPrecision int:
+	 * @param numericScale int:
+	 * @param charMaxLength int:
+	 * @param colDefault String:
 	 * @return
 	 */
-	static String convertDataType(String dataTypeCategory, String dataType, int numericPrecision, int numericScale, 
-			int charMaxLength, String colDefault) {
-		/*
-			DATE	smalldatetime
-			DATE	date
-			DATE	datetime
-			DATE	datetime2
-			DATE	time
-			NUMERIC	smallint
-			NUMERIC	money
-			NUMERIC	int
-			NUMERIC	numeric
-			NUMERIC	bigint
-			NUMERIC	decimal
-			NUMERIC	bit
-			NUMERIC	float
-			NUMERIC	tinyint
-			NUMERIC	real
-			OTHER	varbinary
-			TEXT	varchar
-			TEXT	char
-			TEXT	nvarchar
-			TEXT	nchar
-			TEXT	uniqueidentifier
-			TEXT	text
-		*/
+	static String convertSsToSfDataType(String dataTypeCategory, String dataType, int numericPrecision, int numericScale, 
+							int charMaxLength, String colDefault) {
+
 		String output = null;
 		switch(dataTypeCategory) {
 			case "TEXT":
@@ -1651,60 +1571,7 @@ public class JchLib_SnowflakeTest {
 		return output;
 	}
 	
-	
-	/****
-	 * Snowflake demo script pulled from website
-	 * https://docs.snowflake.com/en/user-guide/jdbc-configure.html
-	 * @throws Exception
-	 */
-	public static void snowflakeDriverTest() throws Exception {
-	    // get connection
-	    System.out.println("Create Snowflake JDBC connection");
-	    Connection connection = getConnectionTest();
-	    System.out.println("Done creating JDBC connection");
-	    
-	    // create statement
-	    System.out.println("Create JDBC statement");
-	    Statement statement = connection.createStatement();
-	    System.out.println("Done creating JDBC statement");
-	    
-	    // create a table
-	    System.out.println("Create demo table");
-	    statement.executeUpdate("create or replace table demo(C1 STRING)");
-	    //statement.close();
-	    System.out.println("Done creating demo table");
-	    
-	    // insert a row
-	    System.out.println("Insert 'hello world'");
-	    statement.executeUpdate("insert into demo values ('hello world')");
-	    //statement.close();
-	    System.out.println("Done inserting 'hello world'");
-	    
-	    // query the data
-	    System.out.println("Query demo");
-	    ResultSet resultSet = statement.executeQuery("SELECT * FROM demo");
-	    System.out.println("Metadata:");
-	    System.out.println("================================");
-	    
-	    // fetch metadata
-	    ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-	    System.out.println("Number of columns=" +       resultSetMetaData.getColumnCount());
-	    for (int colIdx = 0; colIdx < resultSetMetaData.getColumnCount(); colIdx++)
-	    {
-	    	System.out.println("Column " + colIdx + ": type=" + resultSetMetaData.getColumnTypeName(colIdx+1));
-	    }
-	    
-	    // fetch data
-	    System.out.println("nData:");
-	    System.out.println("================================");
-	    int rowIdx = 0;
-	    while(resultSet.next())
-	    {
-	    	System.out.println("row " + rowIdx + ", column 0: " + resultSet.getString(1));
-	    }
-	    statement.close();
-	}
-	
+
 	/***
 	 * snowflake_creds.json
 	 * <start file>
@@ -1721,9 +1588,10 @@ public class JchLib_SnowflakeTest {
 	
 	
 	/***
+	 * Creates and returns a Snowflake connection based on JSON credential path.
 	 * 
-	 * @param credentialPath
-	 * @return 
+	 * @param credentialPath String: (ie, "C:\\temp\\creds.json")
+	 * @return Snowflake connected java.sql.Connection:
 	 * @throws SQLException
 	 */
 	public static Connection getConnection(String credentialPath)  {
@@ -1956,5 +1824,60 @@ public class JchLib_SnowflakeTest {
 	    
 	    return DriverManager.getConnection(connectStr, properties); 
 	}
+	
+	
+	/****
+	 * Snowflake demo script pulled from website
+	 * https://docs.snowflake.com/en/user-guide/jdbc-configure.html
+	 * @throws Exception
+	 */
+	public static void snowflakeDriverTest() throws Exception {
+	    // get connection
+	    System.out.println("Create Snowflake JDBC connection");
+	    Connection connection = getConnectionTest();
+	    System.out.println("Done creating JDBC connection");
+	    
+	    // create statement
+	    System.out.println("Create JDBC statement");
+	    Statement statement = connection.createStatement();
+	    System.out.println("Done creating JDBC statement");
+	    
+	    // create a table
+	    System.out.println("Create demo table");
+	    statement.executeUpdate("create or replace table demo(C1 STRING)");
+	    //statement.close();
+	    System.out.println("Done creating demo table");
+	    
+	    // insert a row
+	    System.out.println("Insert 'hello world'");
+	    statement.executeUpdate("insert into demo values ('hello world')");
+	    //statement.close();
+	    System.out.println("Done inserting 'hello world'");
+	    
+	    // query the data
+	    System.out.println("Query demo");
+	    ResultSet resultSet = statement.executeQuery("SELECT * FROM demo");
+	    System.out.println("Metadata:");
+	    System.out.println("================================");
+	    
+	    // fetch metadata
+	    ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+	    System.out.println("Number of columns=" +       resultSetMetaData.getColumnCount());
+	    for (int colIdx = 0; colIdx < resultSetMetaData.getColumnCount(); colIdx++)
+	    {
+	    	System.out.println("Column " + colIdx + ": type=" + resultSetMetaData.getColumnTypeName(colIdx+1));
+	    }
+	    
+	    // fetch data
+	    System.out.println("nData:");
+	    System.out.println("================================");
+	    int rowIdx = 0;
+	    while(resultSet.next())
+	    {
+	    	System.out.println("row " + rowIdx + ", column 0: " + resultSet.getString(1));
+	    }
+	    statement.close();
+	}
+	
 	
 }
