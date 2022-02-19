@@ -4,7 +4,7 @@ import java.util.concurrent.*;
 import javax.sql.*;
 import javax.sql.rowset.*;
 
-import com.sun.prism.impl.Disposer.Record;
+//import com.sun.prism.impl.Disposer.Record;
 
 /***
  * SqlServerDbSour can be used to get basic statics about a database and to search specific values.
@@ -317,7 +317,7 @@ public class SqlServerDbScour {
 			String destDbName, String destSchema, RowSet tblStats) {
 		
 		boolean success = true;
-		Connection destCn = null;
+		//Connection destCn = null;
 		ThreadPoolExecutor exe = null;
 		
 		try {
@@ -886,38 +886,43 @@ public class SqlServerDbScour {
 	 * @param srcDbName
 	 * @return
 	 */
-	public RowSet getSrcTables(String srcCnString, String srcDbName) {
+	public static RowSet getSrcTables(String srcCnString, String srcDbName, String srcSchema) {
         //String sqlAllDatabase = SqlServerDiscovery.sqlAllUserDatabases();
 
 		Connection cn = null;  //connection
 		CachedRowSet rs = null;
 		
-		//Open connection, run drop sql statements
-        try {
-            cn = DriverManager.getConnection(srcCnString);  
-            
-            //Either grab only user tables or both tables and views.
-            String sql;
-            
-            //check statement
-            //System.out.println(SqlServerDiscovery.sqlDbTables(srcDbName));
-            
-            sql = SqlServerDiscovery.sqlDbTables(srcDbName);
-	        Statement sta = cn.createStatement(ResultSet.TYPE_FORWARD_ONLY,ResultSet.CONCUR_READ_ONLY);
-	        ResultSet res = sta.executeQuery(sql);
-	        
-	        RowSetFactory rsf = RowSetProvider.newFactory();
-	        rs = rsf.createCachedRowSet();
-	        rs.populate(res);
- 
-        } 
-        catch (SQLException ex) {ex.printStackTrace();} 
-        finally {
+		if(srcCnString != null && srcDbName != null) {
+			//Open connection, run drop sql statements
 	        try {
-	            if (cn != null && !cn.isClosed()) {cn.close();}
+	            cn = DriverManager.getConnection(srcCnString);  
+	            
+	            //Either grab only user tables or both tables and views.
+	            String sql;
+	            
+	            //check statement
+	            //System.out.println(SqlServerDiscovery.sqlDbTables(srcDbName));
+	            
+	            if(srcSchema == null)
+	            	sql = SqlServerDiscovery.sqlDbTables(srcDbName);
+	            else
+	            	sql = SqlServerDiscovery.sqlDbTables(srcDbName,srcSchema);
+		        Statement sta = cn.createStatement(ResultSet.TYPE_FORWARD_ONLY,ResultSet.CONCUR_READ_ONLY);
+		        ResultSet res = sta.executeQuery(sql);
+		        
+		        RowSetFactory rsf = RowSetProvider.newFactory();
+		        rs = rsf.createCachedRowSet();
+		        rs.populate(res);
+	 
 	        } 
-	        catch (SQLException ex) {ex.printStackTrace();}
-        }
+	        catch (SQLException ex) {ex.printStackTrace();} 
+	        finally {
+		        try {
+		            if (cn != null && !cn.isClosed()) {cn.close();}
+		        } 
+		        catch (SQLException ex) {ex.printStackTrace();}
+	        }
+		}
         return rs; 
 	}
 	
@@ -928,7 +933,7 @@ public class SqlServerDbScour {
 	 * @param srcDbName
 	 * @return
 	 */
-	public RowSet getSrcSchemas(String srcCnString, String srcDbName) {
+	public static RowSet getSrcSchemas(String srcCnString, String srcDbName) {
         //String sqlAllDatabase = SqlServerDiscovery.sqlAllUserDatabases();
 
 		Connection cn = null;  //connection
@@ -969,7 +974,7 @@ public class SqlServerDbScour {
 	 * @param sqlSelect
 	 * @return
 	 */
-	public RowSet executeSqlRowSet(String srcCnString, String sqlSelect) {
+	public static RowSet executeSqlRowSet(String srcCnString, String sqlSelect) {
         //String sqlAllDatabase = SqlServerDiscovery.sqlAllUserDatabases();
 		
 		CachedRowSet output = null; //ResultSet
@@ -998,7 +1003,7 @@ public class SqlServerDbScour {
 	 * @param sqlSelect
 	 * @return
 	 */
-	public ResultSet executeSqlResultSet(String srcCnString, String sqlSelect) {
+	public static ResultSet executeSqlResultSet(String srcCnString, String sqlSelect) {
         //String sqlAllDatabase = SqlServerDiscovery.sqlAllUserDatabases();
 		
 		ResultSet output = null; //ResultSet
@@ -1018,7 +1023,7 @@ public class SqlServerDbScour {
 	
 	
 	/***
-	 * Returns schema information on all tables (and optionally vies) and columns 
+	 * Returns schema information on all tables (and optionally views) and columns 
 	 * 
 	 * Fields: TABLE_TYPE, TABLE_CATALOG, TABLE_SCHEMA, TABLE_NAME, COLUMN_NAME, CONSTRAINT_NAME, DATA_TYPE, ORDINAL_POSITION,
 	 * 	COLUMN_DEFAULT, IS_NULLABLE, CHARACTER_MAXIMUM_LENGTH, CHARACTER_OCTET_LENGTH, NUMERIC_PRECISION, NUMERIC_PRECISION_RADIX,
@@ -1029,7 +1034,7 @@ public class SqlServerDbScour {
 	 * @param Boolean includeViews
 	 * @return Information Schema RowSet
 	 */
-	public RowSet getSrcInformationSchema(String srcCnString, String srcDbName, boolean includeViews) {
+	public static RowSet getSrcInformationSchema(String srcCnString, String srcDbName, boolean includeViews) {
         //String sqlAllDatabase = SqlServerDiscovery.sqlAllUserDatabases();
 
 		Connection cn = null;  //connection
@@ -1067,13 +1072,13 @@ public class SqlServerDbScour {
 
 	
 	/***
-	 * Returns schema information on all tables (and optionally vies) and columns 
+	 * Returns schema information on all tables (and optionally views) and columns 
 	 * @param Source  String
 	 * @param Source Database Name
 	 * @param Boolean includeViews
 	 * @return Information Schema RowSet
 	 */
-	public RowSet getSrcInformationSchema(String srcCnString, String srcDbName, String schema, String tableName) {
+	public static RowSet getSrcInformationSchema(String srcCnString, String srcDbName, String schema, String tableName) {
         //String sqlAllDatabase = SqlServerDiscovery.sqlAllUserDatabases();
 
 		Connection cn = null;  //connection
@@ -1370,6 +1375,114 @@ public class SqlServerDbScour {
 	}
 
 	
+	public static String sqlMaxValue(String database, String schema, String table, String col) {
+		String output = null;
+		
+		if(database != null && schema != null && table != null)  {
+			
+			output = "SELECT MAX(" + SqlServerDiscovery.sqlObjBracket(col) + ") MaxValue FROM " 
+				   + SqlServerDiscovery.sqlObjBracket(database) + "."
+				   + SqlServerDiscovery.sqlObjBracket(schema) + "."
+				   + SqlServerDiscovery.sqlObjBracket(table);
+
+		}
+		
+		
+		return output;
+	}
+	
+
+	/***
+	 * 
+	 * @param database
+	 * @param schema
+	 * @param table
+	 * @param col
+	 * @param lowerVal
+	 * @param upperVal
+	 * @param dataTypeCat String: TEXT, NUMERIC, DATETIME, OTHER
+	 * @return
+	 */
+	public static String sqlBetweenValue(String database, String schema, String table, String col, String lowerVal, String upperVal, String dataTypeCat) {
+		String output = null;
+		
+		if(database != null && schema != null && table != null)  {
+			
+			output = "SELECT " + SqlServerDiscovery.sqlObjBracket(col) + " "
+				   + SqlServerDiscovery.sqlObjBracket(database) + "."
+				   + SqlServerDiscovery.sqlObjBracket(schema) + "."
+				   + SqlServerDiscovery.sqlObjBracket(table)
+				   + " WHERE " + SqlServerDiscovery.sqlObjBracket(col) + " >= " + sqlValuePrep(lowerVal, dataTypeCat) 
+				   + " AND " + SqlServerDiscovery.sqlObjBracket(col) + " <= " + sqlValuePrep(upperVal, dataTypeCat);
+
+		}
+		
+		
+		return output;
+	}
+	
+	
+	public static String sqlGreaterThan(String database, String schema, String table, String col, String value, String dataTypeCat) {
+		String output = null;
+		
+		if(database != null && schema != null && table != null)  {
+			
+			output = "SELECT " + SqlServerDiscovery.sqlObjBracket(col) + " FROM "
+				   + SqlServerDiscovery.sqlObjBracket(database) + "."
+				   + SqlServerDiscovery.sqlObjBracket(schema) + "."
+				   + SqlServerDiscovery.sqlObjBracket(table)
+				   + " WHERE " + SqlServerDiscovery.sqlObjBracket(col) + " > " + sqlValuePrep(value, dataTypeCat)
+				   + " GROUP BY " + SqlServerDiscovery.sqlObjBracket(col) 
+				   + " ORDER BY " + SqlServerDiscovery.sqlObjBracket(col);
+
+		}
+		
+		
+		return output;
+	}
+	
+	
+	/***
+	 * 
+	 * @param value
+	 * @param datatypeCat: TEXT, NUMERIC, DATETIME, OTHER
+	 * @return String
+	 */
+	public static String sqlValuePrep(String value, String datatypeCat) {
+		
+		String output = "";
+		/*
+		if(value.charAt(0) == '\'' && value.charAt(value.length() - 1) == '\'') {
+			value = removeCharAt(value, 0);
+			value = removeCharAt(value, value.length() - 1);
+		}
+		*/
+		
+		
+		//DATA_TYPE_CAT: TEXT, NUMERIC, DATETIME, OTHER
+		if(value == null) output = "";
+		else if (datatypeCat.equals("TEXT")) 
+			output = "'" + value.replace("'", "''") + "'";
+		else if (datatypeCat.equals("DATETIME")) output = "'" + value + "'";
+		else if (datatypeCat.equals("NUMERIC")) output = value;
+		else if (datatypeCat.equals("OTHER")) output = "";
+		
+		return output; 
+	}
+	
+	
+    static String removeCharAt(String str, int index) {
+
+        // The part of the String before the index:
+        String str1 = str.substring(0,index);
+
+        // The part of the String after the index:            
+        String str2 = str.substring(index+1,str.length());
+
+        // These two parts together gives the String without the specified index
+        return str1+str2;
+
+    }
 	
 	/***
 	 * Returns SQL that creates table to store results from INFORMATION_SCHEMA from 

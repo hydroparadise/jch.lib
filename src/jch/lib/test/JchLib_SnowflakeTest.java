@@ -16,7 +16,6 @@ import java.text.SimpleDateFormat;
 import java.util.Properties;
 import java.util.TreeMap;
 import java.util.concurrent.Executors;
-//import java.util.concurrent.Semaphore;
 import java.util.concurrent.ThreadPoolExecutor;
 
 import javax.sql.RowSet;
@@ -69,14 +68,320 @@ public class JchLib_SnowflakeTest {
 	static int API_PACK_SIZE = 1900000;
 	static int MAX_CONCURRENCY_LEVEL = 4;
 	
+	JchLib_SnowflakeTest() {
+		
+	}
 	
 	
+	
+	static public void writeCsvFromSqlServerAllTablesFull(String filePath,long maxFileSize,
+			 String srcSqlHost, String srcDatabase, String srcSchema,
+			 String sfCredsLoc, String sfDatabase, String sfSchema,
+			 String rowDelim, String colDelim, String textQualifier, String escapeChar) {
+		
+		//Get Sql Server Table information in a RowSet, connection opening and closing handled by called functions
+		SqlServerCnString srcCnString = new SqlServerCnString();
+		srcCnString.setCnStringIntegratedSecurity(srcSqlHost, null , srcDatabase);
+		RowSet ssTables = SqlServerDbScour.getSrcTables(
+				srcCnString.getCnString(), srcCnString.getDatabaseName(), srcSchema);
+
+		
+		try {
+			ThreadPoolExecutor exe = (ThreadPoolExecutor) Executors.newFixedThreadPool(MAX_CONCURRENCY_LEVEL);
+			
+			while(ssTables.next()) {
+				
+				
+				final String schemaName = ssTables.getString("TABLE_SCHEMA");
+				final String tableName = ssTables.getString("TABLE_NAME");
+				final String fileName = schemaName + "." + tableName;
+				
+				exe.execute(()->  
+				JchLib_SnowflakeTest.writeCsvFromSqlServerTableFull(
+						filePath, fileName,	maxFileSize,				//max file size in bytes
+						srcSqlHost,srcDatabase,srcSchema,tableName,		//String srcSqlHost, String srcDatabse, String srcSchema, String srcTable,
+						sfCredsLoc,sfDatabase,sfSchema,tableName,		//String sfCredsLoc, sfDatabase,sfSchema, sfTable
+						rowDelim,colDelim,textQualifier,escapeChar)
+				);
+			}
+			
+			exe.shutdown();
+		
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+	
+	
+	/***
+	 * Connects to a Sql Server with a Database and Schema context, iterates through all tables and
+	 * compares a table against a given Snowflake Database and Schema context with a table of the 
+	 * same name, and creates a compressed CSV file of the difference between the two tables.
+	 * The file names will contain the specific time slice the file represents in YYYYMMDD format.
+	 * 
+	 *  											     Max: 12/31/2021
+	 * 	SqlServer Hostname -> Database -> dbo -> Transaction(Postdate, TransAmount,.....)
+	 * 															|--> dbo.Transaction_20201231.csv
+	 * 															| 	  |--> dbo.Transaction_20201231.csv.gz
+	 * 															|--> dbo.Transaction_20201230.csv
+	 *  														| 	  |--> dbo.Transaction_20201231.csv.gz
+	 * 	Snowflake Instance -> Database -> dbo -> Transaction(Postdate, TransAmount,.....)
+	 *  											     Max: 12/29/2021
+	 * 
+	 * If the source table contains data but the destination table does not, it will print the full 
+	 * table. If the table doesn't have a time dimension to compare, an optional flag can be specified to print
+	 * the full table.  A full table will be split based on the max file size specified in its uncompressed
+	 * version of itself
+	 * 
+	 *	dbo.Transaction_001.csv.gz
+	 *	dbo.Transaction_002.csv.gz
+	 *	dbo.Transaction_***.csv.gz
+	 *
+	 * This method uses a thread pool to concurrently pull tables, with the max concurrency specified by
+	 * MAX_CONCURRENCY_LEVEL (ie 4 threads at any give time)
+	 * 
+	 * @param filePath: Output file location (ie, "C:\\temp\\")
+	 * @param maxFileSize: Max file size threshold (ie, 30000 "means 30Kb" or 4000000000L "means 4Gb") 
+	 * @param srcSqlHost: Source SQL Server Hostname or IP address (ie, "SQLSERV01" or "192.168.1.102")
+	 * @param srcDatabse: Source Database in which table resides (ie,"DatabaseName")
+	 * @param srcSchema: Source Database schema table resides (ie, "dbo")
+	 * @param sfCredsLoc: Location of Snowflake credentials specified via JSON (ie, "C\\snowflake_creds.json")
+	 * @param sfDatabase: Remote Snowflake database name (ei, "DatabaseName")
+	 * @param sfSchema: Remote Snowflake schema name to compare columns(ie,"DBO")
+	 * @param rowDelim: Output file row delimiter (ie,"\r\n" or "\n")
+	 * @param colDelim: Output file column or field delimiter(ie, "," or "~" or "\t")
+	 * @param textQualifier: String, text, or VARCHAR datatype value qualifier (ie,"\"" -> ")
+	 * @param escapeChar: POSIX control character (ie, "\\" -> \)
+	 * @param optionalFull: Prints full file it time dimension can't be determined it set to true
+	 */
+	static public void writeCsvFromSqlServerAllTablesDiff(String filePath,long maxFileSize,
+			 String srcSqlHost, String srcDatabase, String srcSchema,
+			 String sfCredsLoc, String sfDatabase, String sfSchema,
+			 String rowDelim, String colDelim, String textQualifier, String escapeChar,
+			 ArrayList<String> timeDimensions, boolean strictPK, boolean optionalFull) {
+
+		/*Get Sql Server Table information in a RowSet, connection opening and closing handled by called functions
+		 * 	ssTable field set:
+			TABLE_TYPE,TABLE_CATALOG,TABLE_SCHEMA,TABLE_NAME
+		*/
+		
+		SqlServerCnString srcCnString = new SqlServerCnString();
+		srcCnString.setCnStringIntegratedSecurity(srcSqlHost, null , srcDatabase);
+		RowSet ssTables = SqlServerDbScour.getSrcTables(
+				srcCnString.getCnString(), srcCnString.getDatabaseName(), srcSchema);
+
+		
+		try {
+			ThreadPoolExecutor exe = (ThreadPoolExecutor) Executors.newFixedThreadPool(MAX_CONCURRENCY_LEVEL);
+			
+			//iterate through tables until reach the end of ssTables RowSet
+			while(ssTables.next()) {
+				
+				//get Sql Server schema name and table name
+				final String schemaName = ssTables.getString("TABLE_SCHEMA");
+				final String tableName = ssTables.getString("TABLE_NAME");
+				
+				/*get RowSet of columns for the current table
+					ssCol field set:
+					TABLE_TYPE,TABLE_CATALOG,TABLE_SCHEMA,TABLE_NAME,COLUMN_NAME,CU.CONSTRAINT_NAME,
+					DATA_TYPE,ORDINAL_POSITION,COLUMN_DEFAULT,IS_NULLABLE,CHARACTER_MAXIMUM_LENGTH,CHARACTER_OCTET_LENGTH,
+					NUMERIC_PRECISION,NUMERIC_PRECISION_RADIX,NUMERIC_SCALE,DATETIME_PRECISION, 
+					CHARACTER_SET_NAME,COLLATION_CATALOG,COLLATION_SCHEMA,COLLATION_NAME,DOMAIN_CATALOG, 
+					DOMAIN_SCHEMA,DOMAIN_NAME,CHARACTER_SET_CATALOG,CHARACTER_SET_SCHEMA,  
+					DATA_TYPE_CAT --CASE  'TEXT', 'NUMERIC', 'DATETIME', 'OTHER' 
+				 */
+				RowSet ssCols = SqlServerDbScour.getSrcInformationSchema(
+						srcCnString.getCnString(),srcDatabase,schemaName,tableName);
+				
+				final String fileName = schemaName + "." + tableName;
+
+				String valueLimiterCol = null;
+				String dataTypeCat = null;
+				
+				//find time dimension of table to split
+				while(ssCols.next() && valueLimiterCol == null) {
+					String colName = ssCols.getString("COLUMN_NAME");
+					
+					//if strickPK is set to true, check the column constraint to see if "PK" is present which
+					//is usually indicative of the column be being a primary key
+					if(strictPK == true) {
+						String constraint = ssCols.getString("CONSTRAINT_NAME");
+						if(constraint != null && constraint.toUpperCase().contains("PK")) {
+							valueLimiterCol = containsString(colName, timeDimensions);
+							dataTypeCat = ssCols.getString("DATA_TYPE_CAT");
+						}
+					} else {
+						valueLimiterCol = containsString(colName, timeDimensions);
+						dataTypeCat = ssCols.getString("DATA_TYPE_CAT");
+					}
+					
+				}
+				
+				//to pass function to ThreadPoolExecutor, variables must be "final"
+				final String vlc = valueLimiterCol;
+				final String dtc = dataTypeCat;
+				
+				if(valueLimiterCol != null) {
+					exe.execute(()->  
+						JchLib_SnowflakeTest.writeCsvFromSqlServerTableDiff(
+							filePath, fileName,	maxFileSize,				//max file size in bytes
+							srcSqlHost,srcDatabase,srcSchema,tableName,		//String srcSqlHost, String srcDatabse, String srcSchema, String srcTable,
+							sfCredsLoc,sfDatabase,sfSchema,tableName,		//String sfCredsLoc, sfDatabase,sfSchema, sfTable
+							rowDelim,colDelim,textQualifier,escapeChar,
+							vlc, dtc)
+					);
+				}
+				else if (optionalFull == true) {
+					System.out.println(fileName + ": Full file");
+					
+					exe.execute(()->  
+						JchLib_SnowflakeTest.writeCsvFromSqlServerTableFull(
+								filePath, fileName,	maxFileSize,				//max file size in bytes
+								srcSqlHost,srcDatabase,srcSchema,tableName,		//String srcSqlHost, String srcDatabse, String srcSchema, String srcTable,
+								sfCredsLoc,sfDatabase,sfSchema,tableName,		//String sfCredsLoc, sfDatabase,sfSchema, sfTable
+								rowDelim,colDelim,textQualifier,escapeChar)
+					);
+				}
+			}
+			
+			exe.shutdown();
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+	
+	
+	/***
+	 */
+	static public void writeCsvFromSqlServerTableDiff(String filePath, String fileName, long maxFileSize,
+			 String srcSqlHost, String srcDatabase, String srcSchema, String srcTable,
+			 String sfCredsLoc, String sfDatabase, String sfSchema, String sfTable,
+			 String rowDelim, String colDelim, String textQualifier, String escapeChar,
+			 String valueLimiterCol, String dataTypeCat) {
+		
+		
+		//make sure SQL server source has data to pull
+		String ssMaxValue = null;
+		ssMaxValue = getSsMaxValue(srcSqlHost,  srcDatabase, srcSchema, srcTable, valueLimiterCol);
+		System.out.println(SqlServerDbScour.sqlMaxValue(srcDatabase, srcSchema, srcTable, valueLimiterCol) + ": " + ssMaxValue);
+		
+		
+		//make sure some value was returned on SQL Server side, otherwise skip
+		if (ssMaxValue != null) {
+			
+			//ping Snowflake source for most current data
+			String sfMaxValue = null;
+			sfMaxValue = getSfMaxValue(sfCredsLoc, sfDatabase, sfSchema, sfTable, valueLimiterCol);
+			System.out.println(sqlSfMaxValue(sfDatabase, sfSchema, sfTable, valueLimiterCol) + ": " + sfMaxValue);
+			
+			//make sure some value was returned, otherwise pull full file
+			if(sfMaxValue != null) {
+				
+				System.out.println(SqlServerDbScour.sqlGreaterThan(srcDatabase, srcSchema, srcTable, valueLimiterCol, sfMaxValue, dataTypeCat));
+				
+				
+				SqlServerCnString srcCnString = new SqlServerCnString();
+				srcCnString.setCnStringIntegratedSecurity(srcSqlHost, null , srcDatabase);
+				
+				RowSet segs = SqlServerDbScour.executeSqlRowSet(srcCnString.getCnString(), 
+						SqlServerDbScour.sqlGreaterThan(srcDatabase, srcSchema, srcTable, valueLimiterCol, sfMaxValue, dataTypeCat));
+				try {
+					while(segs.next()) {
+						
+						String valueLimit = segs.getString(valueLimiterCol);
+						System.out.println(valueLimit);
+						writeCsvFromSqlServerTableValueLimit(filePath, fileName, maxFileSize,
+								 srcSqlHost, srcDatabase, srcSchema, srcTable,
+								 sfCredsLoc, sfDatabase, sfSchema, sfTable,
+								 rowDelim, colDelim, textQualifier, escapeChar,
+								 valueLimiterCol, valueLimit);
+			
+						
+					}
+				} catch (SQLException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+				
+			}
+			else {
+				
+				JchLib_SnowflakeTest.writeCsvFromSqlServerTableFull(
+						filePath, fileName,	maxFileSize,				//max file size in bytes
+						srcSqlHost,srcDatabase,srcSchema,srcTable,		//String srcSqlHost, String srcDatabse, String srcSchema, String srcTable,
+						sfCredsLoc,sfDatabase,sfSchema,sfTable,		//String sfCredsLoc, sfDatabase,sfSchema, sfTable
+						rowDelim,colDelim,textQualifier,escapeChar);	
+				
+			}
+			
+		}
+
+	}
+	
+	
+	
+	public ArrayList<String> arcuDimensions = new ArrayList<String>( Arrays.asList("POSTDATE", "PROCESSDATE", "DATE"));
+	
+	static String containsString(String checkString, ArrayList<String> stringList) {
+		String output = null;
+		
+		if(stringList.contains(checkString.toUpperCase()))
+			output = checkString;
+		return output;
+	}
+	
+	
+	
+	/***
+	 * 
+	 */
+	static String getSfMaxValue(String sfCredsLoc, String sfDatabase, String sfSchema, String sfTable, String valueLimiterCol) {
+		String output = null;
+		
+		java.sql.Connection sfCn = null;
+		sfCn = JchLib_SnowflakeTest.getConnection(sfCredsLoc);
+		String sqlSfMaxValue = sqlSfMaxValue(sfDatabase, sfSchema, sfTable, valueLimiterCol);
+		RowSet rsSfmax = executeRowSetSnowflakeCommand(sqlSfMaxValue, sfCn);
+		
+		try {
+			rsSfmax.next();
+			output = rsSfmax.getString("MaxValue");
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	
+		return output;
+	}
+	
+	
+	/***
+	 * 
+	 */
+	static String getSsMaxValue(String srcSqlHost, String srcDatabase, String srcSchema, String srcTable, String valueLimiterCol) {
+		String output = null;
+		SqlServerCnString srcCnString = new SqlServerCnString();
+		srcCnString.setCnStringIntegratedSecurity(srcSqlHost, null , srcDatabase);
+		
+		RowSet rsSsMax = SqlServerDbScour.executeSqlRowSet(srcCnString.getCnString(), 
+				SqlServerDbScour.sqlMaxValue(srcDatabase, srcSchema, srcTable, valueLimiterCol));
+		try {
+			rsSsMax.next();
+			output = rsSsMax.getString("MaxValue");
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	
+		return output;
+	}
 
     /***
-     * Compressess source to output file.
+     * Compresses source to output file in GZIP format
      * 
-     * @param source: The file and location of extract to compress.
-     * (ie,"C:\\temp\\EXTRACT.csv","C:\\temp\\EXTRACT.csv.gz") 
+     * @param source: The file and location of extract to compress (ie,"C:\\temp\\EXTRACT.csv","C:\\temp\\EXTRACT.csv.gz") 
      * @param target: The output file name after compression.
      * @deleteSource: Flag to delete source file after compression.
      * @throws IOException
@@ -184,20 +489,13 @@ public class JchLib_SnowflakeTest {
 	 * @param srcTable: Source SQL Server table to create extract of (ie."ACCOUNT")
 	 * @param sfTable": Remote Snowflake table name to compare columns (ie,"ACCOUNT")
 	 */
-	static public void writeCsvFromSqlServerTable(String filePath, String fileName, long maxFileSize,
+	static public void writeCsvFromSqlServerTableFull(String filePath, String fileName, long maxFileSize,
 			 String srcSqlHost, String srcDatabase, String srcSchema, String srcTable, String sfCredsLoc) {
-		JchLib_SnowflakeTest.writeCsvFromSqlServerTable(
-				filePath, 
-				fileName, 
-				maxFileSize,	//max file size in bytes
-				srcSqlHost,		//String srcSqlHost, 
-				srcDatabase,		//String srcDatabse, 
-				srcSchema,		//String srcSchema, 
-				srcTable,		//String srcTable,
-				sfCredsLoc,		//String sfCredsLoc, 
-				srcDatabase,		//String sfDatabase, 
-				srcSchema,		//String sfSchema, 
-				srcTable);		//String sfTable
+		
+		JchLib_SnowflakeTest.writeCsvFromSqlServerTableFull(
+				filePath, fileName, maxFileSize,	
+				srcSqlHost,	srcDatabase, srcSchema,	srcTable,		
+				sfCredsLoc,	srcDatabase, srcSchema,	srcTable);	
 					
 	}
 	
@@ -219,25 +517,14 @@ public class JchLib_SnowflakeTest {
 	 * @param sfSchema: Remote Snowflake schema name to compare columns(ie,"DBO")
 	 * @param sfTable": Remote Snowflake table name to compare columns (ie,"ACCOUNT")
 	 */
-	static public void writeCsvFromSqlServerTable(String filePath, String fileName, long maxFileSize,
+	static public void writeCsvFromSqlServerTableFull(String filePath, String fileName, long maxFileSize,
 			 String srcSqlHost, String srcDatabase, String srcSchema, String srcTable,
 			 String sfCredsLoc, String sfDatabase, String sfSchema, String sfTable) {
-		JchLib_SnowflakeTest.writeCsvFromSqlServerTable(
-				filePath, 
-				fileName, 
-				maxFileSize,	//max file size in bytes
-				srcSqlHost,		//String srcSqlHost, 
-				srcDatabase,		//String srcDatabse, 
-				srcSchema,		//String srcSchema, 
-				srcTable,		//String srcTable,
-				sfCredsLoc,		//String sfCredsLoc, 
-				sfDatabase,		//String sfDatabase, 
-				sfSchema,		//String sfSchema, 
-				sfTable,		//String sfTable
-				"\r\n",			//rowDelim
-				",",			//colDelim
-				"\"",			//textQualifier
-				"\\");			//escapeChar						
+		JchLib_SnowflakeTest.writeCsvFromSqlServerTableFull(
+				filePath, fileName,	maxFileSize,	//max file size in bytes
+				srcSqlHost,	srcDatabase, srcSchema,	srcTable,	//String srcSqlHost, String srcDatabse, String srcSchema, String srcTable,
+				sfCredsLoc,	sfDatabase,	sfSchema,  sfTable,		//String sfCredsLoc, sfDatabase,sfSchema, sfTable
+				"\r\n",	",","\"","\\");			//rowDelim,colDelim,textQualifier,escapeChar						
 	}
 	
 	
@@ -264,7 +551,7 @@ public class JchLib_SnowflakeTest {
 	 * @param valueLimterFCol: Column or Field Name used to limit dataset (ie, "ProcessDate" or "POSTDATE")
 	 * @param valueLimit: Value (ie, int: "20220203" or date: "2/3/2022" or date: "2022/02/03")
 	 */
-	static public void writeCsvFromSqlServerTable(String filePath, String fileName, long maxFileSize,
+	static public void writeCsvFromSqlServerTableValueLimit(String filePath, String fileName, long maxFileSize,
 							 String srcSqlHost, String srcDatabase, String srcSchema, String srcTable,
 							 String sfCredsLoc, String sfDatabase, String sfSchema, String sfTable,
 							 String rowDelim, String colDelim, String textQualifier, String escapeChar,
@@ -273,10 +560,9 @@ public class JchLib_SnowflakeTest {
 		//Get Sql Server Schema Rowset
 		SqlServerCnString srcCnString = new SqlServerCnString();
 		srcCnString.setCnStringIntegratedSecurity(srcSqlHost, null , srcDatabase);
-		SqlServerDbScour dbsSource = new SqlServerDbScour();
-		RowSet ssSchemaRowSet = dbsSource.getSrcInformationSchema(
-				srcCnString.getCnString(), srcCnString.getDatabaseName(), srcSchema, srcTable);
 		
+		RowSet ssSchemaRowSet = SqlServerDbScour.getSrcInformationSchema(
+				srcCnString.getCnString(), srcCnString.getDatabaseName(), srcSchema, srcTable);
 		
 		//Get Snowflake Schema RowSet
 		java.sql.Connection sfCn = null;
@@ -291,18 +577,19 @@ public class JchLib_SnowflakeTest {
         ArrayList<String> cols = rowsetColCompare(ssSchemaRowSet,sfSchemaRowSet);
         String sqlSsTable = SqlServerDiscovery.sqlGenerateSelect(srcDatabase, srcSchema, srcTable, cols);
         
-        System.out.println("Column Count: " + cols.size());
+        System.out.println("Column Count: " + cols.size() + ", " + datatypeCategories.size());
         
-        String sqlValueLimit = sqlValuePrep(valueLimit,datatypeCategories.get(valueLimiterCol));
+        
+        String sqlValueLimit = SqlServerDbScour.sqlValuePrep(valueLimit, datatypeCategories.get(valueLimiterCol.toUpperCase()));
         String sqlValueLimitCol = SqlServerDiscovery.sqlObjBracket(valueLimiterCol);
         sqlSsTable = sqlSsTable + " WHERE " + sqlValueLimitCol + " = " +  sqlValueLimit;
         
         System.out.println(sqlSsTable);
-        ResultSet ssTable = dbsSource.executeSqlResultSet(srcCnString.getCnString(), sqlSsTable);
+        ResultSet ssTable = SqlServerDbScour.executeSqlResultSet(srcCnString.getCnString(), sqlSsTable);
         
 
         
-        String outFileName = fileNamePrep(valueLimit,datatypeCategories.get(valueLimiterCol));
+        String outFileName = fileNamePrep(valueLimit,datatypeCategories.get(valueLimiterCol.toUpperCase()));
  		String fullFileName = filePath + fileName + "_" + outFileName + ".csv";
 		FileWriter writer = null;
 		BufferedWriter buffer = null;
@@ -342,10 +629,11 @@ public class JchLib_SnowflakeTest {
 						if(i > 0) values.append(colDelim);
 						
 						//wrap and append values
-						values.append(
-								sfCsvValuePrep(ssTable.getString(cols.get(i)),
+						String csvValue = sfCsvValuePrep(ssTable.getString(cols.get(i)),
 											   datatypeCategories.get(cols.get(i)),
-											   textQualifier,escapeChar));
+											   textQualifier,escapeChar);
+						
+						values.append(csvValue);
 					}		
 					
 					buffer.write(values.toString());
@@ -381,6 +669,7 @@ public class JchLib_SnowflakeTest {
 				ExecuteCompressGzip t = new ExecuteCompressGzip(fullFileName, fullFileName + ".gz", true);
 				exe.submit(t);
 				
+				exe.shutdown();
 			} catch (SQLException | IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -400,7 +689,7 @@ public class JchLib_SnowflakeTest {
 	 * 
 	 * @param filePath: Output file location (ie, "C:\\temp\\")
 	 * @param fileName: Output file name (ie, "dbo.ACCOUNT")
-	 * @param maxFileSize: Max file size threshold (ie, 30000 "means 30Kb" or 4000000000L "means 4Gb") 
+	 * @param maxFileSize: Max file size threshold (ie, 30000 is "30Kb" or 4000000000L is "4Gb") 
 	 * @param srcSqlHost: Source SQL Server Hostname or IP address (ie, "SQLSERV01" or "192.168.1.102")
 	 * @param srcDatabse: Source Database in which table resides (ie,"DatabaseName")
 	 * @param srcSchema: Source Database schema table resides (ie, "dbo")
@@ -414,7 +703,7 @@ public class JchLib_SnowflakeTest {
 	 * @param textQualifier: String, text, or VARCHAR datatype value qualifier (ie,"\"")
 	 * @param escapeChar: POSIX control character (ie, "\\")
 	 */
-	static public void writeCsvFromSqlServerTable(String filePath, String fileName, long maxFileSize,
+	static public void writeCsvFromSqlServerTableFull(String filePath, String fileName, long maxFileSize,
 							 String srcSqlHost, String srcDatabase, String srcSchema, String srcTable,
 							 String sfCredsLoc, String sfDatabase, String sfSchema, String sfTable,
 							 String rowDelim, String colDelim, String textQualifier, String escapeChar) {
@@ -422,8 +711,8 @@ public class JchLib_SnowflakeTest {
 		//Get Sql Server Schema Rowset
 		SqlServerCnString srcCnString = new SqlServerCnString();
 		srcCnString.setCnStringIntegratedSecurity(srcSqlHost, null , srcDatabase);
-		SqlServerDbScour dbsSource = new SqlServerDbScour();
-		RowSet ssSchemaRowSet = dbsSource.getSrcInformationSchema(
+		
+		RowSet ssSchemaRowSet = SqlServerDbScour.getSrcInformationSchema(
 				srcCnString.getCnString(), srcCnString.getDatabaseName(), srcSchema, srcTable);
 		
 		
@@ -446,7 +735,7 @@ public class JchLib_SnowflakeTest {
         
         //execute SELECT Table
         System.out.println(sqlSsTable);
-        ResultSet ssTable = dbsSource.executeSqlResultSet(srcCnString.getCnString(), sqlSsTable);
+        ResultSet ssTable = SqlServerDbScour.executeSqlResultSet(srcCnString.getCnString(), sqlSsTable);
         
         long fCnt = 1;
         String fullFileName = filePath + fileName  + "_"  + String.format("%03d", fCnt) + ".csv";
@@ -556,8 +845,8 @@ public class JchLib_SnowflakeTest {
 		//Get Sql Server Schema Rowset
 		SqlServerCnString srcCnString = new SqlServerCnString();
 		srcCnString.setCnStringIntegratedSecurity(srcSqlHost, null , srcDatabse);
-		SqlServerDbScour dbsSource = new SqlServerDbScour();
-		RowSet ssSchemaRowSet = dbsSource.getSrcInformationSchema(
+		
+		RowSet ssSchemaRowSet = SqlServerDbScour.getSrcInformationSchema(
 				srcCnString.getCnString(), srcCnString.getDatabaseName(), srcSchema, srcTable);
 		
 		
@@ -579,7 +868,7 @@ public class JchLib_SnowflakeTest {
         //sqlSsTable = sqlSsTable + " WHERE Processdate = 20211213";
         
         System.out.println(sqlSsTable);
-        ResultSet ssTable = dbsSource.executeSqlResultSet(srcCnString.getCnString(), sqlSsTable);
+        ResultSet ssTable = SqlServerDbScour.executeSqlResultSet(srcCnString.getCnString(), sqlSsTable);
 
         try {
         	sfCn = JchLib_SnowflakeTest.getConnection(sfCredsLoc,sfDatabase);
@@ -799,13 +1088,10 @@ public class JchLib_SnowflakeTest {
 		//Get Sql Server RowSet
 		SqlServerCnString srcCnString = new SqlServerCnString();
 		srcCnString.setCnStringIntegratedSecurity(srcSqlHost, null , database);
-		SqlServerDbScour dbsSource = new SqlServerDbScour();
+
 		//get tables for given database
-		RowSet ssCols = dbsSource.getSrcInformationSchema(
-				srcCnString.getCnString(), 
-				srcCnString.getDatabaseName(), 
-				schema, 
-				table);
+		RowSet ssCols = SqlServerDbScour.getSrcInformationSchema(
+				srcCnString.getCnString(), srcCnString.getDatabaseName(), schema, table);
 		
 		
 		//Get Snowflake RowSet
@@ -912,6 +1198,8 @@ public class JchLib_SnowflakeTest {
 	
 	
 	/***
+	 * Prepares a given value for Snoflake consumption via a CSV based on the supplied datatype.
+	 * Converts unicode characters to space characters (" ").
 	 * 
 	 * @param value
 	 * @param datatypeCat
@@ -927,6 +1215,19 @@ public class JchLib_SnowflakeTest {
 		//DATA_TYPE_CAT: TEXT, NUMERIC, DATETIME, OTHER
 		if(value == null) output = "";
 		else if (datatypeCat.equals("TEXT")) {
+			
+			//Snowflake likes ASCII only.  (it says UTF-8, but its complaining for characters
+			//between 127-255
+			for(int i = 0; i < value.length(); i++) {
+				if((int)value.charAt(i) > 127) {
+					//value = value.replaceAll(value.substring(i, i), " ");
+					System.out.println("Found an offender: " + (int)value.charAt(i));
+					System.out.println((value));
+					value = value.replaceAll(String.valueOf(value.charAt(i)), " ");
+					System.out.println((value));
+				}
+			}
+			
 			//print literal value as opposed to being seen as escape character
 			if(escapeChar != null && escapeChar != "")
 				value = value.replace(escapeChar, escapeChar + escapeChar);
@@ -950,6 +1251,24 @@ public class JchLib_SnowflakeTest {
 		return output; 
 	}
 	
+	
+	/*TODO: */
+	public static String sqlSfMaxValue(String database, String schema, String table, String col) {
+		String output = null;
+		
+		if(database != null && schema != null && table != null)  {
+			
+			output = "SELECT MAX(\"" + col.toUpperCase() + "\") MaxValue FROM \"" 
+				   + database.toUpperCase() + "\".\""
+				   + schema.toUpperCase() + "\".\""
+				   + table.toUpperCase() + "\"";
+
+		}
+		
+		return output;
+	}
+	
+	
 	/***
 	 * 
 	 * @param value
@@ -961,35 +1280,16 @@ public class JchLib_SnowflakeTest {
 		
 		//DATA_TYPE_CAT: TEXT, NUMERIC, DATETIME, OTHER
 		if(value == null) output = "null";
-		else if (datatypeCat.equals("TEXT")) output = "$$" + value + "$$";
-		else if (datatypeCat.equals("DATETIME")) output = "'" + value + "'";
-		else if (datatypeCat.equals("NUMERIC")) output = value;
-		else if (datatypeCat.equals("OTHER")) output = "null";
+		else if (datatypeCat.equalsIgnoreCase("TEXT")) output = "$$" + value + "$$";
+		else if (datatypeCat.equalsIgnoreCase("DATETIME")) output = "'" + value + "'";
+		else if (datatypeCat.equalsIgnoreCase("NUMERIC")) output = value;
+		else if (datatypeCat.equalsIgnoreCase("OTHER")) output = "null";
 		
 		return output; 
 	}
 	
 	
-	/***
-	 * 
-	 * @param value
-	 * @param datatypeCat
-	 * @return String
-	 */
-	public static String sqlValuePrep(String value, String datatypeCat) {
-		
-		String output = "";
-		
-		//DATA_TYPE_CAT: TEXT, NUMERIC, DATETIME, OTHER
-		if(value == null) output = "";
-		else if (datatypeCat.equals("TEXT")) 
-			output = "'" + value.replace("'", "''") + "'";
-		else if (datatypeCat.equals("DATETIME")) output = "'" + value + "'";
-		else if (datatypeCat.equals("NUMERIC")) output = value;
-		else if (datatypeCat.equals("OTHER")) output = "";
-		
-		return output; 
-	}
+
 	
 	
 	/***
@@ -1006,7 +1306,7 @@ public class JchLib_SnowflakeTest {
 		
 		//DATA_TYPE_CAT: TEXT, NUMERIC, DATETIME, OTHER
 		if(value == null) output = "";
-		else if (datatypeCat.equals("TEXT")) {
+		else if (datatypeCat.equalsIgnoreCase("TEXT")) {
 			output = value;
 			output = output.replace("#", "");output = output.replace(">", "");output = output.replace("<", "");
 			output = output.replace(">", "");output = output.replace("\\", "");output = output.replace("/", "");
@@ -1015,20 +1315,20 @@ public class JchLib_SnowflakeTest {
 			output = output.replace("@", "");output = output.replace("+", "");output = output.replace("&", "");
 			output = output.replace("$", "");output = output.replace("-", "");output = output.replace("`", "");
 		}
-		else if (datatypeCat.equals("DATETIME")) {
+		else if (datatypeCat.equalsIgnoreCase("DATETIME")) {
 			java.util.Date date = tryDateParse(value);
 			SimpleDateFormat df = new SimpleDateFormat("yyyyMMdd");
 			output = df.format(date);
 		}
-		else if (datatypeCat.equals("NUMERIC")) output = value;
-		else if (datatypeCat.equals("OTHER")) output = "";
+		else if (datatypeCat.equalsIgnoreCase("NUMERIC")) output = value;
+		else if (datatypeCat.equalsIgnoreCase("OTHER")) output = "";
 		
 		return output; 
 	}
 	
 	
 	static List<String> dateFormatStrings = 
-			Arrays.asList("MM/dd/yy","MM-dd-yy","MM/dd/yyyy","MM-dd-yyyy", "yyyyMMdd","yyyy-MM-dd");
+			Arrays.asList("yyyy-MM-dd", "yyyyMMdd","MM/dd/yyyy","MM-dd-yyyy","MM/dd/yy","MM-dd-yy");
 	
 	/***
 	 * Tries to parse a String to Date
@@ -1134,19 +1434,19 @@ public class JchLib_SnowflakeTest {
 	 * @param Source SQL Server host name (String)
 	 * @param Source SQL Server database of the previously specified host name (String)
 	 */
-	public static void createDatabase(String srcHost, String srcDatabase) {
+	public static void createDatabase(String sfCredsLoc, String srcHost, String srcDatabase) {
 		java.sql.Connection cn = null;
 		
 		
 		try {	
 			//Create Snowflake Databas
-			cn = JchLib_SnowflakeTest.getConnection("H:\\snowflake_creds.json");
+			cn = JchLib_SnowflakeTest.getConnection(sfCredsLoc);
 			Statement statement = cn.createStatement();
 			statement.executeUpdate("CREATE DATABASE " + srcDatabase);
 			statement.close();
 			cn.close();
 			
-			cn = JchLib_SnowflakeTest.getConnection("H:\\snowflake_creds.json", srcDatabase);
+			cn = JchLib_SnowflakeTest.getConnection(sfCredsLoc, srcDatabase);
 			
 			//Create Schemas and Tables
 			System.out.println("Create Shemas...");
@@ -1175,10 +1475,8 @@ public class JchLib_SnowflakeTest {
 		SqlServerCnString srcCnString = new SqlServerCnString();
 		srcCnString.setCnStringIntegratedSecurity(srcHost, null , srcDatabase);
 		
-		SqlServerDbScour dbsSource = new SqlServerDbScour();
-		
 		//get tables for given database
-		RowSet schemas = dbsSource.getSrcSchemas(
+		RowSet schemas = SqlServerDbScour.getSrcSchemas(
 				srcCnString.getCnString(), 			//Source host to get InformationSchema
 				srcCnString.getDatabaseName());	
 		
@@ -1216,13 +1514,13 @@ public class JchLib_SnowflakeTest {
 	public static void createSfAllDatabaseTables(java.sql.Connection snowflakeCn, String srcHost, String srcDatabase) throws SQLException {
 		SqlServerCnString srcCnString = new SqlServerCnString();
 		srcCnString.setCnStringIntegratedSecurity(srcHost, null , srcDatabase);
+	
 		
-		SqlServerDbScour dbsSource = new SqlServerDbScour();
-		
-		//get tables for given database
-		RowSet tables = dbsSource.getSrcTables(
+		//get tables for given database, schema parameter not specified, so gets all tables for all schemas
+		RowSet tables = SqlServerDbScour.getSrcTables(
 				srcCnString.getCnString(), 			//Source host to get InformationSchema
-				srcCnString.getDatabaseName());
+				srcCnString.getDatabaseName(),
+				null);  //schema name
 		
 		try {
 			//object the excutes to snowflake
@@ -1269,8 +1567,8 @@ public class JchLib_SnowflakeTest {
 		srcCnString.setCnStringIntegratedSecurity(srcSqlHost, null , srcDatabase);
 		
 		//get column of current table
-		SqlServerDbScour dbsSource = new SqlServerDbScour();
-		RowSet cols = dbsSource.getSrcInformationSchema(
+
+		RowSet cols = SqlServerDbScour.getSrcInformationSchema(
 							srcCnString.getCnString(), 
 							srcCnString.getDatabaseName(), 
 							srcSchema, 
@@ -1350,7 +1648,8 @@ public class JchLib_SnowflakeTest {
 					createStatement.append("\t" + nullable);
 					
 					//if constraint is not null, it is likely a primary key?
-					if(cols.getString("CONSTRAINT_NAME") != null) {
+					if(cols.getString("CONSTRAINT_NAME") != null &&
+					   cols.getString("CONSTRAINT_NAME").toUpperCase().contains("PK")) {
 						primaryKeys.add(cols.getString("COLUMN_NAME"));
 					}
 				}
@@ -1387,9 +1686,7 @@ public class JchLib_SnowflakeTest {
 	public static void createAccountTableTest() {
 		SqlServerCnString srcCnString = new SqlServerCnString();
 		srcCnString.setCnStringIntegratedSecurity("gcarcu080119", null , "ARCUSYM000");
-		
-		SqlServerDbScour dbsSource = new SqlServerDbScour();
-		
+	
 		/*
 			SELECT T.TABLE_TYPE,T.TABLE_CATALOG,T.TABLE_SCHEMA,T.TABLE_NAME,C.COLUMN_NAME,CU.CONSTRAINT_NAME,
 				C.DATA_TYPE,C.ORDINAL_POSITION,C.COLUMN_DEFAULT,C.IS_NULLABLE,C.CHARACTER_MAXIMUM_LENGTH,C.CHARACTER_OCTET_LENGTH,
@@ -1409,7 +1706,7 @@ public class JchLib_SnowflakeTest {
 		 			CU.TABLE_NAME = C.TABLE_NAME AND CU.COLUMN_NAME = C.COLUMN_NAME
 		*/
 		
-		RowSet infSchema = dbsSource.getSrcInformationSchema(
+		RowSet infSchema = SqlServerDbScour.getSrcInformationSchema(
 				srcCnString.getCnString(), 			//Source host to get InformationSchema
 				srcCnString.getDatabaseName(), 		//Source database to get InformationSchema
 				true);								//Grab only user tables
@@ -1751,7 +2048,7 @@ public class JchLib_SnowflakeTest {
 	    	// replace accountName with your account name
 	    	connectStr = (String)jsonObj.get("cnstring"); 
 	    }
-	    System.out.println(connectStr);
+	    //System.out.println(connectStr);
 	    
 	    try {
 			output = DriverManager.getConnection(connectStr, properties);

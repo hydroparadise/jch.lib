@@ -49,6 +49,26 @@ public class SqlServerDiscovery {
 	 */
 	
 	
+	public static String sqlGenerateSelectGroupBy(String database, String schema, String table, String col) {
+		String output = null;
+		
+		if(database != null && schema != null && table != null)  {
+			
+			output = "SELECT " + SqlServerDiscovery.sqlObjBracket(col)
+				  + ", COUNT(*) RecCnt FROM " 
+				   + SqlServerDiscovery.sqlObjBracket(database) + "."
+				   + SqlServerDiscovery.sqlObjBracket(schema) + "."
+				   + SqlServerDiscovery.sqlObjBracket(table)
+				  + " GROUP BY "  + SqlServerDiscovery.sqlObjBracket(col)
+				  + " ORDER BY " + SqlServerDiscovery.sqlObjBracket(col);
+		}
+		
+		
+		return output;
+	}
+	
+	
+
 	
 	/***
 	 * 
@@ -221,6 +241,25 @@ public class SqlServerDiscovery {
 			output = 
 			  "SELECT TABLE_TYPE, TABLE_CATALOG, TABLE_SCHEMA, TABLE_NAME FROM (" + output 
 			+ " WHERE T.TABLE_TYPE = 'BASE TABLE') A"
+			+ " GROUP BY TABLE_TYPE, TABLE_CATALOG, TABLE_SCHEMA, TABLE_NAME";
+		}
+		
+		return output;
+	}
+	
+	/***
+	 * 
+	 * @param databaseName
+	 * @return
+	 */
+	public static String sqlDbTables(String databaseName, String schemaName) {
+		String output = null;
+		output = sqlDbTableViewColumnsBase(databaseName);
+		if(output != null) {
+			
+			output = 
+			  "SELECT TABLE_TYPE, TABLE_CATALOG, TABLE_SCHEMA, TABLE_NAME FROM (" + output 
+			+ " WHERE T.TABLE_TYPE = 'BASE TABLE' AND T.TABLE_SCHEMA = '" + schemaName + "') A"
 			+ " GROUP BY TABLE_TYPE, TABLE_CATALOG, TABLE_SCHEMA, TABLE_NAME";
 		}
 		
