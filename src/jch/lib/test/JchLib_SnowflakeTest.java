@@ -74,6 +74,903 @@ public class JchLib_SnowflakeTest {
 	
 	
 	
+	
+	/***
+	 * Connects to a Sql Server with a Database and Schema context, iterates through all tables and
+	 * compares a table against a given Snowflake Database and Schema context with a table of the 
+	 * same name, and creates a compressed CSV file of the full table within the SQL S
+	 * Once the file has been created, the file will be sent to a specified Azure Blob Storage container.
+	 * 
+	 * @param filePath: Output file location. Include last slash (ie, "C:\\temp\\" which becomes "C:\temp\)
+	 * @param long maxFileSize: Max file size threshold (ie, 30000 "means 30Kb" or 4000000000L "means 4Gb")
+	 * @param String srcSqlHost: Source SQL Server Hostname or IP address (ie, "SQLSERV01" or "192.168.1.102")
+	 * @param String srcDatabase: Source Database in which table resides (ie,"DatabaseName")
+	 * @param String srcSchema: Source Database schema table resides (ie, "dbo")
+	 * @param String sfCredsLoc: Location of Snowflake credentials specified via JSON (ie, "C\\snowflake_creds.json")
+	 * @param String sfDatabase: Remote Snowflake database name (ei, "DatabaseName"
+	 * @param String sfSchema: Remote Snowflake schema name to compare columns(ie,"DBO")
+	 * @param String rowDelim: Output file row delimiter (ie,"\r\n" or "\n")
+	 * @param String colDelim: Output file column/field delimiter(ie, "," or "~" or "\t")
+	 * @param String textQualifier: String, text, or VARCHAR datatype value qualifier (ie,"\"" -> ")
+	 * @param String escapeChar: POSIX control character (ie, "\\" -> \)
+	 * @param String azCredsLoc: Location of Azure credentials of an Azure Blob Container instance (ie, "C\\azure_creds.json")
+	 */
+	static public void writeCsvFromSqlServerAllTablesFull(String filePath ,long maxFileSize,
+			 String srcSqlHost, String srcDatabase, String srcSchema,
+			 String sfCredsLoc, String sfDatabase, String sfSchema,
+			 String rowDelim, String colDelim, String textQualifier, String escapeChar,
+			 String azCredsLoc, String sfStage) {
+		
+		//Get Sql Server Table information in a RowSet, connection opening and closing handled by called functions
+		SqlServerCnString srcCnString = new SqlServerCnString();
+		srcCnString.setCnStringIntegratedSecurity(srcSqlHost, null , srcDatabase);
+		RowSet ssTables = SqlServerDbScour.getSrcTables(
+				srcCnString.getCnString(), srcCnString.getDatabaseName(), srcSchema);
+
+		
+		try {
+			ThreadPoolExecutor exe = (ThreadPoolExecutor) Executors.newFixedThreadPool(MAX_CONCURRENCY_LEVEL);
+			
+			while(ssTables.next()) {
+				
+				
+				final String schemaName = ssTables.getString("TABLE_SCHEMA");
+				final String tableName = ssTables.getString("TABLE_NAME");
+				final String fileName = schemaName + "." + tableName;
+				
+				exe.execute(()->  
+				JchLib_SnowflakeTest.writeCsvFromSqlServerTableFull(
+						filePath, fileName,	maxFileSize,				//max file size in bytes
+						srcSqlHost,srcDatabase,srcSchema,tableName,		//String srcSqlHost, String srcDatabse, String srcSchema, String srcTable,
+						sfCredsLoc,sfDatabase,sfSchema,tableName,		//String sfCredsLoc, sfDatabase,sfSchema, sfTable
+						rowDelim,colDelim,textQualifier,escapeChar,
+						azCredsLoc,sfStage)
+				);
+			}
+			
+			exe.shutdown();
+		
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+	
+	
+	/***
+	 * Connects to a Sql Server with a Database and Schema context, iterates through all tables and
+	 * compares a table against a given Snowflake Database and Schema context with a table of the 
+	 * same name, and creates a compressed CSV file of the difference between the two tables.
+	 * The file names will contain the specific time slice the file represents in YYYYMMDD format.
+	 * Once the file has been created, the file will be sent to a specified Azure Blob Storage container.
+	 * 
+	 *  											     Max: 12/31/2021
+	 * 	SqlServer Hostname -> Database -> dbo -> Transaction(Postdate, TransAmount,.....)
+	 * 															|--> dbo.Transaction_20201231.csv
+	 * 															| 	  |--> dbo.Transaction_20201231.csv.gz --> Azure Blob Container
+	 * 															|--> dbo.Transaction_20201230.csv
+	 *  														| 	  |--> dbo.Transaction_20201231.csv.gz --> Azure Blob Container
+	 * 	Snowflake Instance -> Database -> dbo -> Transaction(Postdate, TransAmount,.....)
+	 *  											     Max: 12/29/2021
+	 * 
+	 * If the source table contains data but the destination table does not, it will print the full 
+	 * table. If the table doesn't have a time dimension to compare, an optional flag can be specified to print
+	 * the full table.  A full table will be split based on the max file size specified in its uncompressed
+	 * version of itself
+	 * 
+	 *	dbo.Transaction_001.csv.gz
+	 *	dbo.Transaction_002.csv.gz
+	 *	dbo.Transaction_***.csv.gz
+	 *
+	 * Once an extract file has been created and compressed, it then gets sent off to an azure blob storage
+	 *
+	 * This method uses a thread pool to concurrently pull tables, with the max concurrency specified by
+	 * MAX_CONCURRENCY_LEVEL (ie 4 threads at any give time)
+	 * 
+	 * @param String filePath: Output file location (ie, "C:\\temp\\")
+	 * @param long maxFileSize: Max file size threshold (ie, 30000 "means 30Kb" or 4000000000L "means 4Gb") 
+	 * @param String srcSqlHost: Source SQL Server Hostname or IP address (ie, "SQLSERV01" or "192.168.1.102")
+	 * @param String srcDatabase: Source Database in which table resides (ie,"DatabaseName")
+	 * @param String srcSchema: Source Database schema table resides (ie, "dbo")
+	 * @param String sfCredsLoc: Location of Snowflake credentials specified via JSON (ie, "C\\snowflake_creds.json")
+	 * @param String sfDatabase: Remote Snowflake database name (ei, "DatabaseName")
+	 * @param String sfSchema: Remote Snowflake schema name to compare columns(ie,"DBO")
+	 * @param String rowDelim: Output file row delimiter (ie,"\r\n" or "\n")
+	 * @param String colDelim: Output file column/field delimiter(ie, "," or "~" or "\t")
+	 * @param String textQualifier: String, text, or VARCHAR datatype value qualifier (ie,"\"" -> ")
+	 * @param String escapeChar: POSIX control character (ie, "\\" -> \)
+	 * @param ArrayList<String> timeDimensions:  A list of fields in which to look for to split table up along a
+	 * 		  dimension of time (ie, new ArrayList<String>(Arrays.asList("POSTDATE", "PROCESSDATE", "DATE")))
+	 * @param boolean strictPK: Looks for the value "PK" in column constraint in conjunction timeDimnensios arrayList if set true
+	 * @param boolean optionalFull: Prints full file it time dimension can't be determined it set to true
+	 * @param String azCredsLoc: Location of Azure credentials of an Azure Blob Container instance (ie, "C\\azure_creds.json")
+	 */
+	static public void writeCsvFromSqlServerAllTablesDiff(String filePath,long maxFileSize,
+			 String srcSqlHost, String srcDatabase, String srcSchema,
+			 String sfCredsLoc, String sfDatabase, String sfSchema,
+			 String rowDelim, String colDelim, String textQualifier, String escapeChar,
+			 ArrayList<String> timeDimensions, boolean strictPK, boolean optionalFull,
+			 String azCredsLoc, String sfStage) {
+
+		/*Get Sql Server Table information in a RowSet, connection opening and closing handled by called functions
+		 * 	ssTable field set:
+			TABLE_TYPE,TABLE_CATALOG,TABLE_SCHEMA,TABLE_NAME
+		*/
+		
+		SqlServerCnString srcCnString = new SqlServerCnString();
+		srcCnString.setCnStringIntegratedSecurity(srcSqlHost, null , srcDatabase);
+		RowSet ssTables = SqlServerDbScour.getSrcTables(
+				srcCnString.getCnString(), srcCnString.getDatabaseName(), srcSchema);
+
+		
+		try {
+			
+			
+			ThreadPoolExecutor exe = (ThreadPoolExecutor) Executors.newFixedThreadPool(MAX_CONCURRENCY_LEVEL);
+			
+			//iterate through tables until reach the end of ssTables RowSet
+			while(ssTables.next()) {
+				
+				//get Sql Server schema name and table name
+				final String schemaName = ssTables.getString("TABLE_SCHEMA");
+				final String tableName = ssTables.getString("TABLE_NAME");
+				
+				/*get RowSet of columns for the current table
+					ssCol field set:
+					TABLE_TYPE,TABLE_CATALOG,TABLE_SCHEMA,TABLE_NAME,COLUMN_NAME,CU.CONSTRAINT_NAME,
+					DATA_TYPE,ORDINAL_POSITION,COLUMN_DEFAULT,IS_NULLABLE,CHARACTER_MAXIMUM_LENGTH,CHARACTER_OCTET_LENGTH,
+					NUMERIC_PRECISION,NUMERIC_PRECISION_RADIX,NUMERIC_SCALE,DATETIME_PRECISION, 
+					CHARACTER_SET_NAME,COLLATION_CATALOG,COLLATION_SCHEMA,COLLATION_NAME,DOMAIN_CATALOG, 
+					DOMAIN_SCHEMA,DOMAIN_NAME,CHARACTER_SET_CATALOG,CHARACTER_SET_SCHEMA,  
+					DATA_TYPE_CAT --CASE  'TEXT', 'NUMERIC', 'DATETIME', 'OTHER' 
+				 */
+				RowSet ssCols = SqlServerDbScour.getSrcInformationSchema(
+						srcCnString.getCnString(),srcDatabase,schemaName,tableName);
+				
+				final String fileName = schemaName + "." + tableName;
+
+				String valueLimiterCol = null;
+				String dataTypeCat = null;
+				
+				//find time dimension of table to split
+				while(ssCols.next() && valueLimiterCol == null) {
+					String colName = ssCols.getString("COLUMN_NAME");
+					
+					if(strictPK == true) {
+						String constraint = ssCols.getString("CONSTRAINT_NAME");
+						if(constraint != null && constraint.toUpperCase().contains("PK")) {
+							valueLimiterCol = containsString(colName, timeDimensions);
+							dataTypeCat = ssCols.getString("DATA_TYPE_CAT");
+						}
+					} else {
+						valueLimiterCol = containsString(colName, timeDimensions);
+						dataTypeCat = ssCols.getString("DATA_TYPE_CAT");
+					}
+					
+				}
+				
+				//to pass function to ThreadPoolExecutor, variables must be "final"
+				final String vlc = valueLimiterCol;
+				final String dtc = dataTypeCat;
+				
+				
+				if(valueLimiterCol != null) {
+					
+					//System.out.println("filePath in writeCsvFromSqlServerAllTablesDiff: " + filePath);
+					
+					exe.execute(()->  
+						JchLib_SnowflakeTest.writeCsvFromSqlServerTableDiff(
+							filePath, fileName,	maxFileSize,				//max file size in bytes
+							srcSqlHost,srcDatabase,srcSchema,tableName,		//String srcSqlHost, String srcDatabse, String srcSchema, String srcTable,
+							sfCredsLoc,sfDatabase,sfSchema,tableName,		//String sfCredsLoc, sfDatabase,sfSchema, sfTable
+							rowDelim,colDelim,textQualifier,escapeChar,
+							vlc, dtc, azCredsLoc, sfStage)
+					);
+				}
+				else if (optionalFull == true) {
+					System.out.println(fileName + ": Full file");
+					
+					exe.execute(()->  
+						JchLib_SnowflakeTest.writeCsvFromSqlServerTableFull(
+								filePath, fileName,	maxFileSize,				//max file size in bytes
+								srcSqlHost,srcDatabase,srcSchema,tableName,		//String srcSqlHost, String srcDatabse, String srcSchema, String srcTable,
+								sfCredsLoc,sfDatabase,sfSchema,tableName,		//String sfCredsLoc, sfDatabase,sfSchema, sfTable
+								rowDelim,colDelim,textQualifier,escapeChar,
+								azCredsLoc, sfStage)
+					);
+				}
+			}
+			
+			exe.shutdown();
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+	
+	
+	/***
+	 * Establishes time range to create differential extracts for specific table
+	 * 
+	 *  											     Max: 12/31/2021
+	 * 	SqlServer Hostname -> Database -> dbo -> Transaction(Postdate, TransAmount,.....)
+	 * 															|--> dbo.Transaction_20201231.csv
+	 * 															| 	  |--> dbo.Transaction_20201231.csv.gz --> Azure Blob Container
+	 * 															|--> dbo.Transaction_20201230.csv
+	 *  														| 	  |--> dbo.Transaction_20201231.csv.gz --> Azure Blob Container
+	 * 	Snowflake Instance -> Database -> dbo -> Transaction(Postdate, TransAmount,.....)
+	 *  											     Max: 12/29/2021
+	 * 
+	 * If the source table contains data but the destination table does not, it will print the full 
+	 * table. If the table doesn't have a time dimension to compare, an optional flag can be specified to print
+	 * the full table.  A full table will be split based on the max file size specified in its uncompressed
+	 * version of itself
+	 * 
+	 *	dbo.Transaction_001.csv.gz
+	 *	dbo.Transaction_002.csv.gz
+	 *	dbo.Transaction_***.csv.gz
+	 *
+	 * @param String filePath: Output file location. Include last slash (ie, "C:\\temp\\" which becomes "C:\temp\)
+	 * @param String fileName: Output base file name.  Do not include file extension. (ie, "dbo.ACCOUNT")
+	 * @param long maxFileSize: Max file size threshold (ie, 30000 "means 30Kb" or 4000000000L "means 4Gb") 
+	 * @param String srcSqlHost: Source SQL Server Hostname or IP address (ie, "SQLSERV01" or "192.168.1.102")
+	 * @param String srcDatabse: Source Database in which table resides (ie,"DatabaseName")
+	 * @param String srcSchema: Source Database schema table resides (ie, "dbo")
+	 * @param String srcTable: Source SQL Server table to create extract of (ie."ACCOUNT")
+	 * @param String sfCredsLoc: Location of Snowflake credentials specified via JSON (ie, "C\\snowflake_creds.json")
+	 * @param String sfDatabase: Remote Snowflake database name (ei, "DatabaseName")
+	 * @param String sfSchema: Remote Snowflake schema name to compare columns(ie,"DBO")
+	 * @param String sfTable": Remote Snowflake table name to compare columns (ie,"ACCOUNT")
+	 * @param String rowDelim: Output file row delimiter (ie,"\r\n" or "\n")
+	 * @param String colDelim: Output file column or field delimiter(ie, "," or "~" or "\t")
+	 * @param String textQualifier: String, text, or VARCHAR datatype value qualifier (ie,"\"")
+	 * @param String escapeChar: POSIX control character (ie, "\\")
+	 * @param String valueLimterCol: Column or Field Name used to limit dataset (ie, "ProcessDate" or "POSTDATE")
+	 * @param String dataTypeCat: Value (ie, int: "20220203" or date: "2/3/2022" or date: "2022/02/03")
+	 * @param String azCredsLoc: Location of the Azure credentials of an Azure Blob Container instance (ie, "C\\azure_creds.json")
+	 * 
+	 */
+	static public void writeCsvFromSqlServerTableDiff(String filePath, String fileName, long maxFileSize,
+			 String srcSqlHost, String srcDatabase, String srcSchema, String srcTable,
+			 String sfCredsLoc, String sfDatabase, String sfSchema, String sfTable,
+			 String rowDelim, String colDelim, String textQualifier, String escapeChar,
+			 String valueLimiterCol, String dataTypeCat,
+			 String azCredsLoc, String sfStage) {
+		
+		
+		//make sure SQL server source has data to pull
+		String ssMaxValue = null;
+		ssMaxValue = getSsMaxValue(srcSqlHost,  srcDatabase, srcSchema, srcTable, valueLimiterCol);
+		System.out.println(SqlServerDbScour.sqlMaxValue(srcDatabase, srcSchema, srcTable, valueLimiterCol) + ": " + ssMaxValue);
+		
+		
+		//make sure some value was returned on SQL Server side, otherwise skip
+		if (ssMaxValue != null) {
+			
+			//ping Snowflake source for most current data
+			String sfMaxValue = null;
+			sfMaxValue = getSfMaxValue(sfCredsLoc, sfDatabase, sfSchema, sfTable, valueLimiterCol);
+			System.out.println(sqlSfMaxValue(sfDatabase, sfSchema, sfTable, valueLimiterCol) + ": " + sfMaxValue);
+			
+			//make sure some value was returned, otherwise pull full file
+			if(sfMaxValue != null) {
+				
+				System.out.println(SqlServerDbScour.sqlGreaterThan(srcDatabase, srcSchema, srcTable, valueLimiterCol, sfMaxValue, dataTypeCat));
+				
+				
+				SqlServerCnString srcCnString = new SqlServerCnString();
+				srcCnString.setCnStringIntegratedSecurity(srcSqlHost, null , srcDatabase);
+				
+				RowSet segs = SqlServerDbScour.executeSqlRowSet(srcCnString.getCnString(), 
+						SqlServerDbScour.sqlGreaterThan(srcDatabase, srcSchema, srcTable, valueLimiterCol, sfMaxValue, dataTypeCat));
+				try {
+					while(segs.next()) {
+						
+						String valueLimit = segs.getString(valueLimiterCol);
+						System.out.println(valueLimit);
+						writeCsvFromSqlServerTableValueLimit(filePath, fileName, maxFileSize,
+								 srcSqlHost, srcDatabase, srcSchema, srcTable,
+								 sfCredsLoc, sfDatabase, sfSchema, sfTable,
+								 rowDelim, colDelim, textQualifier, escapeChar,
+								 valueLimiterCol, valueLimit, 
+								 azCredsLoc, sfStage);
+			
+						
+					}
+				} catch (SQLException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+				
+			}
+			else {
+				
+				JchLib_SnowflakeTest.writeCsvFromSqlServerTableFull(
+						filePath, fileName,	maxFileSize,				//max file size in bytes
+						srcSqlHost,srcDatabase,srcSchema,srcTable,		//String srcSqlHost, String srcDatabse, String srcSchema, String srcTable,
+						sfCredsLoc,sfDatabase,sfSchema,sfTable,		//String sfCredsLoc, sfDatabase,sfSchema, sfTable
+						rowDelim,colDelim,textQualifier,escapeChar,
+						azCredsLoc, sfStage);	
+				
+			}
+			
+		}
+
+	}
+	
+
+    		
+	/***
+	 * Takes source table and creates a *.csv or *.csv.gz based on a source Sql Server host, database, schema,
+	 * and table, compares to specified remote Snowfalke instance, compute, database, schema, and table to
+	 * build column ordinal sensitive datasets with optionaly compressing the file via GZip.
+	 * 
+	 * @param filePath: Output file location. Include last slash (ie, "C:\\temp\\" which becomes "C:\temp\)
+	 * @param fileName: Output file name (ie, "dbo.ACCOUNT")
+	 * @param maxFileSize: Max file size threshold (ie, 30000 "means 30Kb" or 4000000000L "means 4Gb") 
+	 * @param srcSqlHost: Source SQL Server Hostname or IP address (ie, "SQLSERV01" or "192.168.1.102")
+	 * @param srcDatabse: Source Database in which table resides (ie,"DatabaseName")
+	 * @param srcSchema: Source Database schema table resides (ie, "dbo")
+	 * @param srcTable: Source SQL Server table to create extract of (ie."ACCOUNT")
+	 * @param sfCredsLoc: Location of Snowflake credentials specified via JSON (ie, "C\\snowflake_creds.json")
+	 * @param sfDatabase: Remote Snowflake database name (ei, "DatabaseName")
+	 * @param sfSchema: Remote Snowflake schema name to compare columns(ie,"DBO")
+	 * @param sfTable": Remote Snowflake table name to compare columns (ie,"ACCOUNT")
+	 * @param rowDelim: Output file row delimiter (ie,"\r\n" or "\n")
+	 * @param colDelim: Output file column or field delimiter(ie, "," or "~" or "\t")
+	 * @param textQualifier: String, text, or VARCHAR datatype value qualifier (ie,"\"")
+	 * @param escapeChar: POSIX control character (ie, "\\")
+	 * @param valueLimterFCol: Column or Field Name used to limit dataset (ie, "ProcessDate" or "POSTDATE")
+	 * @param valueLimit: Value (ie, int: "20220203" or date: "2/3/2022" or date: "2022/02/03")
+	 */
+	static public void writeCsvFromSqlServerTableValueLimit(String filePath, String fileName, long maxFileSize,
+							 String srcSqlHost, String srcDatabase, String srcSchema, String srcTable,
+							 String sfCredsLoc, String sfDatabase, String sfSchema, String sfTable,
+							 String rowDelim, String colDelim, String textQualifier, String escapeChar,
+							 String valueLimiterCol, String valueLimit,
+							 String azCredsLoc, String sfStage) {
+		
+		//Get Sql Server Schema Rowset
+		SqlServerCnString srcCnString = new SqlServerCnString();
+		srcCnString.setCnStringIntegratedSecurity(srcSqlHost, null , srcDatabase);
+		
+		RowSet ssSchemaRowSet = SqlServerDbScour.getSrcInformationSchema(
+				srcCnString.getCnString(), srcCnString.getDatabaseName(), srcSchema, srcTable);
+		
+		//Get Snowflake Schema RowSet
+		java.sql.Connection sfCn = null;
+		sfCn = JchLib_SnowflakeTest.getConnection(sfCredsLoc);
+		String sqlSfSchema = sqlSfDatabaseTableInformationShema(sfDatabase, sfSchema, sfTable);
+		RowSet sfSchemaRowSet = executeRowSetSnowflakeCommand(sqlSfSchema, sfCn);
+		
+        //generate list of column datatype categories
+        TreeMap<String, String> datatypeCategories = setDataTypeCategories(ssSchemaRowSet);		
+		
+        //generate list of matching columns between Sql Server and Snowflake tables
+        ArrayList<String> cols = rowsetColCompare(ssSchemaRowSet,sfSchemaRowSet);
+        String sqlSsTable = SqlServerDiscovery.sqlGenerateSelect(srcDatabase, srcSchema, srcTable, cols);
+        
+        System.out.println( srcSchema + "." + srcTable + " Column Count: " + cols.size());
+        
+        
+        String sqlValueLimit = SqlServerDbScour.sqlValuePrep(valueLimit, datatypeCategories.get(valueLimiterCol.toUpperCase()));
+        String sqlValueLimitCol = SqlServerDiscovery.sqlObjBracket(valueLimiterCol);
+        sqlSsTable = sqlSsTable + " WHERE " + sqlValueLimitCol + " = " +  sqlValueLimit;
+        
+        System.out.println(sqlSsTable);
+        ResultSet ssTable = SqlServerDbScour.executeSqlResultSet(srcCnString.getCnString(), sqlSsTable);
+       
+        String outFileName = fileNamePrep(valueLimit,datatypeCategories.get(valueLimiterCol.toUpperCase()));
+         
+ 		//String fullFileName = filePath + fileName + "_" + outFileName + ".csv";
+        String fullFileName = fileName + "_" + outFileName + ".csv";
+        String fullFileNamePath = filePath + fullFileName;
+		FileWriter writer = null;
+		BufferedWriter buffer = null;
+		
+		try {
+			writer = new FileWriter(fullFileNamePath);
+			buffer = new BufferedWriter(writer);
+			
+		} catch (IOException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}       
+		
+		if(buffer != null)  {
+			
+			long cCnt = 0;	//count calls
+	        long aCnt = 0;	//count all records
+	        long lCnt = 0;
+	        long fCnt = 0;
+	        long fSize = 0;
+	        StringBuilder values = new StringBuilder();
+	        
+			try {
+				
+				fCnt++;
+				
+				ThreadPoolExecutor exe = (ThreadPoolExecutor) Executors.newFixedThreadPool(MAX_CONCURRENCY_LEVEL);
+				
+				while(ssTable.next() ) {
+					aCnt++;cCnt++;lCnt++;
+					
+					//if more than one record, add comma separator 
+					if(lCnt>1) values.append(rowDelim); 
+					
+					//iterate columns and grab column values
+					for(int i = 0; i < cols.size(); i++) {
+						if(i > 0) values.append(colDelim);
+						
+						//wrap and append values
+						String csvValue = sfCsvValuePrep(ssTable.getString(cols.get(i)),
+											   datatypeCategories.get(cols.get(i)),
+											   textQualifier,escapeChar);
+						
+						values.append(csvValue);
+					}		
+					
+					buffer.write(values.toString());
+					
+					//System.out.println(values.toString());
+					if(aCnt%10000==0) System.out.println(fileName + " " + cCnt + ": " + values.toString());
+					
+					//keep track of growing file size 
+					fSize = fSize + values.length();
+					
+					//split file out after size exceeds size limit
+					if(fSize >= maxFileSize) {
+						buffer.close();
+						
+						
+						//using a thread pooler allows for the compression of a completed file to occur independently of the
+						//SQL pull and can be a time saving if files turn out to be rather large.
+						//ExecuteZipAndShip t = new ExecuteZipAndShip(filePath, fullFileName, fullFileName + ".gz", true, azCredsLoc);
+						ExecuteZipAndShip t = new ExecuteZipAndShip(
+								sfCredsLoc, sfDatabase, sfSchema, sfTable, valueLimiterCol, 
+								filePath, fullFileName, fullFileName + ".gz", true, azCredsLoc, sfStage);
+						
+						exe.submit(t);
+						
+						lCnt = 0; 	//reset line count counter
+						fSize = 0;	//reset file size counter
+						fCnt++;		//increment file count counter
+						
+						fullFileName = filePath + fileName + "_" + outFileName + "_" + String.format("%03d", fCnt) + ".csv";
+						fullFileNamePath = filePath + fullFileName;
+						
+						writer = new FileWriter(fullFileNamePath);
+						buffer = new BufferedWriter(writer);
+						
+					}
+					
+					values.setLength(0);
+				}
+						
+				//close file
+				buffer.close();
+				
+				//using a thread pooler allows for the compression of a completed file to occur independently of the
+				//SQL pull and can be a time saving if files turn out to be rather large.
+				//ExecuteZipAndShip t = new ExecuteZipAndShip(filePath, fullFileName, fullFileName + ".gz", true, azCredsLoc);
+				ExecuteZipAndShip t = new ExecuteZipAndShip(
+						sfCredsLoc, sfDatabase, sfSchema, sfTable, valueLimiterCol, 
+						filePath, fullFileName, fullFileName + ".gz", true, azCredsLoc, sfStage);
+				exe.submit(t);
+				
+				exe.shutdown();
+			} catch (SQLException | IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			finally {
+				//compiler complained for not having try/catch around buffer.close()
+				//bad form to have in finally?
+				try {
+					buffer.close();
+				} catch (IOException e) {} //silently fail
+			}
+		}
+	}
+	
+	
+	/***
+	 * 
+	 * @param filePath: Output file location (ie, "C:\\temp\\")
+	 * @param fileName: Output file name (ie, "dbo.ACCOUNT")
+	 * @param maxFileSize: Max file size threshold (ie, 30000 is "30Kb" or 4000000000L is "4Gb") 
+	 * @param srcSqlHost: Source SQL Server Hostname or IP address (ie, "SQLSERV01" or "192.168.1.102")
+	 * @param srcDatabse: Source Database in which table resides (ie,"DatabaseName")
+	 * @param srcSchema: Source Database schema table resides (ie, "dbo")
+	 * @param srcTable: Source SQL Server table to create extract of (ie."ACCOUNT")
+	 * @param sfCredsLoc: Location of Snowflake credentials specified via JSON (ie, "C\\snowflake_creds.json")
+	 * @param sfDatabase: Remote Snowflake database name (ei, "DatabaseName")
+	 * @param sfSchema: Remote Snowflake schema name to compare columns(ie,"DBO")
+	 * @param sfTable": Remote Snowflake table name to compare columns (ie,"ACCOUNT")
+	 * @param rowDelim: Output file row delimiter (ie,"\r\n" or "\n")
+	 * @param colDelim: Output file column or field delimiter(ie, "," or "~" or "\t")
+	 * @param textQualifier: String, text, or VARCHAR datatype value qualifier (ie,"\"")
+	 * @param escapeChar: POSIX control character (ie, "\\")
+	 */
+	static public void writeCsvFromSqlServerTableFull(String filePath, String fileName, long maxFileSize,
+							 String srcSqlHost, String srcDatabase, String srcSchema, String srcTable,
+							 String sfCredsLoc, String sfDatabase, String sfSchema, String sfTable,
+							 String rowDelim, String colDelim, String textQualifier, String escapeChar,
+							 String azCredsLoc, String sfStage) {
+		
+		//Get Sql Server Schema Rowset
+		SqlServerCnString srcCnString = new SqlServerCnString();
+		srcCnString.setCnStringIntegratedSecurity(srcSqlHost, null , srcDatabase);
+		
+		RowSet ssSchemaRowSet = SqlServerDbScour.getSrcInformationSchema(
+				srcCnString.getCnString(), srcCnString.getDatabaseName(), srcSchema, srcTable);
+		
+		
+		//Get Snowflake Schema RowSet
+		java.sql.Connection sfCn = null;
+		sfCn = JchLib_SnowflakeTest.getConnection(sfCredsLoc);
+		String sqlSfSchema = sqlSfDatabaseTableInformationShema(sfDatabase, sfSchema, sfTable);
+		RowSet sfSchemaRowSet = executeRowSetSnowflakeCommand(sqlSfSchema, sfCn);
+
+		
+        //generate list of column datatype categories
+        TreeMap<String, String> datatypeCategories = setDataTypeCategories(ssSchemaRowSet);		
+		
+        //generate list of matching columns between Sql Server and Snowflake tables
+        ArrayList<String> cols = rowsetColCompare(ssSchemaRowSet,sfSchemaRowSet);
+        
+        //generate select statement for data extract
+        String sqlSsTable = SqlServerDiscovery.sqlGenerateSelect(srcDatabase, srcSchema, srcTable, cols);
+        
+        System.out.println( srcSchema + "." + srcTable + " Column Count: " + cols.size());
+		
+		//Delete from Snowflake table because full table load twice could load duplicate records
+		sfDeleteFrom(sfCredsLoc, sfDatabase, sfSchema, sfTable);
+        
+        //execute SELECT Table
+        System.out.println(sqlSsTable);
+        ResultSet ssTable = SqlServerDbScour.executeSqlResultSet(srcCnString.getCnString(), sqlSsTable);
+        
+        //establish file name
+        long fCnt = 1;
+        String fullFileName = fileName + "_"  + String.format("%03d", fCnt) + ".csv";
+        String fullFileNamePath = filePath + fullFileName;
+        
+        //set up file writing objects
+		FileWriter writer = null;
+		BufferedWriter buffer = null;
+		try {
+			writer = new FileWriter(fullFileNamePath);
+			buffer = new BufferedWriter(writer);
+			
+		} catch (IOException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}       
+		
+		//continue if buffer was successfully created
+		if(buffer != null)  {
+			
+			long cCnt = 0;	//count calls
+	        long aCnt = 0;	//count all records
+	        long lCnt = 0;
+	        long fSize = 0;
+	        StringBuilder values = new StringBuilder();
+	        
+			try {
+				
+				ThreadPoolExecutor exe = (ThreadPoolExecutor) Executors.newFixedThreadPool(MAX_CONCURRENCY_LEVEL);
+				
+				while(ssTable.next() ) {
+					aCnt++;cCnt++;lCnt++;
+					
+					//if more than one record, add comma separator 
+					if(lCnt>1) values.append(rowDelim); 
+					
+					//iterate columns and grab column values
+					for(int i = 0; i < cols.size(); i++) {
+						if(i > 0) values.append(colDelim);
+						
+						//wrap and append values
+						values.append(
+								sfCsvValuePrep(ssTable.getString(cols.get(i)),
+											   datatypeCategories.get(cols.get(i)),
+											   textQualifier,escapeChar));
+					}		
+					
+					buffer.write(values.toString());
+					
+					//System.out.println(values.toString());
+					if(aCnt%10000==0) System.out.println(fileName + " " + cCnt + ": " + values.toString());
+					
+					fSize = fSize + values.length();
+					if(fSize >= maxFileSize) {
+						buffer.close();
+						
+						//System.out.println("filePath in writeCsvFromSqlServerTableFull: " + filePath);
+						//ExecuteCompressGzip t = new ExecuteCompressGzip(fullFileName, fullFileName + ".gz", true);
+						//ExecuteZipAndShip t = new ExecuteZipAndShip(filePath, fullFileName, fullFileName + ".gz", true, azCredsLoc);
+						ExecuteZipAndShip t = new ExecuteZipAndShip(
+								sfCredsLoc, sfDatabase, sfSchema, sfTable, null, 
+								filePath, fullFileName, fullFileName + ".gz", true, azCredsLoc, sfStage);
+						exe.submit(t);
+	
+						
+						lCnt = 0; 	//reset line count counter
+						fSize = 0;	//reset file size counter
+						fCnt++;		//increment file count counter
+						
+				        fullFileName = fileName + "_"  + String.format("%03d", fCnt) + ".csv";
+				        fullFileNamePath = filePath + fullFileName;
+
+						writer = new FileWriter(fullFileNamePath);
+						buffer = new BufferedWriter(writer);
+					}
+					
+					values.setLength(0);
+				}
+				
+
+				buffer.close();
+				//ExecuteCompressGzip t = new ExecuteCompressGzip(fullFileName, fullFileName + ".gz", true);
+				//ExecuteZipAndShip t = new ExecuteZipAndShip(filePath, fullFileName, fullFileName + ".gz", true, azCredsLoc);
+				ExecuteZipAndShip t = new ExecuteZipAndShip(
+						sfCredsLoc, sfDatabase, sfSchema, sfTable, null, 
+						filePath, fullFileName, fullFileName + ".gz", true, azCredsLoc, sfStage);
+				
+				exe.submit(t);
+				exe.shutdown();
+				
+			} catch (SQLException | IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			finally {
+				//compiler complained for not having try/catch around buffer.close()
+				//bad form to have in finally?
+				try {
+					buffer.close();
+				} catch (IOException e) {} //silently fail
+			}
+		}
+	}
+	
+	
+	/***
+	 * Deletes all records for a given Snoflake table
+	 * @param sfCredsLoc
+	 * @param sfDatabase
+	 * @param sfSchema
+	 * @param sfTable
+	 */
+	static void sfDeleteFrom(String sfCredsLoc, String sfDatabase, String sfSchema, String sfTable) {
+		
+
+		try {
+			java.sql.Connection sfCn = null;
+			sfCn = JchLib_SnowflakeTest.getConnection(sfCredsLoc, sfDatabase, sfSchema);
+			Statement sfStatement = sfCn.createStatement();
+			
+			
+			String sft = sfSchema.toUpperCase() + "." + sfTable.toUpperCase();
+			String sql = "DELETE FROM " + sft;
+			System.out.println(sql);
+		
+			sfStatement.execute(sql);
+			sfStatement = sfCn.createStatement();
+			
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+	}
+	
+    
+	/***
+	 * Asynchronously compresses file and sends to an Azure blob instance.
+	 * @author harrisonc
+	 *
+	 */
+	static class ExecuteZipAndShip extends Thread {
+		public ExecuteZipAndShip(
+				String filePath, String sourceFileName, String targetFileName, boolean deleteSource, String azBlobCredLoc) {
+			this.sourceFileName = sourceFileName;
+			this.targetFileName = targetFileName;
+			this.deleteSource = deleteSource;
+			this.azBlobCredLoc = azBlobCredLoc;
+			this.filePath = filePath;
+		}
+		
+		public ExecuteZipAndShip(String sfCredsLoc, String sfDatabase, String sfSchema, String sfTable,String valueLimiterCol, 
+				String filePath, String sourceFileName, String targetFileName, boolean deleteSource, String azBlobCredLoc, 
+				String sfStage) {
+			
+			this.sourceFileName = sourceFileName;
+			this.targetFileName = targetFileName;
+			this.deleteSource = deleteSource;
+			this.azBlobCredLoc = azBlobCredLoc;
+			this.filePath = filePath;
+			this.sfCredsLoc = sfCredsLoc;
+			this.sfDatabase = sfDatabase;
+			this.sfSchema = sfSchema;
+			this.sfTable = sfTable;
+			this.valueLimiterCol = valueLimiterCol;
+			this.sfStage = sfStage;
+			
+		}
+		
+		
+		@Override
+		public void run() {
+			String sourceFile = this.filePath + this.sourceFileName;
+			String targetFile = this.filePath + this.targetFileName;
+			
+			try {
+				System.out.println("Compressing " + sourceFile);
+				ExecuteZipAndShip.compressGzip(sourceFile, targetFile, this.deleteSource);
+				System.out.println(sourceFile + " has been compressed.");
+				
+				if(this.azBlobCredLoc != null) {
+					JchLib_AzureTest.putBlobFile(this.azBlobCredLoc, this.filePath, this.targetFileName);
+					System.out.println(targetFile + " has been sent to azure.");
+					
+					sfCopyFromAzureBlob(azBlobCredLoc, this.targetFileName, 
+							sfCredsLoc, sfDatabase, sfSchema, sfTable, sfStage, valueLimiterCol);
+					
+					System.out.println(this.targetFileName + " has been copied into Snowflake.");
+				}
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		
+	    /***
+	     * 
+	     * @param source
+	     * @param target
+	     * @throws IOException
+	     */
+	    public static void compressGzip(String sourceName, String targetName, boolean deleteSource) throws IOException {
+	    	
+	        Path source = Paths.get(sourceName);
+	        Path target = Paths.get(targetName);
+	    	
+	        try (GZIPOutputStream gos = new GZIPOutputStream(
+	                                      new FileOutputStream(target.toFile()));
+	             FileInputStream fis = new FileInputStream(source.toFile())) {
+
+	            // copy file
+	            byte[] buffer = new byte[1024];
+	            int len;
+	            while ((len = fis.read(buffer)) > 0) {
+	                gos.write(buffer, 0, len);
+	            }
+	            
+	            fis.close();
+	            
+	            if(deleteSource == true) {
+		            File delFile = new File(sourceName);
+		            delFile.delete();            	
+	            }
+
+	        }
+
+	    }
+		
+	    public static void sfCopyFromAzureBlob(String azBlobCredsLoc, String blobFileName, 
+	    		String sfCredsLoc, String sfDatabase, String sfSchema, String sfTable, String sfStage, String valueLimiterCol) {
+	    	
+			String sql = sqlSfCopyFromStage(azBlobCredsLoc, blobFileName, sfSchema, sfTable, sfStage, valueLimiterCol);
+			System.out.println(sql);
+
+			try {
+				
+				java.sql.Connection sfCn = null;
+				sfCn = JchLib_SnowflakeTest.getConnection(sfCredsLoc, sfDatabase, "PUBLIC");
+				Statement sfStatement = sfCn.createStatement();
+				
+				/*
+				if(valueLimiterCol == null) {
+					String sft = sfSchema.toUpperCase() + "." + sfTable.toUpperCase();
+					String sql2 = "DELETE FROM " + sft;
+					System.out.println(sql2);
+					
+					sfStatement.execute(sql);
+				}
+				*/
+				sfStatement.execute(sql);
+				sfStatement.close();
+				
+			} catch (SQLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+	    }
+	    
+		boolean deleteSource;
+		String targetFileName;
+		String sourceFileName;
+		String filePath;
+		String azBlobCredLoc;
+		String sfCredsLoc; 
+		String sfDatabase; 
+		String sfSchema; 
+		String sfTable;
+		String valueLimiterCol;
+		String sfStage;
+	}
+	
+	
+	/***
+	 * 
+	 * @param azBlobCredsLoc
+	 * @param blobFileName
+	 * @param sfSchema
+	 * @param sfTable
+	 * @param sfStage
+	 * @param valueLimiterCol
+	 * @return
+	 */
+	static String sqlSfCopyFromStage(String azBlobCredsLoc, String blobFileName, String sfSchema, String sfTable, 
+			String sfStage, String valueLimiterCol) {
+		String output = null;
+		   
+		StringBuilder sql = new StringBuilder();
+		
+		String tbl = sfSchema.toUpperCase() + "." + sfTable.toUpperCase();
+		
+		//if(valueLimiterCol == null) {
+		//	sql.append("DELETE FROM " + tbl + "; ");
+		//}
+		
+		sql.append("COPY INTO " + tbl + " FROM " + sfStage + " PATTERN = \"" + blobFileName + "\"");
+		
+		if(valueLimiterCol == null) {
+			sql.append(" FORCE = TRUE");
+		}
+		
+		sql.append(";");
+		output = sql.toString();
+		
+
+		return output;
+	}
+	
+	/*
+	
+	COPY INTO DBO.NONACCTNAMEFMHISTORY FROM @stage_arcusym000dbo_dev2 PATTERN = "dbo.NONACCTNAMEFMHISTORY_.*.csv.gz";
+	-- or --
+	DELETE FROM DBO.RESERVEPLANTRANSACTION;
+	COPY INTO DBO.RESERVEPLANTRANSACTION FROM @stage_arcusym000dbo_dev2 PATTERN = "dbo.RESERVEPLANTRANSACTION_.*.csv.gz" FORCE = TRUE;
+	 */
+	static String sqlSfCopyFromStage2(String blobFileName, String sfSchema, String sfTable, String sfStage, String valueLimiterCol) {
+		String output = null;
+		StringBuilder sql = new StringBuilder();
+		
+		String tbl = sfSchema + "." + sfTable;
+		
+		if(valueLimiterCol == null) {
+			sql.append("DELETE FROM " + tbl + "; ");
+		}
+		
+		sql.append("COPY INTO " + tbl + " FROM " + sfStage + " PATTERN = \"" + blobFileName + "\"");
+		
+		if(valueLimiterCol == null) {
+			sql.append(" FORCE = TRUE");
+		}
+		
+		sql.append(";");
+		output = sql.toString();
+		
+		return output;
+	}
+	
+	/*********************************************************************************************************************************************************************************/
+	/***************************************************************************  adding azure connection ****************************************************************************/
+	/*********************************************************************************************************************************************************************************/
+	
 	static public void writeCsvFromSqlServerAllTablesFull(String filePath,long maxFileSize,
 			 String srcSqlHost, String srcDatabase, String srcSchema,
 			 String sfCredsLoc, String sfDatabase, String sfSchema,
@@ -346,6 +1243,7 @@ public class JchLib_SnowflakeTest {
 		RowSet rsSfmax = executeRowSetSnowflakeCommand(sqlSfMaxValue, sfCn);
 		
 		try {
+			
 			rsSfmax.next();
 			output = rsSfmax.getString("MaxValue");
 		} catch (SQLException e) {
@@ -360,7 +1258,7 @@ public class JchLib_SnowflakeTest {
 	/***
 	 * 
 	 */
-	static String getSsMaxValue(String srcSqlHost, String srcDatabase, String srcSchema, String srcTable, String valueLimiterCol) {
+	public static String getSsMaxValue(String srcSqlHost, String srcDatabase, String srcSchema, String srcTable, String valueLimiterCol) {
 		String output = null;
 		SqlServerCnString srcCnString = new SqlServerCnString();
 		srcCnString.setCnStringIntegratedSecurity(srcSqlHost, null , srcDatabase);
@@ -393,7 +1291,7 @@ public class JchLib_SnowflakeTest {
     	
         try (GZIPOutputStream gos = new GZIPOutputStream(
                                       new FileOutputStream(target.toFile()));
-             FileInputStream fis = new FileInputStream(source.toFile())) {
+            FileInputStream fis = new FileInputStream(source.toFile())) {
 
             // copy file
             byte[] buffer = new byte[1024];
@@ -412,6 +1310,8 @@ public class JchLib_SnowflakeTest {
         }
 
     }
+    
+
     
 	/***
 	 * Asynchronously compresses file
@@ -1096,7 +1996,7 @@ public class JchLib_SnowflakeTest {
 		
 		//Get Snowflake RowSet
 		java.sql.Connection sfCn = null;
-		sfCn = JchLib_SnowflakeTest.getConnection("H:\\snowflake_creds.json");
+		sfCn = JchLib_SnowflakeTest.getConnection(snowflakeCreds);
 		Statement sfStatement = sfCn.createStatement();
 		
 		//System.out.println(sqlSfDatabaseTableInformationShema(database,schema,table));
