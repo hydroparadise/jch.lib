@@ -26,6 +26,8 @@ import org.json.simple.parser.ParseException;
 
 import com.google.api.client.util.IOUtils;
 
+import jch.lib.common.QLog;
+
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
@@ -80,7 +82,8 @@ public class JchLib_AzureTest {
 		
 		azBlobCnString = host + "/" + container;
 		
-		System.out.println("blob dir: " + blobPath);
+		//System.out.println("blob dir: " + blobPath);
+		QLog.log("blob dir: " + blobPath);
 		
 		if(blobPath != null) 
 			azBlobCnString = azBlobCnString + "/" + blobPath ;
@@ -91,7 +94,8 @@ public class JchLib_AzureTest {
 		azBlobCnString = azBlobCnString + "?" + sas;
 		
 		//System.out.println(sourcePath + sourceName);
-		System.out.println(azBlobCnString);
+		//System.out.println(azBlobCnString);
+		QLog.log(azBlobCnString);
 		
 		
 		URL url;
@@ -106,7 +110,8 @@ public class JchLib_AzureTest {
 			
 			String res = new String(httpCon.getInputStream().readAllBytes(), StandardCharsets.UTF_8) ;
 			
-			System.out.println(res);
+			///System.out.println(res);
+			QLog.log(azBlobCnString);
 			
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
@@ -174,7 +179,10 @@ public class JchLib_AzureTest {
 				Node node = list.item(i);
 				if (node.getNodeType() == Node.ELEMENT_NODE) {
 					Element element = (Element) node;
-					System.out.println(element.getElementsByTagName("Name").item(0).getTextContent());
+					
+					//System.out.println(element.getElementsByTagName("Name").item(0).getTextContent());
+					QLog.log(element.getElementsByTagName("Name").item(0).getTextContent());
+					
 					output.add(element.getElementsByTagName("Name").item(0).getTextContent());
 				}
 				
@@ -263,7 +271,8 @@ public class JchLib_AzureTest {
 		//at 0: ?, 65279
 		if((int) output.charAt(0)  == 65279) {
 			output = output.substring(1);
-			System.out.println("Trimmed the quesion");
+			//System.out.println("Trimmed the quesion");
+			QLog.log("Trimmed the quesion");
 			
 			/*
 			System.out.println("at 0: " + output.charAt(0)+ ", " + (int)output.charAt(0));
@@ -307,14 +316,18 @@ public class JchLib_AzureTest {
 			azBlobCnString = azBlobCnString + "/" + destBlobPath ;
 		azBlobCnString = azBlobCnString	+ "/" + sourceBlobName + "?" + sas;
 		//azBlobCnString = azBlobCnString	+ "/" + sourceBlobName;
-		System.out.println(azBlobCnString);
+		
+		//System.out.println(azBlobCnString);
+		QLog.log(azBlobCnString);
 		
 		String sourceNameUrl = null;
 		sourceNameUrl = host + "/" + container;
 		if(sourceBlobPath != null) 
 			sourceNameUrl = sourceNameUrl + "/" + sourceBlobPath ;
 		sourceNameUrl = sourceNameUrl + "/" + sourceBlobName + "?" + sas;;
-		System.out.println(sourceNameUrl);
+		
+		//System.out.println(sourceNameUrl);
+		QLog.log(sourceNameUrl);
 		
 		String res = null;
 		
@@ -342,8 +355,9 @@ public class JchLib_AzureTest {
 		}
 		
 					
-		System.out.println(res);
-		System.out.println(res.length());
+		//System.out.println(res);
+		//System.out.println(res.length());
+		QLog.log(res);
 	}
 	
 	
@@ -389,7 +403,8 @@ public class JchLib_AzureTest {
 		
 		azBlobCnString = host + "/" + container;
 		
-		System.out.println("blob dir: " + blobDir);
+		//System.out.println("blob dir: " + blobDir);
+		QLog.log("blob dir: " + blobDir);
 		
 		if(blobDir != null) 
 			azBlobCnString = azBlobCnString + "/" + blobDir ;
@@ -397,7 +412,9 @@ public class JchLib_AzureTest {
 		azBlobCnString = azBlobCnString	+ "/" + sourceName + "?" + sas;
 		
 		//System.out.println(sourcePath + sourceName);
-		System.out.println(azBlobCnString);
+		QLog.log(sourcePath + sourceName);
+		//System.out.println(azBlobCnString);
+		QLog.log(azBlobCnString);
 		
 		
 		URL url;
@@ -412,8 +429,8 @@ public class JchLib_AzureTest {
 			IOUtils.copy(new FileInputStream(sourcePath + sourceName),httpCon.getOutputStream());
 			String res = new String(httpCon.getInputStream().readAllBytes(), StandardCharsets.UTF_8) ;
 			
-			System.out.println(res);
-			
+			//System.out.println(res);
+			QLog.log(res);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -450,9 +467,11 @@ public class JchLib_AzureTest {
 			
 			azBlobCnString = host + "/" + container + "/" + sourceName + "?" + sas;
 			
-			System.out.println(sourcePath + sourceName);
-			System.out.println(azBlobCnString);
+			//System.out.println(sourcePath + sourceName);
+			QLog.log(sourcePath + sourceName);
 			
+			//System.out.println(azBlobCnString);
+			QLog.log(azBlobCnString);
 			
 			URL url;
 			try {
@@ -470,7 +489,8 @@ public class JchLib_AzureTest {
 				IOUtils.copy(new FileInputStream(sourcePath + sourceName),httpCon.getOutputStream());
 				String res = new String(httpCon.getInputStream().readAllBytes(), StandardCharsets.UTF_8) ;
 				
-				System.out.println(res);
+				//System.out.println(res);
+				QLog.log(res);
 				
 			} catch (IOException e) {
 				// TODO Auto-generated catch block

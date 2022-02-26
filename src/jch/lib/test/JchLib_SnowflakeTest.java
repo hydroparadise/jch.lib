@@ -26,7 +26,7 @@ import javax.sql.rowset.RowSetProvider;
 import org.json.simple.*;
 import org.json.simple.parser.*;
 
-
+import jch.lib.common.QLog;
 import jch.lib.db.sqlserver.SqlServerCnString;
 import jch.lib.db.sqlserver.SqlServerDbScour;
 import jch.lib.db.sqlserver.SqlServerDiscovery;
@@ -135,6 +135,7 @@ public class JchLib_SnowflakeTest {
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+			//QLog.log(e.toString());
 		}
 	}
 	
@@ -269,8 +270,8 @@ public class JchLib_SnowflakeTest {
 					);
 				}
 				else if (optionalFull == true) {
-					System.out.println(fileName + ": Full file");
-					
+					//System.out.println(fileName + ": Full file");
+					QLog.log(fileName + ": Full file");
 					exe.execute(()->  
 						JchLib_SnowflakeTest.writeCsvFromSqlServerTableFull(
 								filePath, fileName,	maxFileSize,				//max file size in bytes
@@ -344,8 +345,9 @@ public class JchLib_SnowflakeTest {
 		//make sure SQL server source has data to pull
 		String ssMaxValue = null;
 		ssMaxValue = getSsMaxValue(srcSqlHost,  srcDatabase, srcSchema, srcTable, valueLimiterCol);
-		System.out.println(SqlServerDbScour.sqlMaxValue(srcDatabase, srcSchema, srcTable, valueLimiterCol) + ": " + ssMaxValue);
 		
+		//System.out.println(SqlServerDbScour.sqlMaxValue(srcDatabase, srcSchema, srcTable, valueLimiterCol) + ": " + ssMaxValue);
+		QLog.log(SqlServerDbScour.sqlMaxValue(srcDatabase, srcSchema, srcTable, valueLimiterCol) + ": " + ssMaxValue);
 		
 		//make sure time-demen value was returned on SQL Server side, otherwise skip as there is no data to pull
 		if (ssMaxValue != null) {
@@ -353,13 +355,15 @@ public class JchLib_SnowflakeTest {
 			//ping Snowflake source for most current data
 			String sfMaxValue = null;
 			sfMaxValue = getSfMaxValue(sfCredsLoc, sfDatabase, sfSchema, sfTable, valueLimiterCol);
-			System.out.println(sqlSfMaxValue(sfDatabase, sfSchema, sfTable, valueLimiterCol) + ": " + sfMaxValue);
+			
+			//System.out.println(sqlSfMaxValue(sfDatabase, sfSchema, sfTable, valueLimiterCol) + ": " + sfMaxValue);
+			QLog.log(sqlSfMaxValue(sfDatabase, sfSchema, sfTable, valueLimiterCol) + ": " + sfMaxValue);
 			
 			//make sure some value was returned, otherwise pull full file
 			if(sfMaxValue != null) {
 				
-				System.out.println(SqlServerDbScour.sqlGreaterThan(srcDatabase, srcSchema, srcTable, valueLimiterCol, sfMaxValue, dataTypeCat));
-				
+				//System.out.println(SqlServerDbScour.sqlGreaterThan(srcDatabase, srcSchema, srcTable, valueLimiterCol, sfMaxValue, dataTypeCat));
+				QLog.log(SqlServerDbScour.sqlGreaterThan(srcDatabase, srcSchema, srcTable, valueLimiterCol, sfMaxValue, dataTypeCat));
 				
 				SqlServerCnString srcCnString = new SqlServerCnString();
 				srcCnString.setCnStringIntegratedSecurity(srcSqlHost, null , srcDatabase);
@@ -371,7 +375,9 @@ public class JchLib_SnowflakeTest {
 					while(segs.next()) {
 						
 						String valueLimit = segs.getString(valueLimiterCol);
-						System.out.println(valueLimit);
+						//System.out.println(valueLimit);
+						QLog.log(valueLimit);
+						
 						writeCsvFromSqlServerTableValueLimit(filePath, fileName, maxFileSize,
 								 srcSqlHost, srcDatabase, srcSchema, srcTable,
 								 sfCredsLoc, sfDatabase, sfSchema, sfTable,
@@ -491,7 +497,8 @@ public class JchLib_SnowflakeTest {
         ArrayList<String> cols = rowsetColCompare(ssSchemaRowSet,sfSchemaRowSet);
         String sqlSsTable = SqlServerDiscovery.sqlGenerateSelect(srcDatabase, srcSchema, srcTable, cols);
         
-        System.out.println( srcSchema + "." + srcTable + " Column Count: " + cols.size());
+        //System.out.println( srcSchema + "." + srcTable + " Column Count: " + cols.size());
+        QLog.log(srcSchema + "." + srcTable + " Column Count: " + cols.size());
         
         //if force load is true, delete current table segment to be be reloaded
         if(sfForceLoad == true) 
@@ -506,7 +513,8 @@ public class JchLib_SnowflakeTest {
         String sqlValueLimitCol = SqlServerDiscovery.sqlObjBracket(valueLimiterCol);                             //
         sqlSsTable = sqlSsTable + " WHERE " + sqlValueLimitCol + " = " +  sqlValueLimit;                         //
                                                                                                                  //
-        System.out.println(sqlSsTable);                                                                          //
+        //System.out.println(sqlSsTable);                                                                        //
+        QLog.log(sqlSsTable);                                                                                    //
         ResultSet ssTable = SqlServerDbScour.executeSqlResultSet(srcCnString.getCnString(), sqlSsTable);         //
                                                                                                                  //
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -564,7 +572,8 @@ public class JchLib_SnowflakeTest {
 					buffer.write(values.toString());
 					
 					//System.out.println(values.toString());
-					if(aCnt%10000==0) System.out.println(fileName + " " + cCnt + ": " + values.toString());
+					if(aCnt%10000==0 || lCnt==1) //System.out.println(fileName + " " + cCnt + ": " + values.toString());
+						QLog.log(fileName + " " + cCnt + ": " + values.toString());
 					
 					//keep track of growing file size 
 					fSize = fSize + values.length();
@@ -680,13 +689,16 @@ public class JchLib_SnowflakeTest {
         //generate select statement for data extract
         String sqlSsTable = SqlServerDiscovery.sqlGenerateSelect(srcDatabase, srcSchema, srcTable, cols);
         
-        System.out.println( srcSchema + "." + srcTable + " Column Count: " + cols.size());
+        //System.out.println( srcSchema + "." + srcTable + " Column Count: " + cols.size());
+        QLog.log(srcSchema + "." + srcTable + " Column Count: " + cols.size());
 		
 		//Delete from Snowflake table because full table load twice could load duplicate records
 		sfDeleteFrom(sfCredsLoc, sfDatabase, sfSchema, sfTable);
         
         //execute SELECT Table
-        System.out.println(sqlSsTable);
+        //System.out.println(sqlSsTable);
+        QLog.log(sqlSsTable);
+        
         ResultSet ssTable = SqlServerDbScour.executeSqlResultSet(srcCnString.getCnString(), sqlSsTable);
         
         //establish file name
@@ -739,7 +751,8 @@ public class JchLib_SnowflakeTest {
 					buffer.write(values.toString());
 					
 					//System.out.println(values.toString());
-					if(aCnt%10000==0) System.out.println(fileName + " " + cCnt + ": " + values.toString());
+					if(aCnt%10000==0 || lCnt == 1) //System.out.println(fileName + " " + cCnt + ": " + values.toString());
+							QLog.log(fileName + " " + cCnt + ": " + values.toString());
 					
 					fSize = fSize + values.length();
 					if(fSize >= maxFileSize) {
@@ -820,7 +833,8 @@ public class JchLib_SnowflakeTest {
 				sql = sql + " WHERE " + valueLimiterCol + " = " + sqlValueLimit;
 			}
 			
-			System.out.println(sql);
+			//System.out.println(sql);
+			QLog.log(sql);
 		
 			sfStatement.execute(sql);
 			sfStatement = sfCn.createStatement();
@@ -903,9 +917,13 @@ public class JchLib_SnowflakeTest {
 			String targetFile = this.filePath + this.targetFileName;
 			
 			try {
-				System.out.println("Compressing " + sourceFile);
+				//System.out.println("Compressing " + sourceFile);
+				QLog.log("Compressing " + sourceFile);
+				
 				ExecuteZipAndShip.compressGzip(sourceFile, targetFile, this.deleteSource);
-				System.out.println(sourceFile + " has been compressed.");
+				
+				//System.out.println(sourceFile + " has been compressed.");
+				QLog.log(sourceFile + " has been compressed.");
 				
 				if(this.azBlobCredLoc != null) {
 					
@@ -922,13 +940,15 @@ public class JchLib_SnowflakeTest {
 								this.filePath, 
 								this.targetFileName);
 					
-					System.out.println(targetFile + " has been sent to azure.");
-					
+					//System.out.println(targetFile + " has been sent to azure.");
+					QLog.log(targetFile + " has been sent to azure.");
+							
 					//performs copy from Azure to Snowflake for a 7
 					sfCopyFromAzureBlob(azBlobCredLoc, this.targetFileName, this.azBlobDir,
 							sfCredsLoc, sfDatabase, sfSchema, sfTable, sfStage, sfForceLoad);
 					
-					System.out.println(this.targetFileName + " has been copied into Snowflake.");
+					//System.out.println(this.targetFileName + " has been copied into Snowflake.");
+					QLog.log(this.targetFileName + " has been copied into Snowflake.");
 				}
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
@@ -987,7 +1007,9 @@ public class JchLib_SnowflakeTest {
 	    	
 	    	
 			String sql = sqlSfCopyFromStage(azBlobCredsLoc, azBlobFileName, azBlobDir, sfSchema, sfTable, sfStage, forceLoad);
-			System.out.println(sql);
+			
+			//System.out.println(sql);
+			QLog.log(sql);
 
 			try {
 				
@@ -1242,6 +1264,8 @@ public class JchLib_SnowflakeTest {
 				final String dtc = dataTypeCat;
 				
 				if(valueLimiterCol != null) {
+					QLog.log(fileName + ": Diff file");
+					
 					exe.execute(()->  
 						JchLib_SnowflakeTest.writeCsvFromSqlServerTableDiff(
 							filePath, fileName,	maxFileSize,				//max file size in bytes
@@ -1252,7 +1276,8 @@ public class JchLib_SnowflakeTest {
 					);
 				}
 				else if (optionalFull == true) {
-					System.out.println(fileName + ": Full file");
+					//System.out.println(fileName + ": Full file");
+					QLog.log(fileName + ": Full file");
 					
 					exe.execute(()->  
 						JchLib_SnowflakeTest.writeCsvFromSqlServerTableFull(
@@ -1284,8 +1309,9 @@ public class JchLib_SnowflakeTest {
 		//make sure SQL server source has data to pull
 		String ssMaxValue = null;
 		ssMaxValue = getSsMaxValue(srcSqlHost,  srcDatabase, srcSchema, srcTable, valueLimiterCol);
-		System.out.println(SqlServerDbScour.sqlMaxValue(srcDatabase, srcSchema, srcTable, valueLimiterCol) + ": " + ssMaxValue);
 		
+		//System.out.println(SqlServerDbScour.sqlMaxValue(srcDatabase, srcSchema, srcTable, valueLimiterCol) + ": " + ssMaxValue);
+		QLog.log(SqlServerDbScour.sqlMaxValue(srcDatabase, srcSchema, srcTable, valueLimiterCol) + ": " + ssMaxValue);
 		
 		//make sure some value was returned on SQL Server side, otherwise skip
 		if (ssMaxValue != null) {
@@ -1293,13 +1319,15 @@ public class JchLib_SnowflakeTest {
 			//ping Snowflake source for most current data
 			String sfMaxValue = null;
 			sfMaxValue = getSfMaxValue(sfCredsLoc, sfDatabase, sfSchema, sfTable, valueLimiterCol);
-			System.out.println(sqlSfMaxValue(sfDatabase, sfSchema, sfTable, valueLimiterCol) + ": " + sfMaxValue);
+			
+			//System.out.println(sqlSfMaxValue(sfDatabase, sfSchema, sfTable, valueLimiterCol) + ": " + sfMaxValue);
+			QLog.log(sqlSfMaxValue(sfDatabase, sfSchema, sfTable, valueLimiterCol) + ": " + sfMaxValue);
 			
 			//make sure some value was returned, otherwise pull full file
 			if(sfMaxValue != null) {
 				
-				System.out.println(SqlServerDbScour.sqlGreaterThan(srcDatabase, srcSchema, srcTable, valueLimiterCol, sfMaxValue, dataTypeCat));
-				
+				//System.out.println(SqlServerDbScour.sqlGreaterThan(srcDatabase, srcSchema, srcTable, valueLimiterCol, sfMaxValue, dataTypeCat));
+				QLog.log(SqlServerDbScour.sqlGreaterThan(srcDatabase, srcSchema, srcTable, valueLimiterCol, sfMaxValue, dataTypeCat));
 				
 				SqlServerCnString srcCnString = new SqlServerCnString();
 				srcCnString.setCnStringIntegratedSecurity(srcSqlHost, null , srcDatabase);
@@ -1310,7 +1338,9 @@ public class JchLib_SnowflakeTest {
 					while(segs.next()) {
 						
 						String valueLimit = segs.getString(valueLimiterCol);
-						System.out.println(valueLimit);
+						//System.out.println(valueLimit);
+						QLog.log(valueLimit);
+						
 						writeCsvFromSqlServerTableValueLimit(filePath, fileName, maxFileSize,
 								 srcSqlHost, srcDatabase, srcSchema, srcTable,
 								 sfCredsLoc, sfDatabase, sfSchema, sfTable,
@@ -1599,14 +1629,16 @@ public class JchLib_SnowflakeTest {
         ArrayList<String> cols = rowsetColCompare(ssSchemaRowSet,sfSchemaRowSet);
         String sqlSsTable = SqlServerDiscovery.sqlGenerateSelect(srcDatabase, srcSchema, srcTable, cols);
         
-        System.out.println("Column Count: " + cols.size() + ", " + datatypeCategories.size());
-        
+        //System.out.println("Column Count: " + cols.size() + ", " + datatypeCategories.size());
+        QLog.log("Column Count: " + cols.size() + ", " + datatypeCategories.size());
         
         String sqlValueLimit = SqlServerDbScour.sqlValuePrep(valueLimit, datatypeCategories.get(valueLimiterCol.toUpperCase()));
         String sqlValueLimitCol = SqlServerDiscovery.sqlObjBracket(valueLimiterCol);
         sqlSsTable = sqlSsTable + " WHERE " + sqlValueLimitCol + " = " +  sqlValueLimit;
         
-        System.out.println(sqlSsTable);
+        //System.out.println(sqlSsTable);
+        QLog.log(sqlSsTable);
+        
         ResultSet ssTable = SqlServerDbScour.executeSqlResultSet(srcCnString.getCnString(), sqlSsTable);
         
 
@@ -1661,7 +1693,8 @@ public class JchLib_SnowflakeTest {
 					buffer.write(values.toString());
 					
 					//System.out.println(values.toString());
-					if(aCnt%10000==0) System.out.println(fileName + " " + cCnt + ": " + values.toString());
+					if(aCnt%10000==0) //System.out.println(fileName + " " + cCnt + ": " + values.toString());
+						QLog.log(fileName + " " + cCnt + ": " + values.toString());
 					
 					//keep track of growing file size 
 					fSize = fSize + values.length();
@@ -1753,10 +1786,13 @@ public class JchLib_SnowflakeTest {
         //generate select statement for data extract
         String sqlSsTable = SqlServerDiscovery.sqlGenerateSelect(srcDatabase, srcSchema, srcTable, cols);
         
-        System.out.println("Column Count: " + cols.size());
+        //System.out.println("Column Count: " + cols.size());
+        QLog.log("Column Count: " + cols.size());
         
         //execute SELECT Table
-        System.out.println(sqlSsTable);
+        //System.out.println(sqlSsTable);
+        QLog.log(sqlSsTable);
+        
         ResultSet ssTable = SqlServerDbScour.executeSqlResultSet(srcCnString.getCnString(), sqlSsTable);
         
         long fCnt = 1;
@@ -1806,7 +1842,8 @@ public class JchLib_SnowflakeTest {
 					buffer.write(values.toString());
 					
 					//System.out.println(values.toString());
-					if(aCnt%10000==0) System.out.println(fileName + " " + cCnt + ": " + values.toString());
+					if(aCnt%10000==0) //System.out.println(fileName + " " + cCnt + ": " + values.toString());
+						QLog.log(fileName + " " + cCnt + ": " + values.toString());
 					
 					fSize = fSize + values.length();
 					if(fSize >= maxFileSize) {
@@ -1889,7 +1926,9 @@ public class JchLib_SnowflakeTest {
         //test portion
         //sqlSsTable = sqlSsTable + " WHERE Processdate = 20211213";
         
-        System.out.println(sqlSsTable);
+        //System.out.println(sqlSsTable);
+        QLog.log(sqlSsTable);
+        
         ResultSet ssTable = SqlServerDbScour.executeSqlResultSet(srcCnString.getCnString(), sqlSsTable);
 
         try {
@@ -1951,14 +1990,17 @@ public class JchLib_SnowflakeTest {
         	if(sqlInsertInto.length() + values.length() > API_PACK_SIZE) {
         		cCnt++;
         		sql.append(sqlInsertInto + " VALUES " + values.toString());
-        		System.out.println("cCnt: " + cCnt+ ", pCnt: " + pCnt + ", len: " + sql.length() + ", aCnt: " + aCnt);
+        		
+        		//System.out.println("cCnt: " + cCnt+ ", pCnt: " + pCnt + ", len: " + sql.length() + ", aCnt: " + aCnt);
+        		QLog.log("cCnt: " + cCnt+ ", pCnt: " + pCnt + ", len: " + sql.length() + ", aCnt: " + aCnt);
         		
         		//queue in thread pool
         		ExecuteUpdateSnowflakeCommand t = 
         				new ExecuteUpdateSnowflakeCommand(sql.toString(), sfConnection, cCnt);
 				exe.submit(t);	
 				
-				System.out.println(exe.getTaskCount() + " tasks!");
+				//System.out.println(exe.getTaskCount() + " tasks!");
+				QLog.log(exe.getTaskCount() + " tasks!");
         		
         		values.setLength(0);
         		pCnt = 0;
@@ -1998,7 +2040,8 @@ public class JchLib_SnowflakeTest {
 			
 			try {
 				stmnt.executeUpdate(sqlCommand);
-				System.out.println(cCnt + " executed!");
+				//System.out.println(cCnt + " executed!");
+				QLog.log(cCnt + " executed!");
 			} catch (SQLException e) {
 				// TODO Auto-generated catch block
 				System.out.println(cCnt + " exception!");
@@ -2146,8 +2189,8 @@ public class JchLib_SnowflakeTest {
         sfCols.close();
         //System.out.println(cols.size());
         //System.out.println(ssGenerateSelect(database,schema,table, cols));
-        System.out.println(colDatatypeCat.size());
-        
+        //System.out.println(colDatatypeCat.size());
+        QLog.log(colDatatypeCat.size() + "");
         
         Connection srcCn = DriverManager.getConnection(srcCnString.getCnString()); 
         Statement ssStatment = srcCn.createStatement(ResultSet.TYPE_FORWARD_ONLY,ResultSet.CONCUR_READ_ONLY);
@@ -2185,7 +2228,8 @@ public class JchLib_SnowflakeTest {
         		cCnt++;
         		
         		sql.append(sqlInsertInto + " VALUES  " + values.toString());
-        		System.out.println("cCnt: " + cCnt+ ", pCnt: " + pCnt + ", len: " + sql.length() + ", aCnt: " + aCnt);
+        		//System.out.println("cCnt: " + cCnt+ ", pCnt: " + pCnt + ", len: " + sql.length() + ", aCnt: " + aCnt);
+        		QLog.log("cCnt: " + cCnt+ ", pCnt: " + pCnt + ", len: " + sql.length() + ", aCnt: " + aCnt);
         		
         		//System.out.println(sql.toString());
         	    //BufferedWriter writer = new BufferedWriter(new FileWriter("C:\\temp\\out.txt"));
@@ -2243,10 +2287,15 @@ public class JchLib_SnowflakeTest {
 			for(int i = 0; i < value.length(); i++) {
 				if((int)value.charAt(i) > 127) {
 					//value = value.replaceAll(value.substring(i, i), " ");
-					System.out.println("Found an offender: " + (int)value.charAt(i));
-					System.out.println((value));
+					//System.out.println("Found an offender: " + (int)value.charAt(i));
+					QLog.log("Found an offender: "+  value + ", " + (int)value.charAt(i));
+					
+					//System.out.println((value));
+					//QLog.log(value);
+					
 					value = value.replaceAll(String.valueOf(value.charAt(i)), " ");
-					System.out.println((value));
+					//System.out.println((value));
+					//QLog.log(value);
 				}
 			}
 			
@@ -2471,10 +2520,14 @@ public class JchLib_SnowflakeTest {
 			cn = JchLib_SnowflakeTest.getConnection(sfCredsLoc, srcDatabase);
 			
 			//Create Schemas and Tables
-			System.out.println("Create Shemas...");
+			//System.out.println("Create Shemas...");
+			QLog.log("Create Shemas...");
+			
 			createAllDatabaseSchemas(cn, srcHost, srcDatabase);
 			
-			System.out.println("Create Tables...");
+			//System.out.println("Create Tables...");
+			QLog.log("Create Tables...");
+			
 			createSfAllDatabaseTables(cn, srcHost, srcDatabase);
 			
 			cn.close();
@@ -2511,7 +2564,9 @@ public class JchLib_SnowflakeTest {
 				
 				createStatement.append("CREATE SCHEMA " + schemas.getString("TABLE_SCHEMA"));
 				
-				System.out.println(createStatement.toString());
+				//System.out.println(createStatement.toString());
+				QLog.log(createStatement.toString());
+				
 				statement.executeUpdate(createStatement.toString());
 			}
 			
@@ -2748,11 +2803,14 @@ public class JchLib_SnowflakeTest {
 					line++;
 					if(line == 1) {
 						str = "CREATE TABLE " + tableName+ " (";
-						System.out.println(str);
+						//System.out.println(str);
+						QLog.log(str);
 					}
 					
+					//TODO: why was this here?
 					if(line >= 2) {
-						System.out.println(",");
+						//System.out.println(",");
+						QLog.log(",");
 					}
 					
 					if(infSchema.getString("CONSTRAINT_NAME") != null) pks.add(infSchema.getString("COLUMN_NAME"));
@@ -2772,11 +2830,12 @@ public class JchLib_SnowflakeTest {
 						  "\t" + datatype +
 						  "\t" + nullable;
 
-					System.out.print(str);
+					//System.out.print(str);
+					QLog.log(str);
 				}
 			}
 			if(pks.size() > 0) {
-				System.out.println(",");
+				
 				
 				String pk = "\tPRIMARY KEY(";
 				for(int i = 0; i < pks.size(); i++) {
@@ -2785,7 +2844,8 @@ public class JchLib_SnowflakeTest {
 				}
 				pk = pk + ")";
 				
-				System.out.println(pk);
+				//System.out.println(pk);
+				QLog.log(pk);
 				
 			}
 			
@@ -2921,6 +2981,7 @@ public class JchLib_SnowflakeTest {
 	    }
 	    catch (ClassNotFoundException ex){
 	    	System.err.println("Driver not found");
+	    	QLog.log("Driver not found");
 	    }
 	    
 	    //use JSON object to pull sensitive information instead of hardcoding
@@ -2977,6 +3038,7 @@ public class JchLib_SnowflakeTest {
 	    }
 	    catch (ClassNotFoundException ex){
 	    	System.err.println("Driver not found");
+	    	QLog.log("Driver not found");
 	    }
 	    
 	    //use JSON object to pull sensitive information instead of hardcoding
@@ -3048,6 +3110,7 @@ public class JchLib_SnowflakeTest {
 		} catch (ParseException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+			
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
