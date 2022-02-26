@@ -349,18 +349,22 @@ public class JchLib_AzureTest {
 	
 	/***
 	 * 
-	 * 
-	 * @param azBlobCfsconnectorscuLoc 
+	 * @param azBlobCredsLoc
 	 * @param sourcePath
 	 * @param sourceName
 	 */
-	
 	public static void putBlobFile(String azBlobCredsLoc, String sourcePath, String sourceName) {
 		putBlobFile(azBlobCredsLoc,sourcePath,sourceName, null);
 		
 	}
 	
-	
+	/***
+	 * 
+	 * @param azBlobCredsLoc
+	 * @param sourcePath
+	 * @param sourceName
+	 * @param blobDir
+	 */
 	public static void putBlobFile(String azBlobCredsLoc, String sourcePath, String sourceName, String blobDir) {
 	    JSONObject jsonObj = null;
 		try {
