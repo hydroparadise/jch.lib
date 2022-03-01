@@ -4,6 +4,8 @@ import java.util.concurrent.*;
 import javax.sql.*;
 import javax.sql.rowset.*;
 
+import jch.lib.common.QLog;
+
 //import com.sun.prism.impl.Disposer.Record;
 
 /***
@@ -65,7 +67,11 @@ public class SqlServerDbScour {
 
 			}
 		}
-        catch (SQLException ex) {ex.printStackTrace();success = false;} 
+        catch (SQLException ex) {
+        	ex.printStackTrace();
+        	success = false;
+        	QLog.log(ex.toString(),true);
+        } 
 		
 		exe.shutdown();
 		return success;	
@@ -137,7 +143,7 @@ public class SqlServerDbScour {
 	        catch (SQLException ex) {ex.printStackTrace();} 
 	        finally {
 	        	try {if (destCn != null && !destCn.isClosed()) destCn.close();} 
-	        	catch (SQLException ex) {ex.printStackTrace();}
+	        	catch (SQLException ex) {ex.printStackTrace();QLog.log(ex.toString(),true);}
 			}
 		}
 		
@@ -195,12 +201,14 @@ public class SqlServerDbScour {
 			}
 	        catch (SQLException ex) {
 	        	ex.printStackTrace();
-	        	System.out.println(SqlServerDiscovery.sqlPrint(sqlSearch));
+	        	//System.out.println(SqlServerDiscovery.sqlPrint(sqlSearch));
+	        	QLog.log(SqlServerDiscovery.sqlPrint(sqlSearch));
+	        	QLog.log(ex.toString(),true);
 			} 
 	        //close connection
 	        finally {
 	        	try {if (srcCn != null && !srcCn.isClosed()) srcCn.close();} 
-	        	catch (SQLException ex) {ex.printStackTrace();}
+	        	catch (SQLException ex) {ex.printStackTrace();QLog.log(ex.toString(),true);}
 			}
 	    	
 			
@@ -236,11 +244,11 @@ public class SqlServerDbScour {
 				}
 				
 			}
-	        catch (SQLException ex) {ex.printStackTrace();} 
+	        catch (SQLException ex) {ex.printStackTrace();QLog.log(ex.toString(),true);} 
 	        //close connection
 	        finally {
 	        	try {if (destCn != null && !destCn.isClosed()) destCn.close();} 
-	        	catch (SQLException ex) {ex.printStackTrace();}
+	        	catch (SQLException ex) {ex.printStackTrace();QLog.log(ex.toString(),true);}
 			}
 	    	
 			
@@ -292,11 +300,11 @@ public class SqlServerDbScour {
 	    	
 	    	success  = insertDestinationColStats(srcCnString, destCnString, destDbName, destSchema, tblStats);
 		}
-        catch (SQLException ex) {ex.printStackTrace();success = false;} 
+        catch (SQLException ex) {ex.printStackTrace();success = false;QLog.log(ex.toString(),true);} 
         //close connection
         finally {
         	try {if (destCn != null && !destCn.isClosed()) destCn.close();} 
-        	catch (SQLException ex) {ex.printStackTrace();}
+        	catch (SQLException ex) {ex.printStackTrace();QLog.log(ex.toString(),true);}
 		}
     	
 		return success;
@@ -352,7 +360,7 @@ public class SqlServerDbScour {
 				exe.submit(t);
 			}
 		}
-        catch (SQLException ex) {ex.printStackTrace();success = false;} 
+        catch (SQLException ex) {ex.printStackTrace();success = false;QLog.log(ex.toString(),true);} 
 		
 		exe.shutdown();
 		return success;
@@ -434,7 +442,7 @@ public class SqlServerDbScour {
 	        catch (SQLException ex) {ex.printStackTrace();} 
 	        finally {
 	        	try {if (destCn != null && !destCn.isClosed()) destCn.close();} 
-	        	catch (SQLException ex) {ex.printStackTrace();}
+	        	catch (SQLException ex) {ex.printStackTrace();QLog.log(ex.toString(),true);}
 			}
 			
 			
@@ -488,7 +496,7 @@ public class SqlServerDbScour {
 	        catch (SQLException ex) {ex.printStackTrace();} 
 	        finally {
 	        	try {if (srcCn != null && !srcCn.isClosed()) srcCn.close();} 
-	        	catch (SQLException ex) {ex.printStackTrace();}
+	        	catch (SQLException ex) {ex.printStackTrace();QLog.log(ex.toString(),true);}
 			}
 			
 			//TODO: create a log object to pass over instead of debug printing here
@@ -505,11 +513,11 @@ public class SqlServerDbScour {
 	        	sta.execute("USE " + destDbName);
 	        	sta.executeUpdate(columnStats.toSqlInsert(destSchema));
 			}
-	        catch (SQLException ex) {ex.printStackTrace();} 
+	        catch (SQLException ex) {ex.printStackTrace();QLog.log(ex.toString(),true);} 
 	        finally {
 	        	//close connection
 	        	try {if (destCn != null && !destCn.isClosed()) destCn.close();} 
-	        	catch (SQLException ex) {ex.printStackTrace();}
+	        	catch (SQLException ex) {ex.printStackTrace();QLog.log(ex.toString(),true);}
 			}
 			
 		}
@@ -557,11 +565,11 @@ public class SqlServerDbScour {
         	success = insertDestinationTableStats(srcCnString, destCnString, destDbName, destSchema, tblStats);
         	
         } 
-        catch (SQLException ex) {ex.printStackTrace();success = false;} 
+        catch (SQLException ex) {ex.printStackTrace();success = false;QLog.log(ex.toString(),true);} 
         //close connection
         finally {
         	try {if (destCn != null && !destCn.isClosed()) destCn.close();} 
-        	catch (SQLException ex) {ex.printStackTrace();}
+        	catch (SQLException ex) {ex.printStackTrace();QLog.log(ex.toString(),true);}
 		}
 
         //finish all threads before moving on
@@ -629,7 +637,7 @@ public class SqlServerDbScour {
         //close connection
         finally {
         	try {if (destCn != null && !destCn.isClosed()) destCn.close();} 
-        	catch (SQLException ex) {ex.printStackTrace();}
+        	catch (SQLException ex) {ex.printStackTrace();QLog.log(ex.toString(),true);}
 		}
 
         //finish all threads before moving on
@@ -691,10 +699,10 @@ public class SqlServerDbScour {
 			}
 			
 			//close connection
-	        catch (SQLException ex) {ex.printStackTrace();} 
+	        catch (SQLException ex) {ex.printStackTrace();QLog.log(ex.toString(),true);} 
 	        finally {
 	        	try {if (srcCn != null && !srcCn.isClosed()) srcCn.close();} 
-	        	catch (SQLException ex) {ex.printStackTrace();}
+	        	catch (SQLException ex) {ex.printStackTrace();QLog.log(ex.toString(),true);}
 			}
 			
 			//next, insert in TblStats table
@@ -711,11 +719,11 @@ public class SqlServerDbScour {
 	        	sta.execute("USE " + destDbName);
 	        	sta.executeUpdate(record.toSqlInsert(destSchema));
 			}
-	        catch (SQLException ex) {ex.printStackTrace();} 
+	        catch (SQLException ex) {ex.printStackTrace();QLog.log(ex.toString(),true);} 
 	        finally {
 	        	//close connection
 	        	try {if (destCn != null && !destCn.isClosed()) destCn.close();} 
-	        	catch (SQLException ex) {ex.printStackTrace();}
+	        	catch (SQLException ex) {ex.printStackTrace();QLog.log(ex.toString(),true);}
 			}
 			
 		}
@@ -758,12 +766,12 @@ public class SqlServerDbScour {
 	        rs.populate(res);
 
         } 
-        catch (SQLException ex) {ex.printStackTrace();} 
+        catch (SQLException ex) {ex.printStackTrace();QLog.log(ex.toString(),true);} 
         finally {
 	        try {
 	            if (cn != null && !cn.isClosed()) {cn.close();}
 	        } 
-	        catch (SQLException ex) {ex.printStackTrace();}
+	        catch (SQLException ex) {ex.printStackTrace();QLog.log(ex.toString(),true);}
         }
         return rs; 
 	}
@@ -874,7 +882,7 @@ public class SqlServerDbScour {
 				success = true;
 			}
 		}
-		catch (SQLException ex) {ex.printStackTrace();}
+		catch (SQLException ex) {ex.printStackTrace();QLog.log(ex.toString(),true);}
 		
 		return success;
 	}
@@ -915,12 +923,12 @@ public class SqlServerDbScour {
 		        rs.populate(res);
 	 
 	        } 
-	        catch (SQLException ex) {ex.printStackTrace();} 
+	        catch (SQLException ex) {ex.printStackTrace();QLog.log(ex.toString(),true);} 
 	        finally {
 		        try {
 		            if (cn != null && !cn.isClosed()) {cn.close();}
 		        } 
-		        catch (SQLException ex) {ex.printStackTrace();}
+		        catch (SQLException ex) {ex.printStackTrace();QLog.log(ex.toString(),true);}
 	        }
 		}
         return rs; 
@@ -958,12 +966,55 @@ public class SqlServerDbScour {
 	        rs.populate(res);
  
         } 
-        catch (SQLException ex) {ex.printStackTrace();} 
+        catch (SQLException ex) {ex.printStackTrace();QLog.log(ex.toString(),true);} 
         finally {
 	        try {
 	            if (cn != null && !cn.isClosed()) {cn.close();}
 	        } 
-	        catch (SQLException ex) {ex.printStackTrace();}
+	        catch (SQLException ex) {ex.printStackTrace();QLog.log(ex.toString(),true);}
+        }
+        return rs; 
+	}
+	
+	/***
+	 * 
+	 * Fields: TABLE_CATALOG,TABLE_SCHEMA,TABLE_NAME,VIEW_DEFINITION,CHECK_OPTION,IS_UPDATABLE
+	 * 
+	 * @param srcCnString
+	 * @param srcDbName
+	 * @return
+	 */
+	public static RowSet getSrcViewDefinitions(String srcCnString, String srcDbName) {
+        //String sqlAllDatabase = SqlServerDiscovery.sqlAllUserDatabases();
+
+		Connection cn = null;  //connection
+		CachedRowSet rs = null;
+		
+		//Open connection, run drop sql statements
+        try {
+            cn = DriverManager.getConnection(srcCnString);  
+            
+            //Either grab only user tables or both tables and views.
+            String sql;
+            
+            //check statement
+            //System.out.println(SqlServerDiscovery.sqlDbTables(srcDbName));
+            
+            sql = SqlServerDiscovery.sqlDbViewDefinitions(srcDbName);
+	        Statement sta = cn.createStatement(ResultSet.TYPE_FORWARD_ONLY,ResultSet.CONCUR_READ_ONLY);
+	        ResultSet res = sta.executeQuery(sql);
+	        
+	        RowSetFactory rsf = RowSetProvider.newFactory();
+	        rs = rsf.createCachedRowSet();
+	        rs.populate(res);
+ 
+        } 
+        catch (SQLException ex) {ex.printStackTrace();QLog.log(ex.toString(),true);} 
+        finally {
+	        try {
+	            if (cn != null && !cn.isClosed()) {cn.close();}
+	        } 
+	        catch (SQLException ex) {ex.printStackTrace();QLog.log(ex.toString(),true);}
         }
         return rs; 
 	}
@@ -992,7 +1043,7 @@ public class SqlServerDbScour {
 	        output.populate(res);
 
         } 
-        catch (SQLException ex) {ex.printStackTrace();} 
+        catch (SQLException ex) {ex.printStackTrace();QLog.log(ex.toString(),true);} 
 
         return output; 
 	}
@@ -1017,7 +1068,7 @@ public class SqlServerDbScour {
 	        output = sta.executeQuery(sqlSelect);
 
         } 
-        catch (SQLException ex) {ex.printStackTrace();} 
+        catch (SQLException ex) {ex.printStackTrace();QLog.log(ex.toString(),true);} 
         return output; 
 	}
 	
@@ -1059,12 +1110,12 @@ public class SqlServerDbScour {
 	        rs.populate(res);
 
         } 
-        catch (SQLException ex) {ex.printStackTrace();} 
+        catch (SQLException ex) {ex.printStackTrace();QLog.log(ex.toString(),true);} 
         finally {
 	        try {
 	            if (cn != null && !cn.isClosed()) {cn.close();}
 	        } 
-	        catch (SQLException ex) {ex.printStackTrace();}
+	        catch (SQLException ex) {ex.printStackTrace();QLog.log(ex.toString(),true);}
         }
         return rs; 
 	}
@@ -1101,12 +1152,12 @@ public class SqlServerDbScour {
 	        rs.populate(res);
 
         } 
-        catch (SQLException ex) {ex.printStackTrace();} 
+        catch (SQLException ex) {ex.printStackTrace();QLog.log(ex.toString(),true);} 
         finally {
 	        try {
 	            if (cn != null && !cn.isClosed()) {cn.close();}
 	        } 
-	        catch (SQLException ex) {ex.printStackTrace();}
+	        catch (SQLException ex) {ex.printStackTrace();QLog.log(ex.toString(),true);}
         }
         return rs; 
 	}
@@ -1140,13 +1191,14 @@ public class SqlServerDbScour {
         catch (SQLException ex) {
         	
             ex.printStackTrace();
+            QLog.log(ex.toString(),true);
             return false;
         } 
         finally {
 	        try {
 	            if (cn != null && !cn.isClosed()) {cn.close();}
 	        } 
-	        catch (SQLException ex) {ex.printStackTrace();}
+	        catch (SQLException ex) {ex.printStackTrace();QLog.log(ex.toString(),true);}
         }
         return success;
 	}
@@ -1172,12 +1224,12 @@ public class SqlServerDbScour {
             sta.executeUpdate(SqlServerDbScour.sqlDropAllObjects(destSchema));
             success = true;
         } 
-        catch (SQLException ex) {ex.printStackTrace();} 
+        catch (SQLException ex) {ex.printStackTrace();QLog.log(ex.toString(),true);} 
         finally {
 	        try {
 	            if (cn != null && !cn.isClosed()) {cn.close();}
 	        } 
-	        catch (SQLException ex) {ex.printStackTrace();}
+	        catch (SQLException ex) {ex.printStackTrace();QLog.log(ex.toString(),true);}
         }
         return success;
 	}
@@ -1704,6 +1756,9 @@ public class SqlServerDbScour {
 			this.queryTimeSeconds = queryTimeSeconds;
 		}
 		
+		/***
+		 * @param schema
+		 */
 		public String toSqlInsert(String schema) {
 			StringBuilder sqlInsert = new StringBuilder(); 
 			sqlInsert.append("INSERT INTO " + schema + ".ColSearchResults (");

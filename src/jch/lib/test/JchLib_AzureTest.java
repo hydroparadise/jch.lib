@@ -57,7 +57,13 @@ public class JchLib_AzureTest {
 		}
 	 */
 	
-	
+	/****
+	 * Deletes a specific blob file
+	 * 
+	 * @param azBlobCredsLoc
+	 * @param blobName
+	 * @param blobPath
+	 */
 	public static void deleteBlob(String azBlobCredsLoc, String blobName, String blobPath) {
 	    JSONObject jsonObj = null;
 		try {
@@ -68,9 +74,11 @@ public class JchLib_AzureTest {
 		} catch (ParseException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+			QLog.log(e.toString(),true);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+			QLog.log(e.toString(),true);
 		}
 	    
 	
@@ -116,6 +124,7 @@ public class JchLib_AzureTest {
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+			QLog.log(e.toString(),true);
 		}
 		
 	}
@@ -192,6 +201,7 @@ public class JchLib_AzureTest {
 		} catch ( ParserConfigurationException | SAXException | IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+			QLog.log(e.toString(),true);
 		}
 		
 		
@@ -218,9 +228,11 @@ public class JchLib_AzureTest {
 		} catch (ParseException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+			QLog.log(e.toString(),true);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+			QLog.log(e.toString(),true);
 		}
 	    
 	
@@ -260,6 +272,7 @@ public class JchLib_AzureTest {
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+			QLog.log(e.toString(),true);
 		}
 		
 		/*
@@ -300,9 +313,11 @@ public class JchLib_AzureTest {
 		} catch (ParseException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+			QLog.log(e.toString(),true);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+			QLog.log(e.toString(),true);
 		}
 	    
 
@@ -352,6 +367,7 @@ public class JchLib_AzureTest {
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+			QLog.log(e.toString(),true);
 		}
 		
 					
@@ -389,9 +405,11 @@ public class JchLib_AzureTest {
 		} catch (ParseException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+			QLog.log(e.toString(),true);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+			QLog.log(e.toString(),true);
 		}
 	    
 	
@@ -434,6 +452,7 @@ public class JchLib_AzureTest {
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+			QLog.log(e.toString(),true);
 		}
 
 	}
@@ -453,9 +472,11 @@ public class JchLib_AzureTest {
 			} catch (ParseException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
+				QLog.log(e.toString(),true);
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
+				QLog.log(e.toString(),true);
 			}
 		    
 		
@@ -495,6 +516,7 @@ public class JchLib_AzureTest {
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
+				QLog.log(e.toString(),true);
 			}
 
 			
@@ -537,9 +559,11 @@ public class JchLib_AzureTest {
 		} catch (ParseException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+			QLog.log(e.toString(),true);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+			QLog.log(e.toString(),true);
 		}
 	    
 	

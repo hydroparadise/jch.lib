@@ -48,8 +48,55 @@ public class SqlServerDiscovery {
 	 * @return String
 	 */
 	
+	public static String sqlParentObjects(String database, String schema, String table) {
+		return sqlParentObjects(database, schema, table, false);	
+	}
 	
-	public static String sqlGenerateSelectGroupBy(String database, String schema, String table, String col) {
+	
+	public static String sqlParentObjects(String database, String schema, String table, boolean viewsOnly) {
+		String output = null;
+		
+		if(database != null && schema != null && table != null)  {
+			output = "SELECT referenced_server_name,referenced_database_name,referenced_schema_name,referenced_entity_name FROM (";
+			if(viewsOnly == true) output = output + " R JOIN FMCUAnalytics.sys.views V ON R.referenced_entity_name = V.name";
+			output = output + ") A GROUP BY referenced_server_name,referenced_database_name,referenced_schema_name,referenced_entity_name";
+			
+			
+		};
+		
+		return output;
+	}
+	
+	
+	/***
+	 * 
+	 * @param database
+	 * @param schema
+	 * @param table
+	 * @return
+	 */
+	public static String sqlReferencedEntities(String database, String schema, String table) {
+		String output = null;
+		if(database != null && schema != null && table != null)  {
+			output = "SELECT referencing_minor_id,referenced_server_name,referenced_database_name,referenced_schema_name,"
+				   + "referenced_entity_name,referenced_minor_name,referenced_id,referenced_minor_id,referenced_class,referenced_class_desc,"
+				   + "is_caller_dependent,is_ambiguous,is_selected,is_updated,is_select_all,is_all_columns_found,is_insert_all,is_incomplete "
+				   + " FROM " + SqlServerDiscovery.sqlObjBracket(database) + ".sys.dm_sql_referenced_entities(" 
+				   + SqlServerDiscovery.sqlObjBracket(schema) + "." + SqlServerDiscovery.sqlObjBracket(table) + ")" ;
+		}
+		
+		return output;
+	}
+	
+	/***
+	 * 
+	 * @param database
+	 * @param schema
+	 * @param table
+	 * @param col
+	 * @return
+	 */
+	public static String sqlSelectGroupBy(String database, String schema, String table, String col) {
 		String output = null;
 		
 		if(database != null && schema != null && table != null)  {
@@ -77,7 +124,7 @@ public class SqlServerDiscovery {
 	 * @param table
 	 * @return
 	 */
-	public static String sqlGenerateSelect(String database, String schema, String table) {
+	public static String sqlSelectAll(String database, String schema, String table) {
 		String output = null;
 		StringBuilder colList = new StringBuilder();
 		
@@ -100,7 +147,7 @@ public class SqlServerDiscovery {
 	 * @param cols
 	 * @return
 	 */
-	public static String sqlGenerateSelect(String database, String schema, String table, 
+	public static String sqlSelect(String database, String schema, String table, 
 			ArrayList<String> cols) {
 		String output = null;
 		StringBuilder colList = new StringBuilder();
@@ -143,7 +190,26 @@ public class SqlServerDiscovery {
 			+ "WHERE name NOT IN ('master','tempdb','model','msdb')";
 	}
 	
-
+	/***
+	 * 
+	 * Fields: TABLE_CATALOG,TABLE_SCHEMA,TABLE_NAME,VIEW_DEFINITION,CHECK_OPTION,IS_UPDATABLE
+	 * 
+	 * @param databaseName
+	 * @return
+	 */
+	static String sqlDbViewDefinitions(String databaseName) {
+		String output = null;
+		databaseName = sqlObjBracket(databaseName);
+		
+		if(databaseName != null) {
+			output = "SELECT TABLE_CATALOG,TABLE_SCHEMA,TABLE_NAME,VIEW_DEFINITION,CHECK_OPTION,IS_UPDATABLE "
+				   + "FROM " + databaseName + ".INFORMATION_SCHEMA.VIEWS "
+				   + "ORDER BY TABLE_SCHEMA,TABLE_NAME";
+		}
+		
+		return output;
+	}
+	
 	/***
 	 * All tables and columns unsorted. Used as a based for others
 	 * Data Type Categories: TEXT, NUMERIC, DATETIME, OTHER

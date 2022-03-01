@@ -12,13 +12,28 @@ import java.sql.Timestamp;
  */
 public class QLog {
 	
-
 	static public void log(String msg) {
+		log(msg, false);
+		
+	}
+	
+	/***
+	 * 
+	 * @param msg
+	 * @param supressConsole allows for a quick supress from printing to console but still writes to file
+	 */
+	static public void log(String msg, boolean supressConsole) {
 		Timestamp ts = new Timestamp(System.currentTimeMillis());
 		msg = ts.toString() + ": " + msg + "\r\n";
 		
-		if(printConsole == true) System.out.print(msg);
 		
+		//limits the lentgh of output msg if specified
+		if(charLimit > 0 && msg.length() > charLimit) msg = msg.substring(0,charLimit);
+		
+		//prints to console
+		if(printConsole == true && supressConsole == false) System.out.print(msg);
+		
+		//prints to file
 		FileWriter writer = null;
 		if(filePath != null && filePath != "") {
 			
@@ -43,5 +58,5 @@ public class QLog {
 	static public String baseFileName = null;
 	static public String ext = ".txt";
 	static public boolean printConsole = true;
-	
+	static public int charLimit = 0;
 }
