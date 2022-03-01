@@ -8,6 +8,7 @@ import java.sql.Timestamp;
 /***
  * A very minimal way logging actions to file or console
  * @author harrisonc
+ * 
  *
  */
 public class QLog {

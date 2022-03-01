@@ -60,6 +60,7 @@ import java.util.zip.GZIPOutputStream;
  * data files roughly 100-250 MB (or larger) in size compressed.
  * https://docs.snowflake.com/en/user-guide/data-load-considerations-prepare.html#label-data-load-file-sizing-best-practices
  * 
+ * 
  */
 
 
@@ -757,7 +758,7 @@ public class JchLib_SnowflakeTest {
 					
 					buffer.write(values.toString());
 					
-					if(aCnt%10000==0 || lCnt == 1) //System.out.println(fileName + " " + cCnt + ": " + values.toString());
+					if(aCnt%10000==0 || lCnt == 1)
 							QLog.log(fileName + " " + cCnt + ": " + values.toString());
 					
 					fSize = fSize + values.length();

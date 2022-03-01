@@ -13,6 +13,7 @@ import jch.lib.common.QLog;
  * The strategy is to make all "destructive" operations as static methods so that instance objects
  * aren't inadvertently ran.
  * 
+ * 
  * @author harrisonc
  *
  */
