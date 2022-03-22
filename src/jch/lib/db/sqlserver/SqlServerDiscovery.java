@@ -59,8 +59,9 @@ public class SqlServerDiscovery {
 		String output = null;
 		
 		if(database != null && schema != null && table != null)  {
-			output = "SELECT referenced_server_name,referenced_database_name,referenced_schema_name,referenced_entity_name FROM (";
-			if(viewsOnly == true) output = output + " R JOIN FMCUAnalytics.sys.views V ON R.referenced_entity_name = V.name";
+			output = "SELECT referenced_server_name,referenced_database_name,referenced_schema_name,referenced_entity_name FROM ("
+				   + sqlReferencedEntities(database, schema, table);
+			if(viewsOnly == true) output = output + " R JOIN sys.views V ON R.referenced_entity_name = V.name";
 			output = output + ") A GROUP BY referenced_server_name,referenced_database_name,referenced_schema_name,referenced_entity_name";
 			
 			
@@ -70,6 +71,8 @@ public class SqlServerDiscovery {
 	}
 	
 	
+	
+	
 	/***
 	 * 
 	 * @param database
@@ -77,16 +80,45 @@ public class SqlServerDiscovery {
 	 * @param table
 	 * @return
 	 */
-	public static String sqlReferencedEntities(String database, String schema, String table) {
+	public static String sqlReferencedEntities(String database, String schema, String object) {
 		String output = null;
-		if(database != null && schema != null && table != null)  {
+		if(database != null && schema != null && object != null)  {
+			
+			String tbl = null;
+			if(schema != null && schema != "") tbl = SqlServerDiscovery.sqlObjBracket(object);
+			else tbl = SqlServerDiscovery.sqlObjBracket(schema) + "." + SqlServerDiscovery.sqlObjBracket(object);
+			
 			output = "SELECT referencing_minor_id,referenced_server_name,referenced_database_name,referenced_schema_name,"
 				   + "referenced_entity_name,referenced_minor_name,referenced_id,referenced_minor_id,referenced_class,referenced_class_desc,"
-				   + "is_caller_dependent,is_ambiguous,is_selected,is_updated,is_select_all,is_all_columns_found,is_insert_all,is_incomplete "
-				   + " FROM " + SqlServerDiscovery.sqlObjBracket(database) + ".sys.dm_sql_referenced_entities(" 
-				   + SqlServerDiscovery.sqlObjBracket(schema) + "." + SqlServerDiscovery.sqlObjBracket(table) + ")" ;
+				   + "is_caller_dependent,is_ambiguous,is_selected,is_updated,is_select_all,is_all_columns_found,is_insert_all,is_incomplete ";
+			if (database != null && database != "") output = output
+				   + " FROM " + SqlServerDiscovery.sqlObjBracket(database) + ".sys.dm_sql_referenced_entities('" ;
+			else output = output  + " sys.dm_sql_referenced_entities('" ;
+			
+			output = output + tbl + "','OBJECT')" ;
 		}
 		
+		return output;
+	}
+	
+	
+	public static String sqlAllModules(String host, String database) {
+		String output = null;
+		
+		if(database != null && host != "") {
+			String src = "";
+			
+			if(host != null && host != "")  
+				src = SqlServerDiscovery.sqlObjBracket(host) + "." + SqlServerDiscovery.sqlObjBracket(database) + ".";
+			else if (database != null && database != "")  
+				src = SqlServerDiscovery.sqlObjBracket(database)  + ".";
+			
+			output = "SELECT S.name schema_name, O.name object_name, SM.definition, O.type, O.type_desc "
+				   + "FROM " + src +"sys.all_sql_modules SM "
+				   + "LEFT JOIN " + src +"sys.all_objects O ON SM.object_id = O.object_id "
+				   + "LEFT JOIN " + src +"sys.schemas S ON S.schema_id = O.schema_id ";
+		
+		}
 		return output;
 	}
 	

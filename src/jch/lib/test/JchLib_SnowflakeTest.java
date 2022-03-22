@@ -2521,6 +2521,18 @@ public class JchLib_SnowflakeTest {
 		}
 	}
 	
+	
+	
+	public static void copySqlServerAllViews(java.sql.Connection snowflakeCn, String srcHost, String srcDatabase) {
+		try {
+			copySqlServerAllViews(snowflakeCn, srcHost, srcDatabase, null, null, 0);
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+
+	
 	/***
 	 * 
 	 * Fields: TABLE_CATALOG,TABLE_SCHEMA,TABLE_NAME,VIEW_DEFINITION,CHECK_OPTION,IS_UPDATABLE
@@ -2530,68 +2542,96 @@ public class JchLib_SnowflakeTest {
 	 * @param srcDatabase
 	 * @throws SQLException
 	 */
-	public static void copySqlServerAllViews(java.sql.Connection snowflakeCn, String srcHost, String srcDatabase)  
-			throws SQLException {
+	public static void copySqlServerAllViews(java.sql.Connection snowflakeCn, String srcHost, String srcDatabase,
+			String srcSchema, String srcTable, Integer recLvl)  throws SQLException {
+		
 		SqlServerCnString srcCnString = new SqlServerCnString();
 		srcCnString.setCnStringIntegratedSecurity(srcHost, null , srcDatabase);
-		//get tables for given database
-		RowSet viewDefs = SqlServerDbScour.getSrcViewDefinitions(
-				srcCnString.getCnString(), 			//Source host to get InformationSchema
-				srcCnString.getDatabaseName());	
-		
-		try {
-			//object the excutes to snowflake
-			Statement statement = snowflakeCn.createStatement();
+				
+		recLvl++;
+		//first run
+		if(srcSchema == null && srcTable == null) {
+			
+			QLog.log("Start recursion");
+			//get tables for given database 
+			RowSet viewDefs = SqlServerDbScour.getSrcViewDefinitions(
+					srcCnString.getCnString(), 			//Source host to get InformationSchema
+					srcCnString.getDatabaseName());
 			
 			while(viewDefs.next()) {
 				String viewSchema = viewDefs.getString("TABLE_SCHEMA");
 				String viewName = viewDefs.getString("TABLE_NAME");
-				String viewDef = viewDefs.getString("VIEW_DEFINITION");
 				
-				String sql = SqlServerDiscovery.sqlParentObjects(srcDatabase, viewSchema, viewName, true);
-				
-				QLog.log(viewName);
-				QLog.log(SqlServerDiscovery.sqlParentObjects(srcDatabase, viewSchema, viewName, true));
-				
-				ResultSet parents = SqlServerDbScour.executeSqlResultSet(srcCnString.getCnString(), sql);
-				
-				//check if ResultSet is empty)
-				if(parents.next() == false) {
-					//current view has not parent views
-					
-				}
-				else {
-					
-				}
-					
-					
-				//QLog.log(viewDef.toUpperCase());
-				
-				try {
-					System.in.read();
-				} catch (IOException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
+				copySqlServerAllViews(snowflakeCn, srcHost, srcDatabase, viewSchema, viewName, recLvl);
 				
 			}
 			
-			statement.close();
-		} catch (SQLException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			QLog.log(e.toString(),true);
+			
 		}
+		//recursive run
+		else {
+
+			String sql = SqlServerDiscovery.sqlParentObjects(srcDatabase, srcSchema, srcTable, true);
+			QLog.log(recLvl + ": " + srcSchema + "." + srcTable + " --> " + srcCnString.getCnString() + ";" +sql);
+			
+			RowSet parents = SqlServerDbScour.executeSqlRowSet(srcCnString.getCnString(), sql);
+			String v1 = srcHost + "." + srcDatabase +  "." + srcSchema + "." + srcTable;
+			if(parents.next() == false) {
+				//do the thing
+				
+				
+				QLog.log(recLvl + ": Do the thing 1 :" + v1);
+								
+			} else {
+				
+				do {
+					//recurse again					
+					String viewServer = parents.getString("referenced_server_name");
+					String viewDatabase = parents.getString("referenced_database_name");
+					String viewSchema = parents.getString("referenced_schema_name");
+					String viewName = parents.getString("referenced_entity_name");
+					
+					String v2 =  viewServer+ "," + viewDatabase + "," + viewSchema + "," + viewName;
+					
+					QLog.log("Lets see the variables: " + v2);	
+					
+					if(viewServer == null) {
+						QLog.log("viewServer is null, using srcHost, " + srcHost);
+						viewServer = srcHost;
+					}
+					
+					if(viewDatabase == null) {
+						QLog.log("viewDatabase is null, using srcHost, " + srcDatabase);
+						viewDatabase = srcDatabase;
+					}
+					
+					
+					
+					copySqlServerAllViews(snowflakeCn, viewServer, viewDatabase, viewSchema, viewName, recLvl);
+					
+				}
+				while(parents.next() == true);
+				
+				//do the thing
+				QLog.log(recLvl + ": Do the thing 2 :" + v1);
+			}
+			
+				
+		}
+		
+		recLvl--;
+
 	}
 	
-	
-	
+
 	
 	public static void sqlConvertViewDefinition(String sql) {
 		/*
 		 * ] -> "
 		 * [ -> "
-		 * 
+		 * TOP 2O -> LIMIT 20
+		 * CIELING -> CIEL
+		 * STDEV -> STDDEV
 		 */
 		
 	}
