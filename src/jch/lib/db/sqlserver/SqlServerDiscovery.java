@@ -3,6 +3,8 @@ package jch.lib.db.sqlserver;
 import java.sql.*;
 import java.util.ArrayList;
 
+import jch.lib.common.QLog;
+
 
 /***
  * 
@@ -24,6 +26,26 @@ INFORMATION_SCHEMA Tables
 	SELECT * FROM INFORMATION_SCHEMA.COLUMN_PRIVILEGES
 	SELECT * FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS
 	SELECT * FROM INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS
+	
+	 SELECT T.TABLE_TYPE,T.TABLE_CATALOG,T.TABLE_SCHEMA,T.TABLE_NAME,C.COLUMN_NAME,CU.CONSTRAINT_NAME,  
+	 	C.DATA_TYPE,C.ORDINAL_POSITION,C.COLUMN_DEFAULT,C.IS_NULLABLE,C.CHARACTER_MAXIMUM_LENGTH,C.CHARACTER_OCTET_LENGTH,  
+	 	C.NUMERIC_PRECISION,C.NUMERIC_PRECISION_RADIX,C.NUMERIC_SCALE,C.DATETIME_PRECISION,  
+	  	C.CHARACTER_SET_NAME,C.COLLATION_CATALOG,C.COLLATION_SCHEMA,C.COLLATION_NAME,C.DOMAIN_CATALOG,  
+	  	C.DOMAIN_SCHEMA,C.DOMAIN_NAME,C.CHARACTER_SET_CATALOG,C.CHARACTER_SET_SCHEMA,   
+	 	CASE WHEN DATA_TYPE IN ('varchar','nvarchar','text','char','nchar','ntext','xml','uniqueidentifier') THEN 'TEXT'   
+	 		WHEN DATA_TYPE IN ('smallint','int','money','numeric','decimal','bigint','float','real','tinyint','bit') THEN 'NUMERIC'  
+	 		WHEN DATA_TYPE IN ('smalldatetime','date','datetime','datetime2','time') THEN 'DATETIME'  
+	  		ELSE 'OTHER'  
+	 	END DATA_TYPE_CAT  
+	 FROM ARCUSYM000.INFORMATION_SCHEMA.TABLES T  
+	 	JOIN  ARCUSYM000.INFORMATION_SCHEMA.COLUMNS C ON  
+	 		T.TABLE_CATALOG = C.TABLE_CATALOG AND T.TABLE_SCHEMA = C.TABLE_SCHEMA AND T.TABLE_NAME = C.TABLE_NAME  
+	 	LEFT JOIN  ARCUSYM000.INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE CU ON  
+	 		CU.TABLE_CATALOG = C.TABLE_CATALOG AND CU.TABLE_SCHEMA = C.TABLE_SCHEMA AND  
+	 		CU.TABLE_NAME = C.TABLE_NAME AND CU.COLUMN_NAME = C.COLUMN_NAME
+	   WHERE T.Table_Name = 'SAVINGSTRANSACTION'
+	   ORDER BY COLUMN_NAME
+
 	
  * @author harrisonc
  *
@@ -181,8 +203,9 @@ public class SqlServerDiscovery {
 	 * @param cols
 	 * @return
 	 */
-	public static String sqlSelect(String database, String schema, String table, 
-			ArrayList<String> cols) {
+	public static String sqlSelect(String database, String schema, String table, ArrayList<String> cols) {
+		QLog.log("SqlServerDiscovery.sqlSelect");
+		
 		String output = null;
 		StringBuilder colList = new StringBuilder();
 		
@@ -471,6 +494,10 @@ public class SqlServerDiscovery {
 		
 		return from;
 	}
+	
+	
+	
+	
 	/***
 	 * Puts brackets around an object name in case of spaces in name.
 	 * If already has enclosing brackets, pass through as-is
@@ -489,6 +516,36 @@ public class SqlServerDiscovery {
 		}
 		return null;		
 	}
+	
+	/***
+	 * 
+	 * @param value
+	 * @param datatypeCat: TEXT, NUMERIC, DATETIME, OTHER
+	 * @return String
+	 */
+	public static String sqlValuePrep(String value, String datatypeCat) {
+		
+		String output = "";
+		/*
+		if(value.charAt(0) == '\'' && value.charAt(value.length() - 1) == '\'') {
+			value = removeCharAt(value, 0);
+			value = removeCharAt(value, value.length() - 1);
+		}
+		*/
+		
+		//if(datatypeCat == null)  QLog.log(value +" datatypeCat is null!");
+		
+		//DATA_TYPE_CAT: TEXT, NUMERIC, DATETIME, OTHER
+		if(value == null) output = "";
+		else if (datatypeCat.equals("TEXT")) 
+			output = "'" + value.replace("'", "''") + "'";
+		else if (datatypeCat.equals("DATETIME")) output = "'" + value + "'";
+		else if (datatypeCat.equals("NUMERIC")) output = value;
+		else if (datatypeCat.equals("OTHER")) output = "";
+		
+		return output; 
+	}
+	
 	
 	/***
 	 * Turns a string value into a SQL friendly value

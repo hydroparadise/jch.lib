@@ -74,6 +74,16 @@ public class JchLib_SnowflakeTest {
 	}
 	
 	
+	//Adding Feature
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	
+	
+	
+	
+	
+	
+	//Current Production
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	
 	
 	/***
@@ -84,7 +94,7 @@ public class JchLib_SnowflakeTest {
 	 * 
 	 * TODO: suspend warehouse after complete
 	 * 
-	 * @param filePath: Output file location. Include last slash (ie, "C:\\temp\\" which becomes "C:\temp\)
+	 * @param String filePath: Output file location. Include last slash (ie, "C:\\temp\\" which becomes "C:\temp\)
 	 * @param long maxFileSize: Max file size threshold (ie, 30000 "means 30Kb" or 4000000000L "means 4Gb")
 	 * @param String srcSqlHost: Source SQL Server Hostname or IP address (ie, "SQLSERV01" or "192.168.1.102")
 	 * @param String srcDatabase: Source Database in which table resides (ie,"DatabaseName")
@@ -123,6 +133,7 @@ public class JchLib_SnowflakeTest {
 				final String tableName = ssTables.getString("TABLE_NAME");
 				final String fileName = schemaName + "." + tableName;
 				
+				//submit method for Async 
 				exe.execute(()->  
 					JchLib_SnowflakeTest.writeCsvFromSqlServerTableFull(
 							filePath, fileName,	maxFileSize,			//max file size in bytes
@@ -243,6 +254,7 @@ public class JchLib_SnowflakeTest {
 				while(ssCols.next() && valueLimiterCol == null) {
 					String colName = ssCols.getString("COLUMN_NAME");
 					
+					//checks for value "PK" to indicate Primary Key constraint
 					if(strictPK == true) {
 						String constraint = ssCols.getString("CONSTRAINT_NAME");
 						if(constraint != null && constraint.toUpperCase().contains("PK")) {
@@ -412,42 +424,6 @@ public class JchLib_SnowflakeTest {
 	}
 	
 	
-	/***
-	 * Takes source table and creates a *.csv or *.csv.gz based on a source Sql Server host, database, schema,
-	 * and table, compares to specified remote Snowfalke instance, compute, database, schema, and table to
-	 * build column ordinal sensitive datasets with optionaly compressing the file via GZip.
-	 * 
-	 * TODO: suspend warehouse after complete
-	 * 
-	 * @param filePath: Output file location. Include last slash (ie, "C:\\temp\\" which becomes "C:\temp\)
-	 * @param fileName: Output file name (ie, "dbo.ACCOUNT")
-	 * @param maxFileSize: Max file size threshold (ie, 30000 "means 30Kb" or 4000000000L "means 4Gb") 
-	 * @param srcSqlHost: Source SQL Server Hostname or IP address (ie, "SQLSERV01" or "192.168.1.102")
-	 * @param srcDatabse: Source Database in which table resides (ie,"DatabaseName")
-	 * @param srcSchema: Source Database schema table resides (ie, "dbo")
-	 * @param srcTable: Source SQL Server table to create extract of (ie."ACCOUNT")
-	 * @param sfCredsLoc: Location of Snowflake credentials specified via JSON (ie, "C\\snowflake_creds.json")
-	 * @param sfDatabase: Remote Snowflake database name (ei, "DatabaseName")
-	 * @param sfSchema: Remote Snowflake schema name to compare columns(ie,"DBO")
-	 * @param sfTable": Remote Snowflake table name to compare columns (ie,"ACCOUNT")
-	 * @param rowDelim: Output file row delimiter (ie,"\r\n" or "\n")
-	 * @param colDelim: Output file column or field delimiter(ie, "," or "~" or "\t")
-	 * @param textQualifier: String, text, or VARCHAR datatype value qualifier (ie,"\"")
-	 * @param escapeChar: POSIX control character (ie, "\\")
-	 * @param valueLimterFCol: Column or Field Name used to limit dataset (ie, "ProcessDate" or "POSTDATE")
-	 * @param valueLimit: Value (ie, int: "20220203" or date: "2/3/2022" or date: "2022/02/03")
-	 * @param String azCredsLoc: Location of the Azure credentials of an Azure Blob Container instance (ie, "C\\azure_creds.json")
-	 * @param String azBlobDir: A directory to store extracts for an Azure Blob Container instance (ie, "init" or "20220203" or "test/2020203")
-	 * @param String sfStage: The name of the defined stage in Snowflake to consume from Azure (ie, "@stage_azure")
-	 */
-	static public void writeCsvFromSqlServerAllTablesLimit(String filePath,long maxFileSize,
-			 String srcSqlHost, String srcDatabase, String srcSchema,
-			 String sfCredsLoc, String sfDatabase, String sfSchema,
-			 String rowDelim, String colDelim, String textQualifier, String escapeChar,
-			 String valueLimiterCol, String valueLimit,
-			 String azCredsLoc, String azBlobDir, String sfStage) {
-		
-	}
     		
 	/***
 	 * Takes source table and creates a *.csv or *.csv.gz based on a source Sql Server host, database, schema,
@@ -476,6 +452,7 @@ public class JchLib_SnowflakeTest {
 	 * @param String azCredsLoc: Location of the Azure credentials of an Azure Blob Container instance (ie, "C\\azure_creds.json")
 	 * @param String azBlobDir: A directory to store extracts for an Azure Blob Container instance (ie, "init" or "20220203" or "test/2020203")
 	 * @param String sfStage: The name of the defined stage in Snowflake to consume from Azure (ie, "@stage_azure")
+	 * @param boolean sfForceReload: Performs delete on full 
 	 */
 	static public void writeCsvFromSqlServerTableValueLimit(String filePath, String fileName, long maxFileSize,
 							 String srcSqlHost, String srcDatabase, String srcSchema, String srcTable,
@@ -483,12 +460,11 @@ public class JchLib_SnowflakeTest {
 							 String rowDelim, String colDelim, String textQualifier, String escapeChar,
 							 String valueLimiterCol, String valueLimit,
 							 String azCredsLoc, String azBlobDir, 
-							 String sfStage, boolean sfForceLoad) {
+							 String sfStage, boolean sfForceReload) {
 		
 		//Get Sql Server Schema Rowset
 		SqlServerCnString srcCnString = new SqlServerCnString();
 		srcCnString.setCnStringIntegratedSecurity(srcSqlHost, null , srcDatabase);
-		
 		RowSet ssSchemaRowSet = SqlServerDbScour.getSrcInformationSchema(
 				srcCnString.getCnString(), srcCnString.getDatabaseName(), srcSchema, srcTable);
 		
@@ -508,28 +484,26 @@ public class JchLib_SnowflakeTest {
         QLog.log(srcSchema + "." + srcTable + " Column Count: " + cols.size());
         
         //if force load is true, delete current table segment to be be reloaded
-        if(sfForceLoad == true) 
+        if(sfForceReload == true) 
         	sfDeleteFrom(sfCredsLoc, sfDatabase, sfSchema, sfTable, valueLimiterCol, valueLimit,
         			 datatypeCategories.get(valueLimiterCol.toUpperCase()));
         
-        //
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-                                                                                                                 //
-        String sqlValueLimit = SqlServerDbScour.sqlValuePrep(valueLimit,                                         //
-        		datatypeCategories.get(valueLimiterCol.toUpperCase()));                                          //
-        String sqlValueLimitCol = SqlServerDiscovery.sqlObjBracket(valueLimiterCol);                             //
-        sqlSsTable = sqlSsTable + " WHERE " + sqlValueLimitCol + " = " +  sqlValueLimit;                         //
-                                                                                                                 //
-        QLog.log(sqlSsTable);                                                                                    //
-        ResultSet ssTable = SqlServerDbScour.executeSqlResultSet(srcCnString.getCnString(), sqlSsTable);         //
-                                                                                                                 //
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-        
+
+        String sqlValueLimit = SqlServerDiscovery.sqlValuePrep(valueLimit,                                   
+        		datatypeCategories.get(valueLimiterCol.toUpperCase()));                                         
+        String sqlValueLimitCol = SqlServerDiscovery.sqlObjBracket(valueLimiterCol);                           
+        sqlSsTable = sqlSsTable + " WHERE " + sqlValueLimitCol + " = " +  sqlValueLimit;                        
+                                                                                                               
+        QLog.log(sqlSsTable);                                                                                  
+        ResultSet ssTable = SqlServerDbScour.executeSqlResultSet(srcCnString.getCnString(), sqlSsTable);       
+                                                                                                                
+
+        //generate file system friendly name
         String outFileName = fileNamePrep(valueLimit,datatypeCategories.get(valueLimiterCol.toUpperCase()));
-         
- 		//String fullFileName = filePath + fileName + "_" + outFileName + ".csv";
         String fullFileName = fileName + "_" + outFileName + ".csv";
         String fullFileNamePath = filePath + fullFileName;
+        
+        //instantiate file writing objects
 		FileWriter writer = null;
 		BufferedWriter buffer = null;
 		
@@ -543,12 +517,13 @@ public class JchLib_SnowflakeTest {
 			QLog.log(e1.toString(),true);
 		}       
 		
+		//if all went well with file write objects, begin writing to files
 		if(buffer != null)  {
 			
 			long cCnt = 0;	//count calls
 	        long aCnt = 0;	//count all records
-	        long lCnt = 0;
-	        long fCnt = 0;
+	        long lCnt = 0;	//count of lines in current file
+	        long fCnt = 0;	//
 	        long fSize = 0;
 	        StringBuilder values = new StringBuilder();
 	        
@@ -569,7 +544,8 @@ public class JchLib_SnowflakeTest {
 						if(i > 0) values.append(colDelim);
 						
 						//wrap and append values
-						String csvValue = sfCsvValuePrep(ssTable.getString(cols.get(i)),
+						String csvValue = sfCsvValuePrep(
+											   ssTable.getString(cols.get(i)),
 											   datatypeCategories.get(cols.get(i)),
 											   textQualifier,escapeChar);
 						
@@ -596,7 +572,7 @@ public class JchLib_SnowflakeTest {
 								sfCredsLoc, sfDatabase, sfSchema, sfTable, 
 								filePath, fullFileName, fullFileName + ".gz", true, 
 								azCredsLoc, azBlobDir, 
-								sfStage, sfForceLoad);
+								sfStage, sfForceReload);
 						
 						exe.submit(t);
 						
@@ -619,13 +595,12 @@ public class JchLib_SnowflakeTest {
 				buffer.close();
 				
 				//using a thread pooler allows for the compression of a completed file to occur independently of the
-				//SQL pull and can be a time saving if files turn out to be rather large.
-				//ExecuteZipAndShip t = new ExecuteZipAndShip(filePath, fullFileName, fullFileName + ".gz", true, azCredsLoc);
+				//SQL pull and can be time saving if files turn out to be rather large.
 				ExecuteZipAndShip t = new ExecuteZipAndShip(
 						sfCredsLoc, sfDatabase, sfSchema, sfTable, 
 						filePath, fullFileName, fullFileName + ".gz", true, 
 						azCredsLoc, azBlobDir, 
-						sfStage, sfForceLoad);
+						sfStage, sfForceReload);
 				exe.submit(t);
 				
 				exe.shutdown();
@@ -836,7 +811,7 @@ public class JchLib_SnowflakeTest {
 
 			String sql = "DELETE FROM " + sft;
 			if(valueLimiterCol != null && valueLimit != null) {
-				String sqlValueLimit = SqlServerDbScour.sqlValuePrep(valueLimit, valueDatatypeCat);
+				String sqlValueLimit = SqlServerDiscovery.sqlValuePrep(valueLimit, valueDatatypeCat);
 				sql = sql + " WHERE " + valueLimiterCol + " = " + sqlValueLimit;
 			}
 			
@@ -1413,6 +1388,12 @@ public class JchLib_SnowflakeTest {
 	
 	/***
 	 * 
+	 * @param srcSqlHost
+	 * @param srcDatabase
+	 * @param srcSchema
+	 * @param srcTable
+	 * @param valueLimiterCol
+	 * @return
 	 */
 	public static String getSsMaxValue(String srcSqlHost, String srcDatabase, String srcSchema, String srcTable, String valueLimiterCol) {
 		String output = null;
@@ -1637,7 +1618,7 @@ public class JchLib_SnowflakeTest {
         
         QLog.log("Column Count: " + cols.size() + ", " + datatypeCategories.size());
         
-        String sqlValueLimit = SqlServerDbScour.sqlValuePrep(valueLimit, datatypeCategories.get(valueLimiterCol.toUpperCase()));
+        String sqlValueLimit = SqlServerDiscovery.sqlValuePrep(valueLimit, datatypeCategories.get(valueLimiterCol.toUpperCase()));
         String sqlValueLimitCol = SqlServerDiscovery.sqlObjBracket(valueLimiterCol);
         sqlSsTable = sqlSsTable + " WHERE " + sqlValueLimitCol + " = " +  sqlValueLimit;
 
@@ -2307,44 +2288,7 @@ public class JchLib_SnowflakeTest {
 		return output; 
 	}
 	
-	
-	/*TODO: */
-	public static String sqlSfMaxValue(String database, String schema, String table, String col) {
-		String output = null;
-		
-		if(database != null && schema != null && table != null)  {
-			
-			output = "SELECT MAX(\"" + col.toUpperCase() + "\") MaxValue FROM \"" 
-				   + database.toUpperCase() + "\".\""
-				   + schema.toUpperCase() + "\".\""
-				   + table.toUpperCase() + "\"";
 
-		}
-		
-		return output;
-	}
-	
-	
-	/***
-	 * 
-	 * @param value
-	 * @param datatypeCat
-	 * @return
-	 */
-	public static String sfSqlValuePrep(String value, String datatypeCat ) {
-		String output = "";
-		
-		//DATA_TYPE_CAT: TEXT, NUMERIC, DATETIME, OTHER
-		if(value == null) output = "null";
-		else if (datatypeCat.equalsIgnoreCase("TEXT")) output = "$$" + value + "$$";
-		else if (datatypeCat.equalsIgnoreCase("DATETIME")) output = "'" + value + "'";
-		else if (datatypeCat.equalsIgnoreCase("NUMERIC")) output = value;
-		else if (datatypeCat.equalsIgnoreCase("OTHER")) output = "null";
-		
-		return output; 
-	}
-	
-	
 
 	
 	
@@ -2402,6 +2346,14 @@ public class JchLib_SnowflakeTest {
 	}
 
 	
+	/***
+	 * 
+	 * 
+	 * @param schema
+	 * @param table
+	 * @param cols
+	 * @return SQL Sting
+	 */
 	public static String sqlSfGenerateInsertInto(String schema, String table,ArrayList<String> cols) {
 		StringBuilder output = new StringBuilder();
 		
@@ -2419,9 +2371,10 @@ public class JchLib_SnowflakeTest {
 	
 	
 	/***
+	 * Compares two RowSets and returns a matching set of column names from both rowsets
 	 * 
-	 * @param ssRowSet
-	 * @param sfRowSet
+	 * @param RowSet ssRowSet: Sql Server RowSet
+	 * @param RowSet sfRowSet: SnowFlake RowSet
 	 * @return
 	 * @throws SQLException
 	 */
@@ -2453,36 +2406,8 @@ public class JchLib_SnowflakeTest {
 		return output;
 	}
 	
-	/***
-	 * Snowflake database schema information
-	 * 
-	 * Fields:
-	 * TABLE_CATALOG, TABLE_SCHEMA, TABLE_NAME, COLUMN_NAME, ORDINAL_POSITION, COLUMN_DEFAULT, IS_NULLABLE,
-	 * DATA_TYPE, CHARACTER_MAXIMUM_LENGTH, CHARACTER_OCTET_LENGTH, NUMERIC_PRECISION, NUMERIC_PRECISION_RADIX,
-	 * NUMERIC_SCALE, DATETIME_PRECISION, INTERVAL_TYPE, INTERVAL_PRECISION, CHARACTER_SET_CATALOG,
-	 * CHARACTER_SET_SCHEMA, CHARACTER_SET_NAME, COLLATION_CATALOG, COLLATION_SCHEMA, COLLATION_NAME,
-	 * DOMAIN_CATALOG, DOMAIN_SCHEMA, DOMAIN_NAME, UDT_CATALOG, UDT_SCHEMA, UDT_NAME, SCOPE_CATALOG, SCOPE_SCHEMA,
-	 * SCOPE_NAME, MAXIMUM_CARDINALITY, DTD_IDENTIFIER, IS_SELF_REFERENCING, IS_IDENTITY, IDENTITY_GENERATION,
-	 * IDENTITY_START, IDENTITY_INCREMENT, IDENTITY_MAXIMUM, IDENTITY_MINIMUM, IDENTITY_CYCLE, COMMENT
-	 * 
-	 * @param database
-	 * @return
-	 */
-	static String sqlSfDatabaseAllInformationShema(String database) {
-		String output = "SELECT * FROM \"" + database.toUpperCase() + "\".INFORMATION_SCHEMA.COLUMNS "+
-						"ORDER BY TABLE_SCHEMA, TABLE_NAME, ORDINAL_POSITION";
-		return output;
-	}
 	
-	
-	static String sqlSfDatabaseTableInformationShema(String database, String schema, String table) {
-		String output = "SELECT * FROM \"" + database.toUpperCase() + "\".INFORMATION_SCHEMA.COLUMNS "
-						+ "WHERE TABLE_SCHEMA = '" + schema.toUpperCase() 
-						+ "' AND TABLE_NAME = '" + table.toUpperCase() + "' "
-						+ "ORDER BY ORDINAL_POSITION";
-		return output;
-	}
-	
+
 
 
 	/***
@@ -2491,28 +2416,31 @@ public class JchLib_SnowflakeTest {
 	 * @param Source SQL Server host name (String)
 	 * @param Source SQL Server database of the previously specified host name (String)
 	 */
-	public static void copySqlServerDatabase(String sfCredsLoc, String srcHost, String srcDatabase) {
-		java.sql.Connection cn = null;
+	public static void copyFullSqlServerDatabase(String sfCredsLoc, String srcHost, String srcDatabase) {
+		java.sql.Connection sfCn = null;
 		
 		
 		try {	
-			//Create Snowflake Databas
-			cn = JchLib_SnowflakeTest.getConnection(sfCredsLoc);
-			Statement statement = cn.createStatement();
+			//Create Snowflake Database
+			sfCn = JchLib_SnowflakeTest.getConnection(sfCredsLoc);
+			Statement statement = sfCn.createStatement();
 			statement.executeUpdate("CREATE DATABASE " + srcDatabase);
 			statement.close();
-			cn.close();
+			sfCn.close();
 			
-			cn = JchLib_SnowflakeTest.getConnection(sfCredsLoc, srcDatabase);
+			sfCn = JchLib_SnowflakeTest.getConnection(sfCredsLoc, srcDatabase);
 			
-			//Create Schemas and Tables
+			
+			QLog.log("Create Database...");
+			copySqlServerDatabase(sfCn, srcHost, srcDatabase);
+
 			QLog.log("Create Shemas...");
-			copySqlServerAllDatabaseSchemas(cn, srcHost, srcDatabase);
+			copySqlServerAllDatabaseSchemas(sfCn, srcHost, srcDatabase);
 			
 			QLog.log("Create Tables...");
-			copySqlServerAllDatabaseTables(cn, srcHost, srcDatabase);
+			copySqlServerAllDatabaseTables(sfCn, srcHost, srcDatabase);
 			
-			cn.close();
+			sfCn.close();
 			
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
@@ -2522,120 +2450,15 @@ public class JchLib_SnowflakeTest {
 	}
 	
 	
-	
-	public static void copySqlServerAllViews(java.sql.Connection snowflakeCn, String srcHost, String srcDatabase) {
-		try {
-			copySqlServerAllViews(snowflakeCn, srcHost, srcDatabase, null, null, 0);
-		} catch (SQLException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-	}
-
-	
-	/***
-	 * 
-	 * Fields: TABLE_CATALOG,TABLE_SCHEMA,TABLE_NAME,VIEW_DEFINITION,CHECK_OPTION,IS_UPDATABLE
-	 * 
-	 * @param snowflakeCn
-	 * @param srcHost
-	 * @param srcDatabase
-	 * @throws SQLException
-	 */
-	public static void copySqlServerAllViews(java.sql.Connection snowflakeCn, String srcHost, String srcDatabase,
-			String srcSchema, String srcTable, Integer recLvl)  throws SQLException {
+	public static void copySqlServerDatabase(java.sql.Connection snowflakeCn, 
+			String srcHost, String srcDatabase) throws SQLException {
 		
 		SqlServerCnString srcCnString = new SqlServerCnString();
 		srcCnString.setCnStringIntegratedSecurity(srcHost, null , srcDatabase);
-				
-		recLvl++;
-		//first run
-		if(srcSchema == null && srcTable == null) {
-			
-			QLog.log("Start recursion");
-			//get tables for given database 
-			RowSet viewDefs = SqlServerDbScour.getSrcViewDefinitions(
-					srcCnString.getCnString(), 			//Source host to get InformationSchema
-					srcCnString.getDatabaseName());
-			
-			while(viewDefs.next()) {
-				String viewSchema = viewDefs.getString("TABLE_SCHEMA");
-				String viewName = viewDefs.getString("TABLE_NAME");
-				
-				copySqlServerAllViews(snowflakeCn, srcHost, srcDatabase, viewSchema, viewName, recLvl);
-				
-			}
-			
-			
-		}
-		//recursive run
-		else {
-
-			String sql = SqlServerDiscovery.sqlParentObjects(srcDatabase, srcSchema, srcTable, true);
-			QLog.log(recLvl + ": " + srcSchema + "." + srcTable + " --> " + srcCnString.getCnString() + ";" +sql);
-			
-			RowSet parents = SqlServerDbScour.executeSqlRowSet(srcCnString.getCnString(), sql);
-			String v1 = srcHost + "." + srcDatabase +  "." + srcSchema + "." + srcTable;
-			if(parents.next() == false) {
-				//do the thing
-				
-				
-				QLog.log(recLvl + ": Do the thing 1 :" + v1);
-								
-			} else {
-				
-				do {
-					//recurse again					
-					String viewServer = parents.getString("referenced_server_name");
-					String viewDatabase = parents.getString("referenced_database_name");
-					String viewSchema = parents.getString("referenced_schema_name");
-					String viewName = parents.getString("referenced_entity_name");
-					
-					String v2 =  viewServer+ "," + viewDatabase + "," + viewSchema + "," + viewName;
-					
-					QLog.log("Lets see the variables: " + v2);	
-					
-					if(viewServer == null) {
-						QLog.log("viewServer is null, using srcHost, " + srcHost);
-						viewServer = srcHost;
-					}
-					
-					if(viewDatabase == null) {
-						QLog.log("viewDatabase is null, using srcHost, " + srcDatabase);
-						viewDatabase = srcDatabase;
-					}
-					
-					
-					
-					copySqlServerAllViews(snowflakeCn, viewServer, viewDatabase, viewSchema, viewName, recLvl);
-					
-				}
-				while(parents.next() == true);
-				
-				//do the thing
-				QLog.log(recLvl + ": Do the thing 2 :" + v1);
-			}
-			
-				
-		}
-		
-		recLvl--;
-
-	}
-	
-
-	
-	public static void sqlConvertViewDefinition(String sql) {
-		/*
-		 * ] -> "
-		 * [ -> "
-		 * TOP 2O -> LIMIT 20
-		 * CIELING -> CIEL
-		 * STDEV -> STDDEV
-		 */
 		
 	}
 	
+
 	/***
 	 * Copies schemas from a source SQL Server host to a Snowflake instance 
 	 * 
@@ -2644,7 +2467,9 @@ public class JchLib_SnowflakeTest {
 	 * @param Source SQL Server database of the previously specified host name (String)
 	 * @throws SQLException
 	 */
-	public static void copySqlServerAllDatabaseSchemas(java.sql.Connection snowflakeCn, String srcHost, String srcDatabase)  throws SQLException {
+	public static void copySqlServerAllDatabaseSchemas(java.sql.Connection snowflakeCn, 
+			String srcHost, String srcDatabase) throws SQLException {
+		
 		SqlServerCnString srcCnString = new SqlServerCnString();
 		srcCnString.setCnStringIntegratedSecurity(srcHost, null , srcDatabase);
 		
@@ -2679,12 +2504,14 @@ public class JchLib_SnowflakeTest {
 	 * Creates a series of create statements
 	 * Currently supported: Column Names, Data Types, Default Values, Nullable, and Primary Keys 
 	 * 
-	 * Method should be refactored moving from test case to 
+	 * TODO: Method should be refactored moving from test case to 
 	 * 
 	 * @param Source SQL Server host name (String)
 	 * @param Source SQL Server database of the previously specified host name (String)
 	 */
-	public static void copySqlServerAllDatabaseTables(java.sql.Connection snowflakeCn, String srcHost, String srcDatabase) throws SQLException {
+	public static void copySqlServerAllDatabaseTables(java.sql.Connection snowflakeCn, 
+			String srcHost, String srcDatabase) throws SQLException {
+		
 		SqlServerCnString srcCnString = new SqlServerCnString();
 		srcCnString.setCnStringIntegratedSecurity(srcHost, null , srcDatabase);
 	
@@ -2702,7 +2529,7 @@ public class JchLib_SnowflakeTest {
 			//loop through tables
 			while(tables.next()) {
 				
-				String createTable = createSfTable(
+				String createTable = sqlCreateSfTable(
 						srcCnString.getHostName(),
 						srcCnString.getDatabaseName(),
 						tables.getString("TABLE_SCHEMA"),
@@ -2719,335 +2546,11 @@ public class JchLib_SnowflakeTest {
 	}
 	
 	
-	/***
-	 * Connect to an existing Generates a CREATE TABLE for Snowflake
-	 * 
-	 * Schema columns used from SQL Server
-	 * DATA_TYPE_CAT,DATA_TYPE,COLUMN_NAME,NUMERIC_PRECISION,NUMERIC_SCALE,
-	 * ORDINAL_POSITION,COLUMN_DEFAULT,CHARACTER_MAXIMUM_LENGTH
-	 * 
-	 * TODO: Using double quotes make objects case sensitive; give option to use use double quotes or not 
-	 * 
-	 * @param srcSqlHost String:
-	 * @param srcDatabse String:
-	 * @param srcSchema String: 
-	 * @param srcTable String:
-	 * @return
-	 */
-	public static String createSfTable(String srcSqlHost, String srcDatabase, String srcSchema, String srcTable) {
-		
-		//make connection to source SQL Server
-		SqlServerCnString srcCnString = new SqlServerCnString();								
-		srcCnString.setCnStringIntegratedSecurity(srcSqlHost, null , srcDatabase);
-		
-		//get column of current table
-
-		RowSet cols = SqlServerDbScour.getSrcInformationSchema(
-							srcCnString.getCnString(), 
-							srcCnString.getDatabaseName(), 
-							srcSchema, 
-							srcTable);
-					
-		//check for unconventional characters in table name: if true, wrap with double quotes for Snowflake literals
-		if(srcTable.contains("[") == true || 
-		   srcTable.contains("]") == true ||	
-		   srcTable.contains(".") == true || 
-		   srcTable.contains(" ") == true) {
-			
-			srcTable = "\"" + srcTable + "\"";
-			
-			
-		}
-		
-		//create statement
-		StringBuilder createStatement = new StringBuilder();
-		createStatement.append("CREATE TABLE " + srcSchema + "." + srcTable + " (\n");
-		
-		//used collect primary keys along the way (getSrcInfromationSchema is sorted by ordinal)
-		ArrayList<String> primaryKeys = new ArrayList<String>();
-		
-		//ensure 1 column per ordinal position.  
-		int ordinal = 0, prevOrdinal = 0;
-						
-		
-		int colCnt = 0;
-		
-		try {
-			
-			//iterate through columns
-			while(cols.next()) {
-				
-				ordinal = cols.getInt("ORDINAL_POSITION");
-				
-				//ensures column names won't be repeated if a constraint causes column to appear more than once
-				if(ordinal != prevOrdinal ) {
-					
-					colCnt++;
-				
-					//add comma to previous and newline to previous field, skip first line
-					if(colCnt > 1) {
-						createStatement.append(",\n");
-					}
-					
-					//column name
-					String colName = cols.getString("COLUMN_NAME");
-					//check if colname doesnt have special characters or reserved word
-					if(colName.contains(" ") == true ||
-					   colName.toLowerCase().equals("row")) {
-						colName = "\"" + colName + "\"";
-					}
-					createStatement.append("\t" + colName);
-					
-					//convert data type to Snowflake compatible
-					String datatype = convertSsToSfDataType(
-							cols.getString("DATA_TYPE_CAT"),
-							cols.getString("DATA_TYPE"),
-							cols.getInt("NUMERIC_PRECISION"),
-							cols.getInt("NUMERIC_SCALE"),
-							cols.getInt("CHARACTER_MAXIMUM_LENGTH"),
-							cols.getString("COLUMN_DEFAULT"));
-					createStatement.append("\t" + datatype);
-					
-					//check default
-					if(cols.getString("COLUMN_DEFAULT") != null) {
-						String colDefault = cols.getString("COLUMN_DEFAULT");
-						
-						//make sure there aren't any SQL Server specific commands going across
-						if(colDefault.toLowerCase().contains("newsequentialid()") == false &&
-						   colDefault.toLowerCase().contains("user_name()") == false &&
-						   colDefault.toLowerCase().contains("app_name()") == false	) {
-							createStatement.append("\tDEFAULT " + colDefault);
-						}
-					}
-					
-					//is field nullable?
-					String nullable = isNullable(cols.getString("IS_NULLABLE"));
-					createStatement.append("\t" + nullable);
-					
-					//if constraint is not null, it is likely a primary key?
-					if(cols.getString("CONSTRAINT_NAME") != null &&
-					   cols.getString("CONSTRAINT_NAME").toUpperCase().contains("PK")) {
-						primaryKeys.add(cols.getString("COLUMN_NAME"));
-					}
-				}
-				
-				prevOrdinal = cols.getInt("ORDINAL_POSITION");
-			}
-		} catch (SQLException e) {
-
-			e.printStackTrace();
-			QLog.log(e.toString(),true);
-		}
-			
-		//add primary keys
-		if(primaryKeys.size() > 0) {
-			createStatement.append(",\n");
-			createStatement.append("\tPRIMARY KEY(");
-			for(int i = 0; primaryKeys.size() > i; i++) {
-				if(i > 0) createStatement.append(",");
-				createStatement.append(primaryKeys.get(i));
-			}
-			createStatement.append(")\n");
-		}
-		
-		//cap off create statement
-		createStatement.append(")\n");
-		
-		return createStatement.toString();
-	}
+	
+	//Various Connections Methods
+	/////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	
 	
-	/***
-	 * Attempts to print account table schema as a create statement acceptable snowflake
-	 * PASS
-	 */
-	public static void createAccountTableTest() {
-		SqlServerCnString srcCnString = new SqlServerCnString();
-		srcCnString.setCnStringIntegratedSecurity("server", null , "database");
-	
-		/*
-			SELECT T.TABLE_TYPE,T.TABLE_CATALOG,T.TABLE_SCHEMA,T.TABLE_NAME,C.COLUMN_NAME,CU.CONSTRAINT_NAME,
-				C.DATA_TYPE,C.ORDINAL_POSITION,C.COLUMN_DEFAULT,C.IS_NULLABLE,C.CHARACTER_MAXIMUM_LENGTH,C.CHARACTER_OCTET_LENGTH,
-				C.NUMERIC_PRECISION,C.NUMERIC_PRECISION_RADIX,C.NUMERIC_SCALE,C.DATETIME_PRECISION, 
-		 		C.CHARACTER_SET_NAME,C.COLLATION_CATALOG,C.COLLATION_SCHEMA,C.COLLATION_NAME,C.DOMAIN_CATALOG, 
-		  		C.DOMAIN_SCHEMA,C.DOMAIN_NAME,C.CHARACTER_SET_CATALOG,C.CHARACTER_SET_SCHEMA,  
-		 		CASE WHEN DATA_TYPE IN ('varchar','nvarchar','text','char','nchar','ntext','xml','uniqueidentifier') THEN 'TEXT' 
-		 			WHEN DATA_TYPE IN ('smallint','int','money','numeric','decimal','bigint','float','real','tinyint','bit') THEN 'NUMERIC' 
-		 			WHEN DATA_TYPE IN ('smalldatetime','date','datetime','datetime2','time') THEN 'DATETIME' 
-		  			ELSE 'OTHER' 
-		 		END DATA_TYPE_CAT  
-		 		FROM " + databaseName + ".INFORMATION_SCHEMA.TABLES T  
-		 		JOIN " + databaseName + ".INFORMATION_SCHEMA.COLUMNS C ON 
-		 			T.TABLE_CATALOG = C.TABLE_CATALOG AND T.TABLE_SCHEMA = C.TABLE_SCHEMA AND T.TABLE_NAME = C.TABLE_NAME 
-		 		LEFT JOIN " + databaseName + ".INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE CU ON 
-		 		CU.TABLE_CATALOG = C.TABLE_CATALOG AND CU.TABLE_SCHEMA = C.TABLE_SCHEMA AND  
-		 			CU.TABLE_NAME = C.TABLE_NAME AND CU.COLUMN_NAME = C.COLUMN_NAME
-		*/
-		
-		RowSet infSchema = SqlServerDbScour.getSrcInformationSchema(
-				srcCnString.getCnString(), 			//Source host to get InformationSchema
-				srcCnString.getDatabaseName(), 		//Source database to get InformationSchema
-				true);								//Grab only user tables
-		try {
-			String tableName = "";
-			int line = 0;
-			
-			ArrayList<String> pks = new ArrayList<String>();
-			
-			while(infSchema.next()) {
-				String str = new String();
-				
-				tableName = infSchema.getString("TABLE_SCHEMA") + "." + infSchema.getString("TABLE_NAME");
-				
-				if(tableName.compareTo("dbo.ACCOUNT") ==0) {
-					
-					line++;
-					if(line == 1) {
-						str = "CREATE TABLE " + tableName+ " (";
-						QLog.log(str);
-					}
-					
-					//TODO: why was this here?
-					if(line >= 2) {
-						QLog.log(",");
-					}
-					
-					if(infSchema.getString("CONSTRAINT_NAME") != null) pks.add(infSchema.getString("COLUMN_NAME"));
-					
-					//pass over relevant SQL Server schema info to return a Snowflake friendly datatype
-					String datatype = convertSsToSfDataType(
-										 infSchema.getString("DATA_TYPE_CAT"),
-										 infSchema.getString("DATA_TYPE"),
-										 infSchema.getInt("NUMERIC_PRECISION"),
-										 infSchema.getInt("NUMERIC_SCALE"),
-										 infSchema.getInt("CHARACTER_MAXIMUM_LENGTH"),
-										 infSchema.getString("COLUMN_DEFAULT") );
-					
-					String nullable = isNullable(infSchema.getString("IS_NULLABLE"));
-					
-					str = "\t" + infSchema.getString("COLUMN_NAME") + 
-						  "\t" + datatype +
-						  "\t" + nullable;
-
-					QLog.log(str);
-				}
-			}
-			if(pks.size() > 0) {
-				
-				
-				String pk = "\tPRIMARY KEY(";
-				for(int i = 0; i < pks.size(); i++) {
-					if(i > 0) pk = pk + ",";
-					pk = pk + pks.get(i);
-				}
-				pk = pk + ")";
-				
-				QLog.log(pk);
-				
-			}
-			
-		} catch (SQLException e) {
-			e.printStackTrace();
-			QLog.log(e.toString(),true);
-		}
-		
-	}
-	
-	/***
-	 * 
-	 * @param isNullable
-	 * @return
-	 */
-	static String isNullable(String isNullable) {
-		String output = "";
-		
-		if(isNullable.equalsIgnoreCase("NO")) output = "NOT NULL";
-		else if(isNullable.equalsIgnoreCase("YES")) output = "NULL";
-		else output = "NULL";
-		
-		return output;
-	}
-	
-	/***
-	 * 	Converts SQL Server data type to Snowflake datatype
-	 * 
-	 * Data Type Categories (dataTypeCategory)
-	 * 	DATE	smalldatetime,date,datetime,datetime2,time
-	 *	NUMERIC	smallint,money,int,numeric,bigint,decimal,bit,float,tinyint,real
-	 *	TEXT	varchar,char,nvarchar,nchar,uniqueidentifier,text
-	 *	OTHER	varbinary
-	 *	
-	 * @param dataTypeCategory String:
-	 * @param dataType String:
-	 * @param numericPrecision int:
-	 * @param numericScale int:
-	 * @param charMaxLength int:
-	 * @param colDefault String:
-	 * @return
-	 */
-	static String convertSsToSfDataType(String dataTypeCategory, String dataType, int numericPrecision, int numericScale, 
-							int charMaxLength, String colDefault) {
-
-		String output = null;
-		switch(dataTypeCategory) {
-			case "TEXT":
-				if(dataType.equalsIgnoreCase("varchar") || dataType.equalsIgnoreCase("nvarchar")
-					 || dataType.equalsIgnoreCase("text")) {
-					
-					if(charMaxLength < 1) output = "VARCHAR";
-					else output = "VARCHAR(" + charMaxLength + ")";
-				}
-				if(dataType.equalsIgnoreCase("char") || dataType.equalsIgnoreCase("nchar")) {
-					output = "CHAR(" + charMaxLength + ")";
-				}
-				if(dataType.equalsIgnoreCase("uniqueidentifier")) {
-					output = "VARCHAR(" + 50 + ")";
-				}
-				break;
-			case "NUMERIC":
-				if(    dataType.equalsIgnoreCase("bigint")  || dataType.equalsIgnoreCase("decimal")
-					|| dataType.equalsIgnoreCase("numeric") || dataType.equalsIgnoreCase("int") 
-					|| dataType.equalsIgnoreCase("money")   || dataType.equalsIgnoreCase("smallint")
-					|| dataType.equalsIgnoreCase("tinyint") || dataType.equalsIgnoreCase("decimal")
-					|| dataType.equalsIgnoreCase("real")) {
-						output = "NUMBER(" + numericPrecision + "," + numericScale + ")";
-				}
-				if(dataType.equalsIgnoreCase("bit")) {
-					output = "NUMBER(1,0)";
-				}
-				if(dataType.equalsIgnoreCase("float")) {
-						output = "FLOAT";
-				}
-				break;
-			case "DATETIME":
-				if(dataType.equalsIgnoreCase("date")) {
-					output = "DATE";
-					
-					//getdate() in Snowflake will break DATE type, so make DATETIME instead
-					if(colDefault != null &&
-					   colDefault.toLowerCase().contains("getdate()") == true) output = "DATETIME";
-				}
-				if(dataType.equalsIgnoreCase("smalldatetime") || dataType.equalsIgnoreCase("datetime")
-						|| dataType.equalsIgnoreCase("datetime2")) {
-					output = "DATETIME";
-				}
-				if(dataType.equalsIgnoreCase("time")) {
-					output = "TIME";
-				}
-				break;
-			case "OTHER":
-				if(dataType.equalsIgnoreCase("varbinary") || dataType.equalsIgnoreCase("binary")) {
-					output = "BINARY";
-				}
-				if(dataType.equalsIgnoreCase("float")) {
-					output = "FLOAT";
-				}
-				break;
-		}
-		return output;
-	}
-	
-
 	/***
 	 * snowflake_creds.json
 	 * <start file>
@@ -3238,7 +2741,567 @@ public class JchLib_SnowflakeTest {
 	    return output;
 	}
 	
+
+	//Dynamically Generated SQL Statements
+	/////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	
+	
+	
+	/***
+	 * Snowflake database schema information
+	 * 
+	 * Fields:
+	 * TABLE_CATALOG, TABLE_SCHEMA, TABLE_NAME, COLUMN_NAME, ORDINAL_POSITION, COLUMN_DEFAULT, IS_NULLABLE,
+	 * DATA_TYPE, CHARACTER_MAXIMUM_LENGTH, CHARACTER_OCTET_LENGTH, NUMERIC_PRECISION, NUMERIC_PRECISION_RADIX,
+	 * NUMERIC_SCALE, DATETIME_PRECISION, INTERVAL_TYPE, INTERVAL_PRECISION, CHARACTER_SET_CATALOG,
+	 * CHARACTER_SET_SCHEMA, CHARACTER_SET_NAME, COLLATION_CATALOG, COLLATION_SCHEMA, COLLATION_NAME,
+	 * DOMAIN_CATALOG, DOMAIN_SCHEMA, DOMAIN_NAME, UDT_CATALOG, UDT_SCHEMA, UDT_NAME, SCOPE_CATALOG, SCOPE_SCHEMA,
+	 * SCOPE_NAME, MAXIMUM_CARDINALITY, DTD_IDENTIFIER, IS_SELF_REFERENCING, IS_IDENTITY, IDENTITY_GENERATION,
+	 * IDENTITY_START, IDENTITY_INCREMENT, IDENTITY_MAXIMUM, IDENTITY_MINIMUM, IDENTITY_CYCLE, COMMENT
+	 * 
+	 * @param database
+	 * @return sqlString
+	 */
+	static String sqlSfDatabaseAllInformationShema(String database) {
+		String output = "SELECT * FROM \"" + database.toUpperCase() + "\".INFORMATION_SCHEMA.COLUMNS "+
+						"ORDER BY TABLE_SCHEMA, TABLE_NAME, ORDINAL_POSITION";
+		return output;
+	}
+	
+	
+	static String sqlSfDatabaseTableInformationShema(String database, String schema, String table) {
+		String output = "SELECT * FROM \"" + database.toUpperCase() + "\".INFORMATION_SCHEMA.COLUMNS "
+						+ "WHERE TABLE_SCHEMA = '" + schema.toUpperCase() 
+						+ "' AND TABLE_NAME = '" + table.toUpperCase() + "' "
+						+ "ORDER BY ORDINAL_POSITION";
+		return output;
+	}
+
+	
+	/***
+	 * 
+	 * @param database
+	 * @param schema
+	 * @param table
+	 * @param col
+	 * @return
+	 */
+	public static String sqlSfMaxValue(String database, String schema, String table, String col) {
+		String output = null;
+		
+		if(database != null && schema != null && table != null)  {
+			
+			output = "SELECT MAX(\"" + col.toUpperCase() + "\") MaxValue FROM \"" 
+				   + database.toUpperCase() + "\".\""
+				   + schema.toUpperCase() + "\".\""
+				   + table.toUpperCase() + "\"";
+
+		}
+		
+		return output;
+	}
+	
+	
+	/***
+	 * 
+	 * @param value
+	 * @param datatypeCat
+	 * @return
+	 */
+	public static String sfSqlValuePrep(String value, String datatypeCat ) {
+		String output = "";
+		
+		//DATA_TYPE_CAT: TEXT, NUMERIC, DATETIME, OTHER
+		if(value == null) output = "null";
+		else if (datatypeCat.equalsIgnoreCase("TEXT")) output = "$$" + value + "$$";
+		else if (datatypeCat.equalsIgnoreCase("DATETIME")) output = "'" + value + "'";
+		else if (datatypeCat.equalsIgnoreCase("NUMERIC")) output = value;
+		else if (datatypeCat.equalsIgnoreCase("OTHER")) output = "null";
+		
+		return output; 
+	}
+	
+	
+	/***
+	 * Connect to an existing Generates a CREATE TABLE for Snowflake
+	 * 
+	 * Schema columns used from SQL Server
+	 * DATA_TYPE_CAT,DATA_TYPE,COLUMN_NAME,NUMERIC_PRECISION,NUMERIC_SCALE,
+	 * ORDINAL_POSITION,COLUMN_DEFAULT,CHARACTER_MAXIMUM_LENGTH
+	 * 
+	 * TODO: Using double quotes make objects case sensitive; give option to use use double quotes or not 
+	 * 
+	 * @param srcSqlHost String:
+	 * @param srcDatabse String:
+	 * @param srcSchema String: 
+	 * @param srcTable String:
+	 * @return
+	 */
+	public static String sqlCreateSfTable(String srcSqlHost, String srcDatabase, String srcSchema, String srcTable) {
+		
+		//make connection to source SQL Server
+		SqlServerCnString srcCnString = new SqlServerCnString();								
+		srcCnString.setCnStringIntegratedSecurity(srcSqlHost, null , srcDatabase);
+		
+		//get column of current table, ordered by ordinal position
+		RowSet cols = SqlServerDbScour.getSrcInformationSchema(
+							srcCnString.getCnString(), 
+							srcCnString.getDatabaseName(), 
+							srcSchema, 
+							srcTable);
+					
+		//check for unconventional characters in table name: if true, wrap with double quotes for Snowflake literals
+		if(srcTable.contains("[") == true || 
+		   srcTable.contains("]") == true ||	
+		   srcTable.contains(".") == true || 
+		   srcTable.contains(" ") == true) {
+			
+			srcTable = "\"" + srcTable + "\"";
+			
+			
+		}
+		
+		//create statement
+		StringBuilder createStatement = new StringBuilder();
+		createStatement.append("CREATE TABLE " + srcSchema + "." + srcTable + " (\n");
+		
+		//used collect primary keys along the way (getSrcInfromationSchema is sorted by ordinal)
+		ArrayList<String> primaryKeys = new ArrayList<String>();
+		
+		//ensure 1 column per ordinal position.  
+		int ordinal = 0, prevOrdinal = 0;
+						
+		
+		int colCnt = 0;
+		
+		try {
+			
+			//iterate through columns
+			while(cols.next()) {
+				
+				ordinal = cols.getInt("ORDINAL_POSITION");
+				
+				//ensures column names won't be repeated if a constraint causes column to appear more than once
+				if(ordinal != prevOrdinal ) {
+					
+					colCnt++;
+				
+					//add comma to previous and newline to previous field, skip first line
+					if(colCnt > 1) {
+						createStatement.append(",\n");
+					}
+					
+					//column name
+					String colName = cols.getString("COLUMN_NAME");
+					//check if colname doesnt have special characters or reserved word
+					if(colName.contains(" ") == true ||
+					   colName.toLowerCase().equals("row")) {
+						colName = "\"" + colName + "\"";
+					}
+					createStatement.append("\t" + colName);
+					
+					//convert data type to Snowflake compatible
+					String datatype = convertSsToSfDataType(
+							cols.getString("DATA_TYPE_CAT"),
+							cols.getString("DATA_TYPE"),
+							cols.getInt("NUMERIC_PRECISION"),
+							cols.getInt("NUMERIC_SCALE"),
+							cols.getInt("CHARACTER_MAXIMUM_LENGTH"),
+							cols.getString("COLUMN_DEFAULT"));
+					createStatement.append("\t" + datatype);
+					
+					//check default
+					if(cols.getString("COLUMN_DEFAULT") != null) {
+						String colDefault = cols.getString("COLUMN_DEFAULT");
+						
+						//make sure there aren't any SQL Server specific commands going across
+						if(colDefault.toLowerCase().contains("newsequentialid()") == false &&
+						   colDefault.toLowerCase().contains("user_name()") == false &&
+						   colDefault.toLowerCase().contains("app_name()") == false	) {
+							createStatement.append("\tDEFAULT " + colDefault);
+						}
+					}
+					
+					//is field nullable?
+					String nullable = isNullable(cols.getString("IS_NULLABLE"));
+					createStatement.append("\t" + nullable);
+					
+					//if constraint is not null, it is likely a primary key?
+					if(cols.getString("CONSTRAINT_NAME") != null &&
+					   cols.getString("CONSTRAINT_NAME").toUpperCase().contains("PK")) {
+						primaryKeys.add(cols.getString("COLUMN_NAME"));
+					}
+				}
+				
+				prevOrdinal = cols.getInt("ORDINAL_POSITION");
+			}
+		} catch (SQLException e) {
+
+			e.printStackTrace();
+			QLog.log(e.toString(),true);
+		}
+			
+		//add primary keys
+		if(primaryKeys.size() > 0) {
+			createStatement.append(",\n");
+			createStatement.append("\tPRIMARY KEY(");
+			for(int i = 0; primaryKeys.size() > i; i++) {
+				if(i > 0) createStatement.append(",");
+				createStatement.append(primaryKeys.get(i));
+			}
+			createStatement.append(")\n");
+		}
+		
+		//cap off create statement
+		createStatement.append(")\n");
+		
+		return createStatement.toString();
+	}
+	
+	
+
+	/***
+	 * 
+	 * @param isNullable
+	 * @return
+	 */
+	static String isNullable(String isNullable) {
+		String output = "";
+		
+		if(isNullable.equalsIgnoreCase("NO")) output = "NOT NULL";
+		else if(isNullable.equalsIgnoreCase("YES")) output = "NULL";
+		else output = "NULL";
+		
+		return output;
+	}
+	
+	/***
+	 * 	Converts SQL Server data type to Snowflake datatype
+	 * 
+	 * Data Type Categories (dataTypeCategory)
+	 * 	DATE	smalldatetime,date,datetime,datetime2,time
+	 *	NUMERIC	smallint,money,int,numeric,bigint,decimal,bit,float,tinyint,real
+	 *	TEXT	varchar,char,nvarchar,nchar,uniqueidentifier,text
+	 *	OTHER	varbinary
+	 *	
+	 * @param dataTypeCategory String:
+	 * @param dataType String:
+	 * @param numericPrecision int:
+	 * @param numericScale int:
+	 * @param charMaxLength int:
+	 * @param colDefault String:
+	 * @return
+	 */
+	static String convertSsToSfDataType(String dataTypeCategory, String dataType, int numericPrecision, int numericScale, 
+							int charMaxLength, String colDefault) {
+
+		String output = null;
+		switch(dataTypeCategory) {
+			case "TEXT":
+				if(dataType.equalsIgnoreCase("varchar") || dataType.equalsIgnoreCase("nvarchar")
+					 || dataType.equalsIgnoreCase("text")) {
+					
+					if(charMaxLength < 1) output = "VARCHAR";
+					else output = "VARCHAR(" + charMaxLength + ")";
+				}
+				if(dataType.equalsIgnoreCase("char") || dataType.equalsIgnoreCase("nchar")) {
+					output = "CHAR(" + charMaxLength + ")";
+				}
+				if(dataType.equalsIgnoreCase("uniqueidentifier")) {
+					output = "VARCHAR(" + 50 + ")";
+				}
+				break;
+			case "NUMERIC":
+				if(    dataType.equalsIgnoreCase("bigint")  || dataType.equalsIgnoreCase("decimal")
+					|| dataType.equalsIgnoreCase("numeric") || dataType.equalsIgnoreCase("int") 
+					|| dataType.equalsIgnoreCase("money")   || dataType.equalsIgnoreCase("smallint")
+					|| dataType.equalsIgnoreCase("tinyint") || dataType.equalsIgnoreCase("decimal")
+					|| dataType.equalsIgnoreCase("real")) {
+						output = "NUMBER(" + numericPrecision + "," + numericScale + ")";
+				}
+				if(dataType.equalsIgnoreCase("bit")) {
+					output = "NUMBER(1,0)";
+				}
+				if(dataType.equalsIgnoreCase("float")) {
+						output = "FLOAT";
+				}
+				break;
+			case "DATETIME":
+				if(dataType.equalsIgnoreCase("date")) {
+					output = "DATE";
+					
+					//getdate() in Snowflake will break DATE type, so make DATETIME instead
+					if(colDefault != null &&
+					   colDefault.toLowerCase().contains("getdate()") == true) output = "DATETIME";
+				}
+				if(dataType.equalsIgnoreCase("smalldatetime") || dataType.equalsIgnoreCase("datetime")
+						|| dataType.equalsIgnoreCase("datetime2")) {
+					output = "DATETIME";
+				}
+				if(dataType.equalsIgnoreCase("time")) {
+					output = "TIME";
+				}
+				break;
+			case "OTHER":
+				if(dataType.equalsIgnoreCase("varbinary") || dataType.equalsIgnoreCase("binary")) {
+					output = "BINARY";
+				}
+				if(dataType.equalsIgnoreCase("float")) {
+					output = "FLOAT";
+				}
+				break;
+		}
+		return output;
+	}
+	
+	/***
+	 * Create database
+	 * @param databaseName
+	 * @return
+	 */
+	public static String sqlSfCreateDatabase(String databaseName) {
+		String output =  null;
+		output = "CREATE DATABASE " + databaseName;
+		return output;
+	}
+	
+	
+	
+	
+	//In development
+	/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	
+	/***
+	 * TODO: Completer later
+	 * Fields: TABLE_CATALOG,TABLE_SCHEMA,TABLE_NAME,VIEW_DEFINITION,CHECK_OPTION,IS_UPDATABLE
+	 * 
+	 * 
+	 * @param snowflakeCn
+	 * @param srcHost
+	 * @param srcDatabase
+	 * @throws SQLException
+	 */
+	public static void copySqlServerAllViews(java.sql.Connection snowflakeCn, String srcHost, String srcDatabase) {
+		try {
+			copySqlServerAllViews(snowflakeCn, srcHost, srcDatabase, null, null, 0);
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+
+	
+	/***
+	 * TODO: Complete later
+	 * Fields: TABLE_CATALOG,TABLE_SCHEMA,TABLE_NAME,VIEW_DEFINITION,CHECK_OPTION,IS_UPDATABLE
+	 * 
+	 * 
+	 * @param snowflakeCn
+	 * @param srcHost
+	 * @param srcDatabase
+	 * @throws SQLException
+	 */
+	public static void copySqlServerAllViews(java.sql.Connection snowflakeCn, String srcHost, String srcDatabase,
+			String srcSchema, String srcTable, Integer recLvl)  throws SQLException {
+		
+		SqlServerCnString srcCnString = new SqlServerCnString();
+		srcCnString.setCnStringIntegratedSecurity(srcHost, null , srcDatabase);
+				
+		recLvl++;
+		//first run
+		if(srcSchema == null && srcTable == null) {
+			
+			QLog.log("Start recursion");
+			//get tables for given database 
+			RowSet viewDefs = SqlServerDbScour.getSrcViewDefinitions(
+					srcCnString.getCnString(), 			//Source host to get InformationSchema
+					srcCnString.getDatabaseName());
+			
+			while(viewDefs.next()) {
+				String viewSchema = viewDefs.getString("TABLE_SCHEMA");
+				String viewName = viewDefs.getString("TABLE_NAME");
+				
+				copySqlServerAllViews(snowflakeCn, srcHost, srcDatabase, viewSchema, viewName, recLvl);
+				
+			}
+			
+			
+		}
+		//recursive run
+		else {
+
+			String sql = SqlServerDiscovery.sqlParentObjects(srcDatabase, srcSchema, srcTable, true);
+			QLog.log(recLvl + ": " + srcSchema + "." + srcTable + " --> " + srcCnString.getCnString() + ";" +sql);
+			
+			RowSet parents = SqlServerDbScour.executeSqlRowSet(srcCnString.getCnString(), sql);
+			String v1 = srcHost + "." + srcDatabase +  "." + srcSchema + "." + srcTable;
+			if(parents.next() == false) {
+				//do the thing
+				
+				
+				QLog.log(recLvl + ": Do the thing 1 :" + v1);
+								
+			} else {
+				
+				do {
+					//recurse again					
+					String viewServer = parents.getString("referenced_server_name");
+					String viewDatabase = parents.getString("referenced_database_name");
+					String viewSchema = parents.getString("referenced_schema_name");
+					String viewName = parents.getString("referenced_entity_name");
+					
+					String v2 =  viewServer+ "," + viewDatabase + "," + viewSchema + "," + viewName;
+					
+					QLog.log("Lets see the variables: " + v2);	
+					
+					if(viewServer == null) {
+						QLog.log("viewServer is null, using srcHost, " + srcHost);
+						viewServer = srcHost;
+					}
+					
+					if(viewDatabase == null) {
+						QLog.log("viewDatabase is null, using srcHost, " + srcDatabase);
+						viewDatabase = srcDatabase;
+					}
+					
+					
+					
+					copySqlServerAllViews(snowflakeCn, viewServer, viewDatabase, viewSchema, viewName, recLvl);
+					
+				}
+				while(parents.next() == true);
+				
+				//do the thing
+				QLog.log(recLvl + ": Do the thing 2 :" + v1);
+			}
+			
+				
+		}
+		
+		recLvl--;
+
+	}
+	
+
+	/*
+	 * TODO: complete later
+	 */
+	public static void sqlConvertViewDefinition(String sql) {
+		/*
+		 * ] -> "
+		 * [ -> "
+		 * TOP 2O -> LIMIT 20
+		 * CIELING -> CIEL
+		 * STDEV -> STDDEV
+		 */
+		
+	}
+		
+	
+	
+	
+	//Isolated test cases
+	/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	
+	
+	/***
+	 * Attempts to print account table schema as a create statement acceptable snowflake
+	 * PASS
+	 */
+	public static void createAccountTableTest() {
+		SqlServerCnString srcCnString = new SqlServerCnString();
+		srcCnString.setCnStringIntegratedSecurity("server", null , "database");
+	
+		/*
+			SELECT T.TABLE_TYPE,T.TABLE_CATALOG,T.TABLE_SCHEMA,T.TABLE_NAME,C.COLUMN_NAME,CU.CONSTRAINT_NAME,
+				C.DATA_TYPE,C.ORDINAL_POSITION,C.COLUMN_DEFAULT,C.IS_NULLABLE,C.CHARACTER_MAXIMUM_LENGTH,C.CHARACTER_OCTET_LENGTH,
+				C.NUMERIC_PRECISION,C.NUMERIC_PRECISION_RADIX,C.NUMERIC_SCALE,C.DATETIME_PRECISION, 
+		 		C.CHARACTER_SET_NAME,C.COLLATION_CATALOG,C.COLLATION_SCHEMA,C.COLLATION_NAME,C.DOMAIN_CATALOG, 
+		  		C.DOMAIN_SCHEMA,C.DOMAIN_NAME,C.CHARACTER_SET_CATALOG,C.CHARACTER_SET_SCHEMA,  
+		 		CASE WHEN DATA_TYPE IN ('varchar','nvarchar','text','char','nchar','ntext','xml','uniqueidentifier') THEN 'TEXT' 
+		 			WHEN DATA_TYPE IN ('smallint','int','money','numeric','decimal','bigint','float','real','tinyint','bit') THEN 'NUMERIC' 
+		 			WHEN DATA_TYPE IN ('smalldatetime','date','datetime','datetime2','time') THEN 'DATETIME' 
+		  			ELSE 'OTHER' 
+		 		END DATA_TYPE_CAT  
+		 		FROM " + databaseName + ".INFORMATION_SCHEMA.TABLES T  
+		 		JOIN " + databaseName + ".INFORMATION_SCHEMA.COLUMNS C ON 
+		 			T.TABLE_CATALOG = C.TABLE_CATALOG AND T.TABLE_SCHEMA = C.TABLE_SCHEMA AND T.TABLE_NAME = C.TABLE_NAME 
+		 		LEFT JOIN " + databaseName + ".INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE CU ON 
+		 		CU.TABLE_CATALOG = C.TABLE_CATALOG AND CU.TABLE_SCHEMA = C.TABLE_SCHEMA AND  
+		 			CU.TABLE_NAME = C.TABLE_NAME AND CU.COLUMN_NAME = C.COLUMN_NAME
+		*/
+		
+		RowSet infSchema = SqlServerDbScour.getSrcInformationSchema(
+				srcCnString.getCnString(), 			//Source host to get InformationSchema
+				srcCnString.getDatabaseName(), 		//Source database to get InformationSchema
+				true);								//Grab only user tables
+		try {
+			String tableName = "";
+			int line = 0;
+			
+			ArrayList<String> pks = new ArrayList<String>();
+			
+			while(infSchema.next()) {
+				String str = new String();
+				
+				tableName = infSchema.getString("TABLE_SCHEMA") + "." + infSchema.getString("TABLE_NAME");
+				
+				if(tableName.compareTo("dbo.ACCOUNT") ==0) {
+					
+					line++;
+					if(line == 1) {
+						str = "CREATE TABLE " + tableName+ " (";
+						QLog.log(str);
+					}
+					
+					//TODO: why was this here?
+					if(line >= 2) {
+						QLog.log(",");
+					}
+					
+					if(infSchema.getString("CONSTRAINT_NAME") != null) pks.add(infSchema.getString("COLUMN_NAME"));
+					
+					//pass over relevant SQL Server schema info to return a Snowflake friendly datatype
+					String datatype = convertSsToSfDataType(
+										 infSchema.getString("DATA_TYPE_CAT"),
+										 infSchema.getString("DATA_TYPE"),
+										 infSchema.getInt("NUMERIC_PRECISION"),
+										 infSchema.getInt("NUMERIC_SCALE"),
+										 infSchema.getInt("CHARACTER_MAXIMUM_LENGTH"),
+										 infSchema.getString("COLUMN_DEFAULT") );
+					
+					String nullable = isNullable(infSchema.getString("IS_NULLABLE"));
+					
+					str = "\t" + infSchema.getString("COLUMN_NAME") + 
+						  "\t" + datatype +
+						  "\t" + nullable;
+
+					QLog.log(str);
+				}
+			}
+			if(pks.size() > 0) {
+				
+				
+				String pk = "\tPRIMARY KEY(";
+				for(int i = 0; i < pks.size(); i++) {
+					if(i > 0) pk = pk + ",";
+					pk = pk + pks.get(i);
+				}
+				pk = pk + ")";
+				
+				QLog.log(pk);
+				
+			}
+			
+		} catch (SQLException e) {
+			e.printStackTrace();
+			QLog.log(e.toString(),true);
+		}
+		
+	}
+	
+	
+		
 	/***
 	 * 
 	 * @return
@@ -3298,6 +3361,10 @@ public class JchLib_SnowflakeTest {
 	    
 	    return DriverManager.getConnection(connectStr, properties); 
 	}
+	
+	
+	
+	
 	
 	
 	/****

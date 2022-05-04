@@ -25,14 +25,16 @@ public class QLog {
 	 */
 	static public void log(String msg, boolean supressConsole) {
 		Timestamp ts = new Timestamp(System.currentTimeMillis());
+		
+		//limits the length of output msg if specified
+		if(charLimit > 0 && msg.length() > charLimit) 
+			msg = msg.substring(0,charLimit);
+		
 		msg = ts.toString() + ": " + msg + "\r\n";
 		
-		
-		//limits the lentgh of output msg if specified
-		if(charLimit > 0 && msg.length() > charLimit) msg = msg.substring(0,charLimit);
-		
 		//prints to console
-		if(printConsole == true && supressConsole == false) System.out.print(msg);
+		if(printConsole == true && supressConsole == false) 
+			System.out.print(msg);
 		
 		//prints to file
 		FileWriter writer = null;

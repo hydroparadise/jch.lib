@@ -1465,8 +1465,8 @@ public class SqlServerDbScour {
 				   + SqlServerDiscovery.sqlObjBracket(database) + "."
 				   + SqlServerDiscovery.sqlObjBracket(schema) + "."
 				   + SqlServerDiscovery.sqlObjBracket(table)
-				   + " WHERE " + SqlServerDiscovery.sqlObjBracket(col) + " >= " + sqlValuePrep(lowerVal, dataTypeCat) 
-				   + " AND " + SqlServerDiscovery.sqlObjBracket(col) + " <= " + sqlValuePrep(upperVal, dataTypeCat);
+				   + " WHERE " + SqlServerDiscovery.sqlObjBracket(col) + " >= " + SqlServerDiscovery.sqlValuePrep(lowerVal, dataTypeCat) 
+				   + " AND " + SqlServerDiscovery.sqlObjBracket(col) + " <= " + SqlServerDiscovery.sqlValuePrep(upperVal, dataTypeCat);
 
 		}
 		
@@ -1484,7 +1484,7 @@ public class SqlServerDbScour {
 				   + SqlServerDiscovery.sqlObjBracket(database) + "."
 				   + SqlServerDiscovery.sqlObjBracket(schema) + "."
 				   + SqlServerDiscovery.sqlObjBracket(table)
-				   + " WHERE " + SqlServerDiscovery.sqlObjBracket(col) + " > " + sqlValuePrep(value, dataTypeCat)
+				   + " WHERE " + SqlServerDiscovery.sqlObjBracket(col) + " > " + SqlServerDiscovery.sqlValuePrep(value, dataTypeCat)
 				   + " GROUP BY " + SqlServerDiscovery.sqlObjBracket(col) 
 				   + " ORDER BY " + SqlServerDiscovery.sqlObjBracket(col);
 
@@ -1495,34 +1495,7 @@ public class SqlServerDbScour {
 	}
 	
 	
-	/***
-	 * 
-	 * @param value
-	 * @param datatypeCat: TEXT, NUMERIC, DATETIME, OTHER
-	 * @return String
-	 */
-	public static String sqlValuePrep(String value, String datatypeCat) {
-		
-		String output = "";
-		/*
-		if(value.charAt(0) == '\'' && value.charAt(value.length() - 1) == '\'') {
-			value = removeCharAt(value, 0);
-			value = removeCharAt(value, value.length() - 1);
-		}
-		*/
-		
-		
-		//DATA_TYPE_CAT: TEXT, NUMERIC, DATETIME, OTHER
-		if(value == null) output = "";
-		else if (datatypeCat.equals("TEXT")) 
-			output = "'" + value.replace("'", "''") + "'";
-		else if (datatypeCat.equals("DATETIME")) output = "'" + value + "'";
-		else if (datatypeCat.equals("NUMERIC")) output = value;
-		else if (datatypeCat.equals("OTHER")) output = "";
-		
-		return output; 
-	}
-	
+
 	
     static String removeCharAt(String str, int index) {
 
