@@ -1,19 +1,12 @@
 package jch.lib.db.snowflake;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.zip.GZIPOutputStream;
 
 
 import jch.lib.common.QLog;
 import jch.lib.test.JchLib_AzureTest;
-import jch.lib.test.JchLib_SnowflakeTest;
 import jch.lib.common.compress.ExecuteCompressGzip;
 
 
@@ -116,7 +109,8 @@ class ExecuteZipAndShip extends Thread {
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
-				QLog.log(e.toString(),true);
+				QLog.log("ETL Exception: " + e.toString(),true);
+				QLog.log(e,true);
 			}
 		}
 		
@@ -145,7 +139,7 @@ class ExecuteZipAndShip extends Thread {
 			try {
 				
 				java.sql.Connection sfCn = null;
-				sfCn = JchLib_SnowflakeTest.getConnection(sfCredsLoc, sfDatabase, "PUBLIC");
+				sfCn = SnowflakeCnString.getConnection(sfCredsLoc, sfDatabase, "PUBLIC");
 				Statement sfStatement = sfCn.createStatement();
 				
 
@@ -155,7 +149,8 @@ class ExecuteZipAndShip extends Thread {
 			} catch (SQLException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
-				QLog.log(e.toString(),true);
+				QLog.log("ETL Exception: " + e.toString(),true);
+				QLog.log(e,true);
 			}
 	    }
 	    

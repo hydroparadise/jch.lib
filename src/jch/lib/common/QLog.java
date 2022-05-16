@@ -2,6 +2,8 @@ package jch.lib.common;
 
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.sql.Timestamp;
 
 
@@ -56,7 +58,21 @@ public class QLog {
 		}
 	}
 	
-
+	/***
+	 * 
+	 * @param e
+	 * @param supresConsole
+	 */
+	static public void log(Exception e, boolean supressConsole) {
+		StringWriter sw = new StringWriter();
+		PrintWriter pw = new PrintWriter(sw);
+		e.printStackTrace(pw);
+		String sStackTrace = sw.toString(); // stack trace as a string
+		
+		log(sStackTrace, supressConsole);
+	}
+	
+	
 	static public String  filePath = null;
 	static public String baseFileName = null;
 	static public String ext = ".txt";

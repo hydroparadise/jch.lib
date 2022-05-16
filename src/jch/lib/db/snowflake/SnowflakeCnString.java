@@ -47,7 +47,8 @@ public class SnowflakeCnString {
 	    }
 	    catch (ClassNotFoundException ex){
 	    	System.err.println("Driver not found");
-	    	QLog.log("Driver not found");
+	    	QLog.log(ex.toString(),true);
+	    	QLog.log(ex,true);
 	    }
 	    
 	    //use JSON object to pull sensitive information instead of hardcoding
@@ -60,9 +61,11 @@ public class SnowflakeCnString {
 		} catch (ParseException e) {
 			e.printStackTrace();
 			QLog.log(e.toString(),true);
+			QLog.log(e,true);
 		} catch (IOException e) {
 			e.printStackTrace();
 			QLog.log(e.toString(),true);
+			QLog.log(e,true);
 		}
 	    
 	    // build connection properties
@@ -85,6 +88,7 @@ public class SnowflakeCnString {
 
 			e.printStackTrace();
 			QLog.log(e.toString(),true);
+			QLog.log(e,true);
 		}
 	    
 	    return output;
@@ -106,6 +110,7 @@ public class SnowflakeCnString {
 	    catch (ClassNotFoundException ex){
 	    	System.err.println("Driver not found");
 	    	QLog.log("Driver not found");
+	    	QLog.log(ex,true);
 	    }
 	    
 	    //use JSON object to pull sensitive information instead of hardcoding
@@ -118,9 +123,11 @@ public class SnowflakeCnString {
 		} catch (ParseException e) {
 			e.printStackTrace();
 			QLog.log(e.toString(),true);
+			QLog.log(e,true);
 		} catch (IOException e) {
 			e.printStackTrace();
 			QLog.log(e.toString(),true);
+			QLog.log(e,true);
 		}
 	    
 	    // build connection properties
@@ -143,6 +150,8 @@ public class SnowflakeCnString {
 			output = DriverManager.getConnection(connectStr, properties);
 		} catch (SQLException e) {
 			e.printStackTrace();
+			QLog.log(e.toString(),true);
+			QLog.log(e,true);
 		}
 	    
 	    return output;
@@ -164,6 +173,8 @@ public class SnowflakeCnString {
 	    }
 	    catch (ClassNotFoundException ex){
 	    	System.err.println("Driver not found");
+	    	QLog.log(ex.toString(),true);
+	    	QLog.log(ex,true);
 	    }
 	    
 	    //use JSON object to pull sensitive information instead of hardcoding
@@ -175,9 +186,13 @@ public class SnowflakeCnString {
 			
 		} catch (ParseException e) {
 			e.printStackTrace();
+			QLog.log(e.toString(),true);
+			QLog.log(e,true);
 			
 		} catch (IOException e) {
 			e.printStackTrace();
+			QLog.log(e.toString(),true);
+			QLog.log(e,true);
 		}
 	    
 	    // build connection properties
@@ -202,6 +217,8 @@ public class SnowflakeCnString {
 			output = DriverManager.getConnection(connectStr, properties);
 		} catch (SQLException e) {
 			e.printStackTrace();
+			QLog.log(e.toString(),true);
+			QLog.log(e,true);
 		}
 	    
 	    return output;

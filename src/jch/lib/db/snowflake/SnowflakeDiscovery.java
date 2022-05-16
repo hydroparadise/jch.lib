@@ -189,7 +189,8 @@ public class SnowflakeDiscovery {
 		} catch (SQLException e) {
 
 			e.printStackTrace();
-			QLog.log(e.toString(),true);
+			QLog.log("ETL Exception: " + e.toString(),true);
+			QLog.log(e,true);
 		}
 			
 		//add primary keys

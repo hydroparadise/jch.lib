@@ -75,11 +75,13 @@ public class JchLib_AzureTest {
 		} catch (ParseException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-			QLog.log(e.toString(),true);
+			QLog.log("ETL Exception: " + e.toString(),true);
+			QLog.log(e,true);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-			QLog.log(e.toString(),true);
+			QLog.log("ETL Exception: " + e.toString(),true);
+			QLog.log(e,true);
 		}
 	    
 	
@@ -125,7 +127,8 @@ public class JchLib_AzureTest {
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-			QLog.log(e.toString(),true);
+			QLog.log("ETL Exception: " + e.toString(),true);
+			QLog.log(e,true);
 		}
 		
 	}
@@ -202,7 +205,8 @@ public class JchLib_AzureTest {
 		} catch ( ParserConfigurationException | SAXException | IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-			QLog.log(e.toString(),true);
+			QLog.log("ETL Exception: " + e.toString(),true);
+			QLog.log(e,true);
 		}
 		
 		
@@ -229,11 +233,13 @@ public class JchLib_AzureTest {
 		} catch (ParseException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-			QLog.log(e.toString(),true);
+			QLog.log("ETL Exception: " + e.toString(),true);
+			QLog.log(e,true);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-			QLog.log(e.toString(),true);
+			QLog.log("ETL Exception: " + e.toString(),true);
+			QLog.log(e,true);
 		}
 	    
 	
@@ -273,7 +279,8 @@ public class JchLib_AzureTest {
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-			QLog.log(e.toString(),true);
+			QLog.log("ETL Exception: " + e.toString(),true);
+			QLog.log(e,true);
 		}
 		
 		/*
@@ -314,11 +321,13 @@ public class JchLib_AzureTest {
 		} catch (ParseException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-			QLog.log(e.toString(),true);
+			QLog.log("ETL Exception: " + e.toString(),true);
+			QLog.log(e,true);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-			QLog.log(e.toString(),true);
+			QLog.log("ETL Exception: " + e.toString(),true);
+			QLog.log(e,true);
 		}
 	    
 
@@ -353,8 +362,6 @@ public class JchLib_AzureTest {
 			HttpURLConnection httpCon = (HttpURLConnection) url.openConnection();
 				
 			httpCon.setDoOutput(true);
-			
-			
 			//httpCon.setRequestProperty("Autorization", sas);
 			
 			httpCon.setRequestProperty("x-ms-copy-source", sourceNameUrl);
@@ -368,7 +375,8 @@ public class JchLib_AzureTest {
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-			QLog.log(e.toString(),true);
+			QLog.log("ETL Exception: " + e.toString(),true);
+			QLog.log(e,true);
 		}
 		
 					
@@ -408,11 +416,13 @@ public class JchLib_AzureTest {
 		} catch (ParseException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-			QLog.log(e.toString(),true);
+			QLog.log("ETL Exception: " + e.toString(),true);
+			QLog.log(e,true);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-			QLog.log(e.toString(),true);
+			QLog.log("ETL Exception: " + e.toString(),true);
+			QLog.log(e,true);
 		}
 	    
 	
@@ -455,7 +465,8 @@ public class JchLib_AzureTest {
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-			QLog.log(e.toString(),true);
+			QLog.log("ETL Exception: " + e.toString(),true);
+			QLog.log(e,true);
 		}
 
 	}
@@ -475,11 +486,13 @@ public class JchLib_AzureTest {
 			} catch (ParseException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
-				QLog.log(e.toString(),true);
+				QLog.log("ETL Exception: " + e.toString(),true);
+				QLog.log(e,true);
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
-				QLog.log(e.toString(),true);
+				QLog.log("ETL Exception: " + e.toString(),true);
+				QLog.log(e,true);
 			}
 		    
 		
@@ -519,7 +532,8 @@ public class JchLib_AzureTest {
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
-				QLog.log(e.toString(),true);
+				QLog.log("ETL Exception: " + e.toString(),true);
+				QLog.log(e,true);
 			}
 
 			
@@ -562,11 +576,13 @@ public class JchLib_AzureTest {
 		} catch (ParseException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-			QLog.log(e.toString(),true);
+			QLog.log("ETL Exception: " + e.toString(),true);
+			QLog.log(e,true);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-			QLog.log(e.toString(),true);
+			QLog.log("ETL Exception: " + e.toString(),true);
+			QLog.log(e,true);
 		}
 	    
 	

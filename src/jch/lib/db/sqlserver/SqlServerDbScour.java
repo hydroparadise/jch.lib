@@ -71,7 +71,8 @@ public class SqlServerDbScour {
         catch (SQLException ex) {
         	ex.printStackTrace();
         	success = false;
-        	QLog.log(ex.toString(),true);
+			QLog.log("ETL Exception: " + ex.toString(),true);
+			QLog.log(ex,true);
         } 
 		
 		exe.shutdown();
@@ -144,7 +145,11 @@ public class SqlServerDbScour {
 	        catch (SQLException ex) {ex.printStackTrace();} 
 	        finally {
 	        	try {if (destCn != null && !destCn.isClosed()) destCn.close();} 
-	        	catch (SQLException ex) {ex.printStackTrace();QLog.log(ex.toString(),true);}
+	        	catch (SQLException ex) {
+	        		ex.printStackTrace();
+	    			QLog.log("ETL Exception: " + ex.toString(),true);
+	    			QLog.log(ex,true);
+	        	}
 			}
 		}
 		
@@ -204,12 +209,17 @@ public class SqlServerDbScour {
 	        	ex.printStackTrace();
 	        	//System.out.println(SqlServerDiscovery.sqlPrint(sqlSearch));
 	        	QLog.log(SqlServerDiscovery.sqlPrint(sqlSearch));
-	        	QLog.log(ex.toString(),true);
+				QLog.log("ETL Exception: " + ex.toString(),true);
+				QLog.log(ex,true);
 			} 
 	        //close connection
 	        finally {
 	        	try {if (srcCn != null && !srcCn.isClosed()) srcCn.close();} 
-	        	catch (SQLException ex) {ex.printStackTrace();QLog.log(ex.toString(),true);}
+	        	catch (SQLException ex) {
+	        		ex.printStackTrace();
+	    			QLog.log("ETL Exception: " + ex.toString(),true);
+	    			QLog.log(ex,true);
+	        	}
 			}
 	    	
 			
@@ -245,11 +255,19 @@ public class SqlServerDbScour {
 				}
 				
 			}
-	        catch (SQLException ex) {ex.printStackTrace();QLog.log(ex.toString(),true);} 
+	        catch (SQLException ex) {
+	        	ex.printStackTrace();
+				QLog.log("ETL Exception: " + ex.toString(),true);
+				QLog.log(ex,true);
+	        } 
 	        //close connection
 	        finally {
 	        	try {if (destCn != null && !destCn.isClosed()) destCn.close();} 
-	        	catch (SQLException ex) {ex.printStackTrace();QLog.log(ex.toString(),true);}
+	        	catch (SQLException ex) {
+	        		ex.printStackTrace();
+	    			QLog.log("ETL Exception: " + ex.toString(),true);
+	    			QLog.log(ex,true);
+	        	}
 			}
 	    	
 			
@@ -301,11 +319,20 @@ public class SqlServerDbScour {
 	    	
 	    	success  = insertDestinationColStats(srcCnString, destCnString, destDbName, destSchema, tblStats);
 		}
-        catch (SQLException ex) {ex.printStackTrace();success = false;QLog.log(ex.toString(),true);} 
+        catch (SQLException ex) {
+        	ex.printStackTrace();
+        	success = false;
+			QLog.log("ETL Exception: " + ex.toString(),true);
+			QLog.log(ex,true);
+        } 
         //close connection
         finally {
         	try {if (destCn != null && !destCn.isClosed()) destCn.close();} 
-        	catch (SQLException ex) {ex.printStackTrace();QLog.log(ex.toString(),true);}
+        	catch (SQLException ex) {
+        		ex.printStackTrace();
+    			QLog.log("ETL Exception: " + ex.toString(),true);
+    			QLog.log(ex,true);
+        	}
 		}
     	
 		return success;
@@ -361,7 +388,11 @@ public class SqlServerDbScour {
 				exe.submit(t);
 			}
 		}
-        catch (SQLException ex) {ex.printStackTrace();success = false;QLog.log(ex.toString(),true);} 
+        catch (SQLException ex) {
+        	ex.printStackTrace();success = false;
+			QLog.log("ETL Exception: " + ex.toString(),true);
+			QLog.log(ex,true);
+        } 
 		
 		exe.shutdown();
 		return success;
@@ -440,10 +471,17 @@ public class SqlServerDbScour {
 				}
 			}
 			//close connection
-	        catch (SQLException ex) {ex.printStackTrace();} 
+	        catch (SQLException ex) {
+				QLog.log("ETL Exception: " + ex.toString(),true);
+				QLog.log(ex,true);
+	        } 
 	        finally {
 	        	try {if (destCn != null && !destCn.isClosed()) destCn.close();} 
-	        	catch (SQLException ex) {ex.printStackTrace();QLog.log(ex.toString(),true);}
+	        	catch (SQLException ex) {
+	        		ex.printStackTrace();
+	    			QLog.log("ETL Exception: " + ex.toString(),true);
+	    			QLog.log(ex,true);
+	        	}
 			}
 			
 			
@@ -494,10 +532,18 @@ public class SqlServerDbScour {
 				
 			}
 			//close connection
-	        catch (SQLException ex) {ex.printStackTrace();} 
+	        catch (SQLException ex) {
+	        	ex.printStackTrace();
+				QLog.log("ETL Exception: " + ex.toString(),true);
+				QLog.log(ex,true);
+	        } 
 	        finally {
 	        	try {if (srcCn != null && !srcCn.isClosed()) srcCn.close();} 
-	        	catch (SQLException ex) {ex.printStackTrace();QLog.log(ex.toString(),true);}
+	        	catch (SQLException ex) {
+	        		ex.printStackTrace();
+	    			QLog.log("ETL Exception: " + ex.toString(),true);
+	    			QLog.log(ex,true);
+	        	}
 			}
 			
 			//TODO: create a log object to pass over instead of debug printing here
@@ -514,11 +560,19 @@ public class SqlServerDbScour {
 	        	sta.execute("USE " + destDbName);
 	        	sta.executeUpdate(columnStats.toSqlInsert(destSchema));
 			}
-	        catch (SQLException ex) {ex.printStackTrace();QLog.log(ex.toString(),true);} 
+	        catch (SQLException ex) {
+	        	ex.printStackTrace();
+				QLog.log("ETL Exception: " + ex.toString(),true);
+				QLog.log(ex,true);
+	        } 
 	        finally {
 	        	//close connection
 	        	try {if (destCn != null && !destCn.isClosed()) destCn.close();} 
-	        	catch (SQLException ex) {ex.printStackTrace();QLog.log(ex.toString(),true);}
+	        	catch (SQLException ex) {
+	        		ex.printStackTrace();
+	    			QLog.log("ETL Exception: " + ex.toString(),true);
+	    			QLog.log(ex,true);
+	        	}
 			}
 			
 		}
@@ -566,11 +620,20 @@ public class SqlServerDbScour {
         	success = insertDestinationTableStats(srcCnString, destCnString, destDbName, destSchema, tblStats);
         	
         } 
-        catch (SQLException ex) {ex.printStackTrace();success = false;QLog.log(ex.toString(),true);} 
+        catch (SQLException ex) {
+        	ex.printStackTrace();
+        	success = false;
+			QLog.log("ETL Exception: " + ex.toString(),true);
+			QLog.log(ex,true);
+        } 
         //close connection
         finally {
         	try {if (destCn != null && !destCn.isClosed()) destCn.close();} 
-        	catch (SQLException ex) {ex.printStackTrace();QLog.log(ex.toString(),true);}
+        	catch (SQLException ex) {
+        		ex.printStackTrace();
+    			QLog.log("ETL Exception: " + ex.toString(),true);
+    			QLog.log(ex,true);
+        	}
 		}
 
         //finish all threads before moving on
@@ -634,11 +697,20 @@ public class SqlServerDbScour {
 				exe.submit(t);
 			}
         } 
-        catch (SQLException ex) {ex.printStackTrace();success = false;} 
+        catch (SQLException ex) {
+        	ex.printStackTrace();
+        	success = false;
+			QLog.log("ETL Exception: " + ex.toString(),true);
+			QLog.log(ex,true);
+        } 
         //close connection
         finally {
         	try {if (destCn != null && !destCn.isClosed()) destCn.close();} 
-        	catch (SQLException ex) {ex.printStackTrace();QLog.log(ex.toString(),true);}
+        	catch (SQLException ex) {
+        		ex.printStackTrace();
+    			QLog.log("ETL Exception: " + ex.toString(),true);
+    			QLog.log(ex,true);
+        	}
 		}
 
         //finish all threads before moving on
@@ -700,10 +772,18 @@ public class SqlServerDbScour {
 			}
 			
 			//close connection
-	        catch (SQLException ex) {ex.printStackTrace();QLog.log(ex.toString(),true);} 
+	        catch (SQLException ex) {
+	        	ex.printStackTrace();
+				QLog.log("ETL Exception: " + ex.toString(),true);
+				QLog.log(ex,true);
+	        } 
 	        finally {
 	        	try {if (srcCn != null && !srcCn.isClosed()) srcCn.close();} 
-	        	catch (SQLException ex) {ex.printStackTrace();QLog.log(ex.toString(),true);}
+	        	catch (SQLException ex) {
+	        		ex.printStackTrace();
+	    			QLog.log("ETL Exception: " + ex.toString(),true);
+	    			QLog.log(ex,true);
+	        	}
 			}
 			
 			//next, insert in TblStats table
@@ -720,11 +800,19 @@ public class SqlServerDbScour {
 	        	sta.execute("USE " + destDbName);
 	        	sta.executeUpdate(record.toSqlInsert(destSchema));
 			}
-	        catch (SQLException ex) {ex.printStackTrace();QLog.log(ex.toString(),true);} 
+	        catch (SQLException ex) {
+	        	ex.printStackTrace();
+				QLog.log("ETL Exception: " + ex.toString(),true);
+				QLog.log(ex,true);
+	        } 
 	        finally {
 	        	//close connection
 	        	try {if (destCn != null && !destCn.isClosed()) destCn.close();} 
-	        	catch (SQLException ex) {ex.printStackTrace();QLog.log(ex.toString(),true);}
+	        	catch (SQLException ex) {
+	        		ex.printStackTrace();
+	    			QLog.log("ETL Exception: " + ex.toString(),true);
+	    			QLog.log(ex,true);
+	        	}
 			}
 			
 		}
@@ -767,12 +855,20 @@ public class SqlServerDbScour {
 	        rs.populate(res);
 
         } 
-        catch (SQLException ex) {ex.printStackTrace();QLog.log(ex.toString(),true);} 
+        catch (SQLException ex) {
+        	ex.printStackTrace();
+			QLog.log("ETL Exception: " + ex.toString(),true);
+			QLog.log(ex,true);
+        } 
         finally {
 	        try {
 	            if (cn != null && !cn.isClosed()) {cn.close();}
 	        } 
-	        catch (SQLException ex) {ex.printStackTrace();QLog.log(ex.toString(),true);}
+	        catch (SQLException ex) {
+	        	ex.printStackTrace();
+				QLog.log("ETL Exception: " + ex.toString(),true);
+				QLog.log(ex,true);
+	        }
         }
         return rs; 
 	}
@@ -883,7 +979,11 @@ public class SqlServerDbScour {
 				success = true;
 			}
 		}
-		catch (SQLException ex) {ex.printStackTrace();QLog.log(ex.toString(),true);}
+		catch (SQLException ex) {
+			ex.printStackTrace();
+			QLog.log("ETL Exception: " + ex.toString(),true);
+			QLog.log(ex,true);
+		}
 		
 		return success;
 	}
@@ -924,12 +1024,20 @@ public class SqlServerDbScour {
 		        rs.populate(res);
 	 
 	        } 
-	        catch (SQLException ex) {ex.printStackTrace();QLog.log(ex.toString(),true);} 
+	        catch (SQLException ex) {
+	        	ex.printStackTrace();
+	        	QLog.log(ex.toString(),true);
+	        	QLog.log(ex,true);
+	        } 
 	        finally {
 		        try {
 		            if (cn != null && !cn.isClosed()) {cn.close();}
 		        } 
-		        catch (SQLException ex) {ex.printStackTrace();QLog.log(ex.toString(),true);}
+		        catch (SQLException ex) {
+		        	ex.printStackTrace();
+					QLog.log("ETL Exception: " + ex.toString(),true);
+					QLog.log(ex,true);
+		        }
 	        }
 		}
         return rs; 
@@ -967,12 +1075,20 @@ public class SqlServerDbScour {
 	        rs.populate(res);
  
         } 
-        catch (SQLException ex) {ex.printStackTrace();QLog.log(ex.toString(),true);} 
+        catch (SQLException ex) {
+        	ex.printStackTrace();
+			QLog.log("ETL Exception: " + ex.toString(),true);
+			QLog.log(ex,true);
+        } 
         finally {
 	        try {
 	            if (cn != null && !cn.isClosed()) {cn.close();}
 	        } 
-	        catch (SQLException ex) {ex.printStackTrace();QLog.log(ex.toString(),true);}
+	        catch (SQLException ex) {
+	        	ex.printStackTrace();
+				QLog.log("ETL Exception: " + ex.toString(),true);
+				QLog.log(ex,true);
+	        }
         }
         return rs; 
 	}
@@ -1010,12 +1126,20 @@ public class SqlServerDbScour {
 	        rs.populate(res);
  
         } 
-        catch (SQLException ex) {ex.printStackTrace();QLog.log(ex.toString(),true);} 
+        catch (SQLException ex) {
+        	ex.printStackTrace();
+			QLog.log("ETL Exception: " + ex.toString(),true);
+			QLog.log(ex,true);
+        } 
         finally {
 	        try {
 	            if (cn != null && !cn.isClosed()) {cn.close();}
 	        } 
-	        catch (SQLException ex) {ex.printStackTrace();QLog.log(ex.toString(),true);}
+	        catch (SQLException ex) {
+	        	ex.printStackTrace();
+				QLog.log("ETL Exception: " + ex.toString(),true);
+				QLog.log(ex,true);
+	        }
         }
         return rs; 
 	}
@@ -1044,7 +1168,11 @@ public class SqlServerDbScour {
 	        output.populate(res);
 
         } 
-        catch (SQLException ex) {ex.printStackTrace();QLog.log(ex.toString(),true);} 
+        catch (SQLException ex) {
+        	ex.printStackTrace();
+			QLog.log("ETL Exception: " + ex.toString(),true);
+			QLog.log(ex,true);
+        } 
 
         return output; 
 	}
@@ -1069,7 +1197,11 @@ public class SqlServerDbScour {
 	        output = sta.executeQuery(sqlSelect);
 
         } 
-        catch (SQLException ex) {ex.printStackTrace();QLog.log(ex.toString(),true);} 
+        catch (SQLException ex) {
+        	ex.printStackTrace();
+			QLog.log("ETL Exception: " + ex.toString(),true);
+			QLog.log(ex,true);
+        } 
         return output; 
 	}
 	
@@ -1111,12 +1243,20 @@ public class SqlServerDbScour {
 	        rs.populate(res);
 
         } 
-        catch (SQLException ex) {ex.printStackTrace();QLog.log(ex.toString(),true);} 
+        catch (SQLException ex) {
+        	ex.printStackTrace();
+			QLog.log("ETL Exception: " + ex.toString(),true);
+			QLog.log(ex.getStackTrace().toString(),true);
+        } 
         finally {
 	        try {
 	            if (cn != null && !cn.isClosed()) {cn.close();}
 	        } 
-	        catch (SQLException ex) {ex.printStackTrace();QLog.log(ex.toString(),true);}
+	        catch (SQLException ex) {
+	        	ex.printStackTrace();
+				QLog.log("ETL Exception: " + ex.toString(),true);
+				QLog.log(ex.getStackTrace().toString(),true);
+	        }
         }
         return rs; 
 	}
@@ -1153,12 +1293,20 @@ public class SqlServerDbScour {
 	        rs.populate(res);
 
         } 
-        catch (SQLException ex) {ex.printStackTrace();QLog.log(ex.toString(),true);} 
+        catch (SQLException ex) {
+        	ex.printStackTrace();
+			QLog.log("ETL Exception: " + ex.toString(),true);
+			QLog.log(ex.getStackTrace().toString(),true);
+        } 
         finally {
 	        try {
 	            if (cn != null && !cn.isClosed()) {cn.close();}
 	        } 
-	        catch (SQLException ex) {ex.printStackTrace();QLog.log(ex.toString(),true);}
+	        catch (SQLException ex) {
+	        	ex.printStackTrace();
+				QLog.log("ETL Exception: " + ex.toString(),true);
+				QLog.log(ex.getStackTrace().toString(),true);
+	        }
         }
         return rs; 
 	}
@@ -1192,14 +1340,19 @@ public class SqlServerDbScour {
         catch (SQLException ex) {
         	
             ex.printStackTrace();
-            QLog.log(ex.toString(),true);
+			QLog.log("ETL Exception: " + ex.toString(),true);
+			QLog.log(ex.getStackTrace().toString(),true);
             return false;
         } 
         finally {
 	        try {
 	            if (cn != null && !cn.isClosed()) {cn.close();}
 	        } 
-	        catch (SQLException ex) {ex.printStackTrace();QLog.log(ex.toString(),true);}
+	        catch (SQLException ex) {
+	        	ex.printStackTrace();
+				QLog.log("ETL Exception: " + ex.toString(),true);
+				QLog.log(ex.getStackTrace().toString(),true);
+	        }
         }
         return success;
 	}
@@ -1225,12 +1378,20 @@ public class SqlServerDbScour {
             sta.executeUpdate(SqlServerDbScour.sqlDropAllObjects(destSchema));
             success = true;
         } 
-        catch (SQLException ex) {ex.printStackTrace();QLog.log(ex.toString(),true);} 
+        catch (SQLException ex) {
+        	ex.printStackTrace();
+			QLog.log("ETL Exception: " + ex.toString(),true);
+			QLog.log(ex.getStackTrace().toString(),true);
+        } 
         finally {
 	        try {
 	            if (cn != null && !cn.isClosed()) {cn.close();}
 	        } 
-	        catch (SQLException ex) {ex.printStackTrace();QLog.log(ex.toString(),true);}
+	        catch (SQLException ex) {
+	        	ex.printStackTrace();
+				QLog.log("ETL Exception: " + ex.toString(),true);
+				QLog.log(ex.getStackTrace().toString(),true);
+	        }
         }
         return success;
 	}

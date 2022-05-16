@@ -135,7 +135,8 @@ public class SnowflakeDbScour {
 		
 		} catch (SQLException e) {
 			e.printStackTrace();
-			QLog.log(e.toString(),true);
+			QLog.log("ETL Exception: " + e.toString(),true);
+			QLog.log(e,true);
 		}
 	}
 	
@@ -299,7 +300,8 @@ public class SnowflakeDbScour {
 			exe.shutdown();
 		} catch (SQLException e) {
 			e.printStackTrace();
-			QLog.log(e.toString(),true);
+			QLog.log("ETL Exception: " + e.toString(),true);
+			QLog.log(e,true);
 		}
 	}
 	
@@ -515,7 +517,8 @@ public class SnowflakeDbScour {
 			exe.shutdown();
 		} catch (SQLException e) {
 			e.printStackTrace();
-			QLog.log(e.toString(),true);
+			QLog.log("ETL Exception: " + e.toString(),true);
+			QLog.log(e,true);
 		}
 
 	}
@@ -642,7 +645,8 @@ public class SnowflakeDbScour {
 				} catch (SQLException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
-					QLog.log(e.toString(),true);
+					QLog.log("ETL Exception: " + e.toString(),true);
+					QLog.log(e,true);
 				}
 				
 			}
@@ -770,7 +774,6 @@ public class SnowflakeDbScour {
         ResultSet ssTable = SqlServerDbScour.executeSqlResultSet(srcCnString.getCnString(), sqlSsTable);
         
         //generate file system friendly name
-        //
         String outFileName = fileNamePrep(valueLimit,datatypeCategories.get(valueLimiterCol.toUpperCase()));
         String fullFileName = fileName + "_" + outFileName + ".csv";
         String fullFileNamePath = filePath + fullFileName;
@@ -786,7 +789,8 @@ public class SnowflakeDbScour {
 		} catch (IOException e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
-			QLog.log(e1.toString(),true);
+			QLog.log("ETL Exception: " + e1.toString(),true);
+			QLog.log(e1,true);
 		}       
 		
 		//if all went well with file write objects, begin writing to files
@@ -853,7 +857,7 @@ public class SnowflakeDbScour {
 						fSize = 0;	//reset file size counter
 						fCnt++;		//increment file count counter
 						
-						fullFileName = filePath + fileName + "_" + outFileName + "_" + String.format("%03d", fCnt) + ".csv";
+						fullFileName = fileName + "_" + outFileName + "_" + String.format("%03d", fCnt) + ".csv";
 						fullFileNamePath = filePath + fullFileName;
 						
 						writer = new FileWriter(fullFileNamePath);
@@ -880,14 +884,18 @@ public class SnowflakeDbScour {
 			} catch (SQLException | IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
-				QLog.log(e.toString(),true);
+				QLog.log("ETL Exception: " + e.toString(),true);
+				QLog.log(e,true);
 			}
 			finally {
 				//compiler complained for not having try/catch around buffer.close()
 				//bad form to have in finally?
 				try {
 					buffer.close();
-				} catch (IOException e) {QLog.log(e.toString(),true);} //silently fail
+				} catch (IOException e) {
+					QLog.log("ETL Exception: " + e.toString(),true);
+					QLog.log(e,true);
+				} //silently fail
 			}
 		}
 	}
@@ -992,7 +1000,8 @@ public class SnowflakeDbScour {
 		} catch (IOException e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
-			QLog.log(e1.toString(),true);
+			QLog.log("ETL Exception: " + e1.toString(),true);
+			QLog.log(e1,true);
 		}       
 		
 		//continue if buffer was successfully created
@@ -1088,14 +1097,18 @@ public class SnowflakeDbScour {
 			} catch (SQLException | IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
-				QLog.log(e.toString(),true);
+				QLog.log("ETL Exception: " + e.toString(),true);
+				QLog.log(e,true);
 			}
 			finally {
 				//compiler complained for not having try/catch around buffer.close()
 				//bad form to have in finally?
 				try {
 					buffer.close();
-				} catch (IOException e) {QLog.log(e.toString(),true);} //silently fail
+				} catch (IOException e) {
+					QLog.log("ETL Exception: " + e.toString(),true);
+					QLog.log(e,true);
+				} //silently fail
 			}
 		}
 	}
@@ -1121,8 +1134,10 @@ public class SnowflakeDbScour {
 			sfCn = SnowflakeCnString.getConnection(sfCredsLoc, sfDatabase, sfSchema);
 			Statement sfStatement = sfCn.createStatement();
 						
-			String sft = sfSchema.toUpperCase() + "." + sfTable.toUpperCase();
-
+			//String sft = sfSchema.toUpperCase() + "." + sfTable.toUpperCase();
+			
+			String sft = SnowflakeDiscovery.asmSfObj(sfDatabase, sfSchema, sfTable);
+			
 			String sql = "DELETE FROM " + sft;
 			if(valueLimiterCol != null && valueLimit != null) {
 				String sqlValueLimit = SqlServerDiscovery.sqlValuePrep(valueLimit, valueDatatypeCat);
@@ -1137,7 +1152,8 @@ public class SnowflakeDbScour {
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-			QLog.log(e.toString(),true);
+			QLog.log("ETL Exception: " + e.toString(),true);
+			QLog.log(e,true);
 		}
 		
 	}
@@ -1193,7 +1209,8 @@ public class SnowflakeDbScour {
 			} catch (SQLException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
-				QLog.log(e.toString(),true);
+				QLog.log("ETL Exception: " + e.toString(),true);
+				QLog.log(e,true);
 			}
 		}
 		return output;
@@ -1224,7 +1241,8 @@ public class SnowflakeDbScour {
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-			QLog.log(e.toString(),true);
+			QLog.log("ETL Exception: " + e.toString(),true);
+			QLog.log(e,true);
 		}
 	
 		return output;
@@ -1389,7 +1407,10 @@ public class SnowflakeDbScour {
 			output = SnowflakeDiscovery.asmSfObj(null, null, sfTable + "_" + processdate);		
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
+			
 			e.printStackTrace();
+			QLog.log("ETL Exception: " + e.toString(),true);
+			QLog.log(e,true);
 		}
 		
 		return output;
@@ -1424,6 +1445,8 @@ public class SnowflakeDbScour {
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+			QLog.log("ETL Exception: " + e.toString(),true);
+			QLog.log(e,true);
 		}
 		
 		
@@ -1478,7 +1501,8 @@ public class SnowflakeDbScour {
 			sfCn.close();
 		} catch (SQLException e) {
 			e.printStackTrace();
-			QLog.log(e.toString(),true);
+			QLog.log("ETL Exception: " + e.toString(),true);
+			QLog.log(e,true);
 		}
         
 
@@ -1584,12 +1608,16 @@ public class SnowflakeDbScour {
 			// TODO Auto-generated catch block
 			
 			e.printStackTrace();
-			QLog.log(e.toString(),true);
+			QLog.log("ETL Exception: " + e.toString(),true);
+			QLog.log(e,true);
 		}
 		finally {
 			try {
 				stmnt.close();
-			} catch (SQLException e) {QLog.log(e.toString(),true);}
+			} catch (SQLException e) {
+				QLog.log("ETL Exception: " + e.toString(),true);
+				QLog.log(e,true);
+			}
 		}
 		
 		return output;
@@ -1615,7 +1643,8 @@ public class SnowflakeDbScour {
 	        }			
 		} catch (SQLException e) {
 			e.printStackTrace();
-			QLog.log(e.toString(),true);
+			QLog.log("ETL Exception: " + e.toString(),true);
+			QLog.log(e,true);
 		}
         return output;
 	}
@@ -1846,7 +1875,10 @@ public class SnowflakeDbScour {
 	        try {
 	            return new SimpleDateFormat(formatString).parse(dateString);
 	        }
-	        catch (java.text.ParseException e) {QLog.log(e.toString(),true);}
+	        catch (java.text.ParseException e) {
+				QLog.log("ETL Exception: " + e.toString(),true);
+				QLog.log(e,true);
+	        }
 	    }
 	    return null;
 	}
@@ -1868,7 +1900,8 @@ public class SnowflakeDbScour {
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-			QLog.log(e.toString(),true);
+			QLog.log("ETL Exception: " + e.toString(),true);
+			QLog.log(e,true);
 		}
 		
 		return output;
@@ -1915,7 +1948,8 @@ public class SnowflakeDbScour {
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-			QLog.log(e.toString(),true);
+			QLog.log("ETL Exception: " + e.toString(),true);
+			QLog.log(e,true);
 		}
 		
 		return output;
@@ -1955,7 +1989,8 @@ public class SnowflakeDbScour {
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-			QLog.log(e.toString(),true);
+			QLog.log("ETL Exception: " + e.toString(),true);
+			QLog.log(e,true);
 		}
 	}
 	
@@ -2004,7 +2039,8 @@ public class SnowflakeDbScour {
 			statement.close();
 		} catch (SQLException e) {
 			e.printStackTrace();
-			QLog.log(e.toString(),true);
+			QLog.log("ETL Exception: " + e.toString(),true);
+			QLog.log(e,true);
 		}
 	}
 	
@@ -2050,7 +2086,8 @@ public class SnowflakeDbScour {
 			statement.close();
 		} catch (SQLException e) {
 			e.printStackTrace();
-			QLog.log(e.toString(),true);
+			QLog.log("ETL Exception: " + e.toString(),true);
+			QLog.log(e,true);
 		}
 	}
 	

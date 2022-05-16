@@ -29,7 +29,8 @@ public class ExecuteCompressGzip extends Thread {
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-			QLog.log(e.toString(),true);
+			QLog.log("ETL Exception: " + e.toString(),true);
+			QLog.log(e,true);
 		}
 	}
 	

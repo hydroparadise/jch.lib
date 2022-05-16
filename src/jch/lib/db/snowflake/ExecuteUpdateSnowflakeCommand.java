@@ -24,6 +24,8 @@ public	class ExecuteUpdateSnowflakeCommand extends Thread {
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+			QLog.log("ETL Exception: " + e.toString(),true);
+			QLog.log(e,true);
 		}
 		
 		try {
@@ -32,7 +34,8 @@ public	class ExecuteUpdateSnowflakeCommand extends Thread {
 		} catch (SQLException e) {
 			QLog.log(cCnt + " exception!");
 			e.printStackTrace();
-			QLog.log(e.toString(),true);
+			QLog.log("ETL Exception: " + e.toString(),true);
+			QLog.log(e,true);;
 		}
 		
 		try {
@@ -40,6 +43,8 @@ public	class ExecuteUpdateSnowflakeCommand extends Thread {
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+			QLog.log("ETL Exception: " + e.toString(),true);
+			QLog.log(e,true);
 		}
 	}
 	
