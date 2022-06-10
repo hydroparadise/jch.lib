@@ -848,6 +848,8 @@ public class SqlServerDbScour {
             sta = cn.createStatement(ResultSet.TYPE_FORWARD_ONLY,ResultSet.CONCUR_READ_ONLY);
             String sql = SqlServerDbScour.sqlSelectVwTblStats(srcCnString, null, destSchema);
   
+            QLog.log(sql);
+            
 	        ResultSet res = sta.executeQuery(sql);
 	        
 	        RowSetFactory rsf = RowSetProvider.newFactory();

@@ -1144,7 +1144,7 @@ public class SnowflakeDbScour {
 				sql = sql + " WHERE " + valueLimiterCol + " = " + sqlValueLimit;
 			}
 			
-			QLog.log(sql);
+			//QLog.log(sql);
 		
 			sfStatement.execute(sql);
 			sfStatement = sfCn.createStatement();

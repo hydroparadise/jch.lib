@@ -72,8 +72,14 @@ public class QLog {
 		log(sStackTrace, supressConsole);
 	}
 	
+	static public void log(Exception e) {
+
+		log(e, false);
+	}
 	
-	static public String  filePath = null;
+	
+	
+	static public String filePath = null;
 	static public String baseFileName = null;
 	static public String ext = ".txt";
 	static public boolean printConsole = true;
