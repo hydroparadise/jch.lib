@@ -1,6 +1,7 @@
-package jch.lib.db.snowflake;
+package jch.lib.test.merge;
 
 import java.io.BufferedWriter;
+import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.sql.Connection;
@@ -17,20 +18,18 @@ import javax.sql.rowset.CachedRowSet;
 import javax.sql.rowset.RowSetFactory;
 import javax.sql.rowset.RowSetProvider;
 
-
-import jch.lib.common.QLog;
-import jch.lib.db.sqlserver.SqlServerCnString;
-import jch.lib.db.sqlserver.SqlServerDbScour;
-import jch.lib.db.sqlserver.SqlServerDiscovery;
+import jch.lib.common.*;
+import jch.lib.db.snowflake.*;
+import jch.lib.db.sqlserver.*;
+import jch.lib.cloud.azure.*;
+import jch.lib.common.compress.*;
 
 import net.snowflake.client.jdbc.SnowflakeStatement;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map.Entry;
-
-//import jch.lib.common.compress.*;
+//import java.util.Map.Entry;
 
 /*
  * Snowflake concurrent statements
@@ -46,17 +45,15 @@ import java.util.Map.Entry;
  * data files roughly 100-250 MB (or larger) in size compressed.
  * https://docs.snowflake.com/en/user-guide/data-load-considerations-prepare.html#label-data-load-file-sizing-best-practices
  * 
+ * @author harrisonc
  * 
  */
-
-
-
 public class SnowflakeDbScour {
 	static int API_PACK_SIZE = 1900000;
 	static int MAX_CONCURRENCY_LEVEL = 4;
 	static int SHOW_ROW_RECORD_COUNT = 50000;
 	
-	
+	//
 	SnowflakeDbScour() {
 		
 	}
@@ -75,14 +72,14 @@ public class SnowflakeDbScour {
 	 * @param String srcSqlHost: Source SQL Server Hostname or IP address (ie, "SQLSERV01" or "192.168.1.102")
 	 * @param String srcDatabase: Source Database in which table resides (ie,"DatabaseName")
 	 * @param String srcSchema: Source Database schema table resides (ie, "dbo")
-	 * @param String sfCredsLoc: Location of Snowflake credentials specified via JSON (ie, "C\\snowflake_creds.json")
-	 * @param String sfDatabase: Remote Snowflake database name (ei, "DatabaseName"
+	 * @param String sfCredsLoc: Location of Snowflake credentials specified via JSON (ie, "C:\\snowflake_creds.json")
+	 * @param String sfDatabase: Remote Snowflake database name (ie, "DatabaseName")
 	 * @param String sfSchema: Remote Snowflake schema name to compare columns(ie,"DBO")
 	 * @param String rowDelim: Output file row delimiter (ie,"\r\n" or "\n")
 	 * @param String colDelim: Output file column/field delimiter(ie, "," or "~" or "\t")
 	 * @param String textQualifier: String, text, or VARCHAR datatype value qualifier (ie,"\"" -> ")
 	 * @param String escapeChar: POSIX control character (ie, "\\" -> \)
-	 * @param String azCredsLoc: Location of Azure credentials of an Azure Blob Container instance (ie, "C\\azure_creds.json")
+	 * @param String azCredsLoc: Location of Azure credentials of an Azure Blob Container instance (ie, "C:\\azure_creds.json")
 	 * @param String azBlobDir: A directory to store extracts for an Azure Blob Container instance (ie, "init" or "20220203" or "test/2020203")
 	 * @param String sfStage: The name of the defined stage in Snowflake to consume from Azure (ie, "@stage_azure")
 	 */
@@ -94,40 +91,60 @@ public class SnowflakeDbScour {
 		
 		//Get Sql Server Table information in a RowSet, connection opening and closing handled by called functions
 		SqlServerCnString srcCnString = new SqlServerCnString();
-		srcCnString.setCnStringIntegratedSecurity(srcSqlHost, null , srcDatabase);
+		srcCnString.setCnStringIntegratedSecurity(srcSqlHost, null, srcDatabase);
 		RowSet ssTables = SqlServerDbScour.getSrcTables(
 				srcCnString.getCnString(), srcCnString.getDatabaseName(), srcSchema);
 
-		
 		try {
 			ThreadPoolExecutor exe = (ThreadPoolExecutor) Executors.newFixedThreadPool(MAX_CONCURRENCY_LEVEL);
 			
 			//start iterating through tables
 			while(ssTables.next()) {
 				
-				
 				final String schemaName = ssTables.getString("TABLE_SCHEMA");
 				final String tableName = ssTables.getString("TABLE_NAME");
 				final String fileName = schemaName + "." + tableName;
-				
 				
 				//check if tables match
 				//if destination table doesn't exit, create new table
 				//if table columns do match exactly, rename existing table with postdate/processdate in name and create new table
 				//returns true if there is a destination table that matches the source table
 				SnowflakeDbScour.checkTableAndCols(
-						srcSqlHost,srcDatabase,srcSchema,tableName,		//
-						sfCredsLoc,sfDatabase,sfSchema,tableName, 		//
-						null, null, true);								//
+						srcSqlHost,		//Source SQL Server Hostname or IP address (ie, "SQLSERV01" or "192.168.1.102")
+						srcDatabase,	//Source Database in which table resides (ie,"DatabaseName")
+						srcSchema,		//Source Database schema table resides (ie, "dbo")
+						tableName,		//
+						sfCredsLoc,		//Location of Snowflake credentials specified via JSON (ie, "C:\\snowflake_creds.json")
+						sfDatabase,		//Remote Snowflake database name (ie, "DatabaseName")
+						sfSchema,		//Remote Snowflake schema name to compare columns(ie,"DBO")
+						tableName, 		//
+						null, 			//
+						null, 			//
+						true);			//	
+				
+				
 				
 				//submit method for Async 
 				exe.execute(()->  
 					SnowflakeDbScour.writeCsvFromSqlServerTableFull(
-							filePath, fileName,	maxFileSize,			//max file size in bytes
-							srcSqlHost,srcDatabase,srcSchema,tableName,	//String srcSqlHost, String srcDatabse, String srcSchema, String srcTable,
-							sfCredsLoc,sfDatabase,sfSchema,tableName,	//String sfCredsLoc, sfDatabase,sfSchema, sfTable
-							rowDelim,colDelim,textQualifier,escapeChar,	//
-							azCredsLoc,azBlobDir,sfStage)				
+							filePath,		//
+							fileName,		//
+							maxFileSize,	//
+							srcSqlHost,		//Source SQL Server Hostname or IP address (ie, "SQLSERV01" or "192.168.1.102")
+							srcDatabase,	//Source Database in which table resides (ie,"DatabaseName")
+							srcSchema,		//Source Database schema table resides (ie, "dbo")
+							tableName,		//
+							sfCredsLoc,		//Location of Snowflake credentials specified via JSON (ie, "C:\\snowflake_creds.json")
+							sfDatabase,		//Remote Snowflake database name (ie, "DatabaseName")
+							sfSchema,		//Remote Snowflake schema name to compare columns(ie,"DBO")
+							tableName,		//
+							rowDelim,		//
+							colDelim,		//
+							textQualifier,	//
+							escapeChar,		//
+							azCredsLoc,		//A directory to store extracts for an Azure Blob Container instance (ie, "init" or "20220203" or "test/2020203")
+							azBlobDir,		//Location of Azure credentials of an Azure Blob Container instance (ie, "C:\\azure_creds.json")
+							sfStage)		//The name of the defined stage in Snowflake to consume from Azure (ie, "@stage_azure")	
 				);
 			}
 			
@@ -135,8 +152,8 @@ public class SnowflakeDbScour {
 		
 		} catch (SQLException e) {
 			e.printStackTrace();
-			QLog.log("ETL Exception: " + e.toString(),true);
-			QLog.log(e,true);
+			QLog.log("ETL Exception: " + e.toString());
+			QLog.log(e);
 		}
 	}
 	
@@ -150,10 +167,13 @@ public class SnowflakeDbScour {
 	 * 
 	 *  											     Max: 12/31/2021
 	 * 	SqlServer Hostname -> Database -> dbo -> Transaction(Postdate, TransAmount,.....)
+	 *                                                          |
 	 * 															|--> dbo.Transaction_20201231.csv
 	 * 															| 	  |--> dbo.Transaction_20201231.csv.gz --> Azure Blob Container
+	 *                                                          |
 	 * 															|--> dbo.Transaction_20201230.csv
-	 *  														| 	  |--> dbo.Transaction_20201231.csv.gz --> Azure Blob Container
+	 *  														| 	  |--> dbo.Transaction_20201230.csv.gz --> Azure Blob Container
+	 *                                                          |
 	 * 	Snowflake Instance -> Database -> dbo -> Transaction(Postdate, TransAmount,.....)
 	 *  											     Max: 12/29/2021
 	 * 
@@ -189,7 +209,7 @@ public class SnowflakeDbScour {
 	 * 		  dimension of time (ie, new ArrayList<String>(Arrays.asList("POSTDATE", "PROCESSDATE", "DATE")))
 	 * @param boolean strictPK: Looks for the value "PK" in column constraint in conjunction timeDimnensios arrayList if set true
 	 * @param boolean optionalFull: Prints full file it time dimension can't be determined it set to true
-	 * @param String azCredsLoc: Location of Azure credentials of an Azure Blob Container instance (ie, "C\\azure_creds.json")
+	 * @param String azCredsLoc: Location of Azure credentials of an Azure Blob Container instance (ie, "C:\\azure_creds.json")
 	 * @param String azBlobDir: A directory to store extracts for an Azure Blob Container instance (ie, "init" or "20220203" or "test/2020203")
 	 * @param String sfStage: The name of the defined stage in Snowflake to consume from Azure (ie, "@stage_azure")
 	 */
@@ -246,11 +266,13 @@ public class SnowflakeDbScour {
 					if(strictPK == true) {
 						String constraint = ssCols.getString("CONSTRAINT_NAME");
 						if(constraint != null && constraint.toUpperCase().contains("PK")) {
-							valueLimiterCol = containsString(colName, timeDimensions);
+							
+							valueLimiterCol = containsString(colName, timeDimensions, true);
 							dataTypeCat = ssCols.getString("DATA_TYPE_CAT");
 						}
 					} else {
-						valueLimiterCol = containsString(colName, timeDimensions);
+						
+						valueLimiterCol = containsString(colName, timeDimensions, true);
 						dataTypeCat = ssCols.getString("DATA_TYPE_CAT");
 					}
 					
@@ -262,266 +284,93 @@ public class SnowflakeDbScour {
 				
 				//check if tables match
 				//if destination table doesn't exit, create new table
-				//if table columns do match exactly, rename existing table with postdate/processdate in name and create new table
+				//if table columns do not match exactly, rename existing table with postdate/processdate in name and create new table
 				//returns true if there is a destination table that matches the source table
 				String maxFromTable = SnowflakeDbScour.checkTableAndCols(
-						srcSqlHost,srcDatabase,srcSchema,tableName,		//
-						sfCredsLoc,sfDatabase,sfSchema,tableName, 		//
-						valueLimiterCol, dataTypeCat, true);			//
+													srcSqlHost,		//
+													srcDatabase,	//
+													srcSchema,		//
+													tableName,		//
+													sfCredsLoc,		//
+													sfDatabase,		//
+													sfSchema,		//
+													tableName, 		//
+													valueLimiterCol,//
+													dataTypeCat, 	//
+													true);			//
 				
+				//Write SQL to file for support purposes							
+				SnowflakeDbScour.writeSqlCreateTable(filePath, srcSqlHost, srcDatabase, srcSchema, tableName, azCredsLoc, azBlobDir);
 				
+				//value limiter column found, 
 				if(valueLimiterCol != null) {
 					
 					QLog.log(fileName + ": Diff file");
+					
 					exe.execute(()->  
 						SnowflakeDbScour.writeCsvFromSqlServerTableDiff(
-							filePath, fileName,	maxFileSize,				//max file size in bytes
-							srcSqlHost,srcDatabase,srcSchema,tableName,		//String srcSqlHost, String srcDatabse, String srcSchema, String srcTable,
-							sfCredsLoc,sfDatabase,sfSchema,tableName,		//String sfCredsLoc, sfDatabase,sfSchema, sfTable
-							rowDelim,colDelim,textQualifier,escapeChar,
-							vlc, dtc, maxFromTable,
-							azCredsLoc, azBlobDir, sfStage)
-					);
-				}
-				else if (optionalFull == true) {
-					
-					QLog.log(fileName + ": Full file");
-					exe.execute(()->  
-						SnowflakeDbScour.writeCsvFromSqlServerTableFull(
-								filePath, fileName,	maxFileSize,				//max file size in bytes
-								srcSqlHost,srcDatabase,srcSchema,tableName,		//String srcSqlHost, String srcDatabse, String srcSchema, String srcTable,
-								sfCredsLoc,sfDatabase,sfSchema,tableName,		//String sfCredsLoc, sfDatabase,sfSchema, sfTable
-								rowDelim,colDelim,textQualifier,escapeChar,
-								azCredsLoc, azBlobDir, sfStage)
-					);
-				}
-			}
-			
-			exe.shutdown();
-		} catch (SQLException e) {
-			e.printStackTrace();
-			QLog.log("ETL Exception: " + e.toString(),true);
-			QLog.log(e,true);
-		}
-	}
-	
-	
-	
-	/***
-	 * Connects to a Sql Server with a Database and Schema context, iterates through all tables and
-	 * compares a table against a given Snowflake Database and Schema context with a table of the 
-	 * same name, and creates a compressed CSV file of the difference between the two tables.
-	 * The file names will contain the specific time slice the file represents in YYYYMMDD format.
-	 * Once the file has been created, the file will be sent to a specified Azure Blob Storage container.
-	 * 
-	 *  											     Max: 12/31/2021
-	 * 	SqlServer Hostname -> Database -> dbo -> Transaction(Postdate, TransAmount,.....)
-	 * 															|--> dbo.Transaction_20201231.csv
-	 * 															| 	  |--> dbo.Transaction_20201231.csv.gz --> Azure Blob Container
-	 * 															|--> dbo.Transaction_20201230.csv
-	 *  														| 	  |--> dbo.Transaction_20201231.csv.gz --> Azure Blob Container
-	 * 	Snowflake Instance -> Database -> dbo -> Transaction(Postdate, TransAmount,.....)
-	 *  											     Max: 12/29/2021
-	 * 
-	 * If the source table contains data but the destination table does not, it will print the full 
-	 * table. If the table doesn't have a time dimension to compare, an optional flag can be specified to print
-	 * the full table.  A full table will be split based on the max file size specified in its uncompressed
-	 * version of itself
-	 * 
-	 *	dbo.Transaction_001.csv.gz
-	 *	dbo.Transaction_002.csv.gz
-	 *	dbo.Transaction_***.csv.gz
-	 *
-	 * Once an extract file has been created and compressed, it then gets sent off to an azure blob storage
-	 *
-	 * This method uses a thread pool to concurrently pull tables, with the max concurrency specified by
-	 * MAX_CONCURRENCY_LEVEL (ie 4 threads at any give time)
-	 * 
-	 * TODO: suspend warehouse after complete
-	 * 
-	 * @param String filePath: Output file location (ie, "C:\\temp\\")
-	 * @param long maxFileSize: Max file size threshold (ie, 30000 "means 30Kb" or 4000000000L "means 4Gb") 
-	 * @param String srcSqlHost: Source SQL Server Hostname or IP address (ie, "SQLSERV01" or "192.168.1.102")
-	 * @param String srcDatabase: Source Database in which table resides (ie,"DatabaseName")
-	 * @param String srcSchema: Source Database schema table resides (ie, "dbo")
-	 * @param String sfCredsLoc: Location of Snowflake credentials specified via JSON (ie, "C\\snowflake_creds.json")
-	 * @param String sfDatabase: Remote Snowflake database name (ei, "DatabaseName")
-	 * @param String sfSchema: Remote Snowflake schema name to compare columns(ie,"DBO")
-	 * @param String rowDelim: Output file row delimiter (ie,"\r\n" or "\n")
-	 * @param String colDelim: Output file column/field delimiter(ie, "," or "~" or "\t")
-	 * @param String textQualifier: String, text, or VARCHAR datatype value qualifier (ie,"\"" -> ")
-	 * @param String escapeChar: POSIX control character (ie, "\\" -> \)
-	 * @param ArrayList<String> timeDimensions:  A list of fields in which to look for to split table up along a
-	 * 		  dimension of time (ie, new ArrayList<String>(Arrays.asList("POSTDATE", "PROCESSDATE", "DATE")))
-	 * @param String valueLimit:
-	 * @param boolean strictPK: Looks for the value "PK" in column constraint in conjunction timeDimnensios arrayList if set true
-	 * @param boolean optionalFull: Prints full file it time dimension can't be determined it set to true
-	 * @param String azCredsLoc: Location of Azure credentials of an Azure Blob Container instance (ie, "C\\azure_creds.json")
-	 * @param String azBlobDir: A directory to store extracts for an Azure Blob Container instance (ie, "init" or "20220203" or "test/2020203")
-	 * @param String sfStage: The name of the defined stage in Snowflake to consume from Azure (ie, "@stage_azure")
-	 */
-	static public void writeCsvFromSqlServerAllTablesValueLimit(
-			 String filePath,long maxFileSize,
-			 String srcSqlHost, String srcDatabase, String srcSchema,
-			 String sfCredsLoc, String sfDatabase, String sfSchema,
-			 String rowDelim, String colDelim, String textQualifier, String escapeChar,
-			 TreeMap<String, String> timeDimensions, boolean strictPK, boolean optionalFull,
-			 String azCredsLoc, String azBlobDir, String sfStage) {
-		
-		QLog.log("filePath: " + filePath);
-		QLog.log("maxFileSize: " + maxFileSize);
-		QLog.log("srcSqlHost: " + srcSqlHost);
-		QLog.log("srcDatabase: " + srcDatabase);
-		QLog.log("srcSchema: " + srcSchema);
-		QLog.log("sfCredsLoc: " + sfCredsLoc);
-		QLog.log("sfDatabase: " + sfDatabase);
-		QLog.log("sfSchema: " + sfSchema);
-		QLog.log("rowDelim: " + rowDelim);
-		QLog.log("colDelim: " + colDelim);
-		QLog.log("textQualifier: " + textQualifier);
-		QLog.log("escapeChar: " + escapeChar);
-		for (Entry<String, String> entry : timeDimensions.entrySet()) {
-			QLog.log("timeDimensions: " + entry.getKey() + " -> " + entry.getValue());
-		}
-		QLog.log("strictPK: " + strictPK);
-		QLog.log("optionalFull: " + optionalFull);
-		QLog.log("azCredsLoc: " + azCredsLoc);
-		QLog.log("azBlobDir: " + azBlobDir);
-		
-		
-		SqlServerCnString srcCnString = new SqlServerCnString();
-		srcCnString.setCnStringIntegratedSecurity(srcSqlHost, null , srcDatabase);
-		
-		RowSet ssTables = SqlServerDbScour.getSrcTables(
-				srcCnString.getCnString(), srcCnString.getDatabaseName(), srcSchema);
-
-		try {
-			
-			ThreadPoolExecutor exe = (ThreadPoolExecutor) Executors.newFixedThreadPool(MAX_CONCURRENCY_LEVEL);
-			
-			//iterate through tables until reach the end of ssTables RowSet
-			while(ssTables.next()) {
-				
-				//get Sql Server schema name and table name
-				final String schemaName = ssTables.getString("TABLE_SCHEMA");
-				final String tableName = ssTables.getString("TABLE_NAME");
-				
-				QLog.log("Starting table: " + schemaName + "." + tableName);
-				
-				/*get RowSet of columns for the current table
-					ssCol field set:
-					TABLE_TYPE,TABLE_CATALOG,TABLE_SCHEMA,TABLE_NAME,COLUMN_NAME,CU.CONSTRAINT_NAME,
-					DATA_TYPE,ORDINAL_POSITION,COLUMN_DEFAULT,IS_NULLABLE,CHARACTER_MAXIMUM_LENGTH,CHARACTER_OCTET_LENGTH,
-					NUMERIC_PRECISION,NUMERIC_PRECISION_RADIX,NUMERIC_SCALE,DATETIME_PRECISION, 
-					CHARACTER_SET_NAME,COLLATION_CATALOG,COLLATION_SCHEMA,COLLATION_NAME,DOMAIN_CATALOG, 
-					DOMAIN_SCHEMA,DOMAIN_NAME,CHARACTER_SET_CATALOG,CHARACTER_SET_SCHEMA,  
-					DATA_TYPE_CAT --CASE  'TEXT', 'NUMERIC', 'DATETIME', 'OTHER' 
-				 */
-				
-				RowSet ssCols = SqlServerDbScour.getSrcInformationSchema(
-						srcCnString.getCnString(),srcDatabase,schemaName,tableName);
-				
-				final String fileName = schemaName + "." + tableName;
-
-				String valueLimiterCol = null;
-				String dataTypeCat = null;
-				String limitValue = null;
-				
-				int whileCnt = 0;
-
-				//find time dimension of table to split
-				while(ssCols.next() && valueLimiterCol == null) {
-					whileCnt++;
-					String colName = ssCols.getString("COLUMN_NAME");
-					
-					//QLog.log("colName: " + colName);
-					
-					//checks for value "PK" to indicate Primary Key constraint
-					if(strictPK == true) {
-						String constraint = ssCols.getString("CONSTRAINT_NAME");
-						
-						if(constraint != null && constraint.toUpperCase().contains("PK")) {
-							
-							QLog.log("Found PK: " + constraint + "->" + colName);
-							if(timeDimensions.containsKey(colName.toUpperCase()) == true) {
-								valueLimiterCol = colName;
-								dataTypeCat = ssCols.getString("DATA_TYPE_CAT");
-								limitValue = timeDimensions.get(colName.toUpperCase());
-								
-								QLog.log("found vlc,dtc,dim!");
-							}
-						}
-					} 
-					
-					else {
-						
-						//valueLimiterCol = containsString(colName, timeDimensions);
-						if(timeDimensions.containsKey(colName.toUpperCase()) == true) {
-							valueLimiterCol = colName;
-							dataTypeCat = ssCols.getString("DATA_TYPE_CAT");
-							limitValue = timeDimensions.get(colName.toUpperCase());
-							
-							QLog.log("found vlc,dtc,dim!");
-						}
-					}
-				}
-				
-				QLog.log("whileCnt: " + whileCnt);
-				
-				//to pass function to ThreadPoolExecutor, variables must be "final"
-				final String vlc = valueLimiterCol;
-				final String dtc = dataTypeCat;
-				final String dim = limitValue;
-				
-				QLog.log("Passing values over to writeCSV; vlc: " + vlc + ", dtc: " + dtc + ", dim: " + dim);
-				
-				//check if tables match
-				//if destination table doesn't exit, create new table
-				//if table columns do match exactly, rename existing table with postdate/processdate in name and create new table
-				//returns true if there is a destination table that matches the source table
-				SnowflakeDbScour.checkTableAndCols(
-						srcSqlHost,srcDatabase,srcSchema,tableName,		//
-						sfCredsLoc,sfDatabase,sfSchema,tableName, 		//
-						valueLimiterCol, dataTypeCat, true);			//
-				
-				/*
-				if(valueLimiterCol != null) {
-					
-					QLog.log(fileName + ": Diff file");
-					
-					exe.execute(()-> 
-						writeCsvFromSqlServerTableValueLimit(filePath, fileName, maxFileSize,
-							 srcSqlHost, srcDatabase, srcSchema, tableName,
-							 sfCredsLoc, sfDatabase, sfSchema, tableName,
-							 rowDelim, colDelim, textQualifier, escapeChar,
-							 vlc, dim, 
-							 azCredsLoc, azBlobDir, sfStage, false)
+								filePath, 		//
+								fileName,		//
+								maxFileSize,	//max file size in bytes
+								srcSqlHost,		//
+								srcDatabase,	//
+								srcSchema,		//
+								tableName,		//String srcSqlHost, String srcDatabse, String srcSchema, String srcTable,
+								sfCredsLoc,		//
+								sfDatabase,		//
+								sfSchema,		//
+								tableName,		//String sfCredsLoc, sfDatabase,sfSchema, sfTable
+								rowDelim,		//
+								colDelim,		//
+								textQualifier,	//
+								escapeChar,		//
+								vlc, 			//
+								dtc, 			//
+								maxFromTable,	//
+								azCredsLoc, 	//
+								azBlobDir, 		//
+								sfStage)		//
 					);
 					
 				}
 				else if (optionalFull == true) {
 					
 					QLog.log(fileName + ": Full file");
+					
 					exe.execute(()->  
 						SnowflakeDbScour.writeCsvFromSqlServerTableFull(
-								filePath, fileName,	maxFileSize,				//max file size in bytes
-								srcSqlHost,srcDatabase,srcSchema,tableName,		//String srcSqlHost, String srcDatabse, String srcSchema, String srcTable,
-								sfCredsLoc,sfDatabase,sfSchema,tableName,		//String sfCredsLoc, sfDatabase,sfSchema, sfTable
-								rowDelim,colDelim,textQualifier,escapeChar,
-								azCredsLoc, azBlobDir, sfStage)
+								filePath, 		//
+								fileName,		//
+								maxFileSize,	//max file size in bytes
+								srcSqlHost,		//
+								srcDatabase,	//
+								srcSchema,		//
+								tableName,		//String srcSqlHost, String srcDatabse, String srcSchema, String srcTable,
+								sfCredsLoc,		//
+								sfDatabase,		//
+								sfSchema,		//
+								tableName,		//String sfCredsLoc, sfDatabase,sfSchema, sfTable
+								rowDelim,		//
+								colDelim,		//
+								textQualifier,	//
+								escapeChar,		//
+								azCredsLoc, 	//
+								azBlobDir, 		//
+								sfStage)		//
 					);
+					
 				}
-				*/
 			}
 			
 			exe.shutdown();
 		} catch (SQLException e) {
 			e.printStackTrace();
-			QLog.log("ETL Exception: " + e.toString(),true);
-			QLog.log(e,true);
+			QLog.log("ETL Exception: " + e.toString());
+			QLog.log(e);
 		}
-
 	}
+	
+	
 	
 	
 	/***
@@ -529,10 +378,13 @@ public class SnowflakeDbScour {
 	 * 
 	 *  											     Max: 12/31/2021
 	 * 	SqlServer Hostname -> Database -> dbo -> Transaction(Postdate, TransAmount,.....)
+	 *                                                          |
 	 * 															|--> dbo.Transaction_20201231.csv
 	 * 															| 	  |--> dbo.Transaction_20201231.csv.gz --> Azure Blob Container
+	 *                                                          |
 	 * 															|--> dbo.Transaction_20201230.csv
-	 *  														| 	  |--> dbo.Transaction_20201231.csv.gz --> Azure Blob Container
+	 *  														| 	  |--> dbo.Transaction_20201230.csv.gz --> Azure Blob Container
+	 *                                                          |
 	 * 	Snowflake Instance -> Database -> dbo -> Transaction(Postdate, TransAmount,.....)
 	 *  											     Max: 12/29/2021
 	 * 
@@ -577,7 +429,7 @@ public class SnowflakeDbScour {
 			 String valueLimiterCol, String dataTypeCat, String sfMaxFromTable,
 			 String azCredsLoc, String azBlobDir, String sfStage) {
 		
-		
+		QLog.log("writeCsvFromSqlServerTableDiff");
 		QLog.log("filePath: " + filePath);
 		QLog.log("fileName: " + fileName);
 		QLog.log("maxFileSize: " + maxFileSize);
@@ -631,27 +483,29 @@ public class SnowflakeDbScour {
 					while(segs.next()) {
 						
 						String valueLimit = segs.getString(valueLimiterCol);
-						
 						QLog.log(valueLimit);
 						
-						writeCsvFromSqlServerTableValueLimit(filePath, fileName, maxFileSize,
-								 srcSqlHost, srcDatabase, srcSchema, srcTable,
-								 sfCredsLoc, sfDatabase, sfSchema, sfTable,
-								 rowDelim, colDelim, textQualifier, escapeChar,
-								 valueLimiterCol, valueLimit, 
-								 azCredsLoc, azBlobDir, sfStage, false);
+						//generate differential dataset: generally for Fact tables
+						SnowflakeDbScour.writeCsvFromSqlServerTableValueLimit(
+								filePath, fileName, maxFileSize,
+								srcSqlHost, srcDatabase, srcSchema, srcTable,
+								sfCredsLoc, sfDatabase, sfSchema, sfTable,
+								rowDelim, colDelim, textQualifier, escapeChar,
+								valueLimiterCol, valueLimit, 
+								azCredsLoc, azBlobDir, sfStage, false);
 						
 					}
 				} catch (SQLException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
-					QLog.log("ETL Exception: " + e.toString(),true);
-					QLog.log(e,true);
+					QLog.log("ETL Exception: " + e.toString());
+					QLog.log(e);
 				}
 				
 			}
 			else {
 				
+				//generate full dataset: generally for Dim tables
 				SnowflakeDbScour.writeCsvFromSqlServerTableFull(
 						filePath, fileName,	maxFileSize,				//max file size in bytes
 						srcSqlHost,srcDatabase,srcSchema,srcTable,		//String srcSqlHost, String srcDatabse, String srcSchema, String srcTable,
@@ -659,10 +513,8 @@ public class SnowflakeDbScour {
 						rowDelim,colDelim,textQualifier,escapeChar,
 						azCredsLoc, azBlobDir, sfStage);	
 				
-			}
-			
+			}	
 		}
-
 	}
 
     		
@@ -703,7 +555,6 @@ public class SnowflakeDbScour {
 							 String azCredsLoc, String azBlobDir, 
 							 String sfStage, boolean sfForceReload) {
 		
-		
 		QLog.log("writeCsvFromSqlServerTableValueLimit");
 		QLog.log("filePath: " + filePath);
 		QLog.log("fileName: " + fileName);
@@ -726,7 +577,6 @@ public class SnowflakeDbScour {
 		QLog.log("azBlobDir: " + azBlobDir);
 		QLog.log("sfStage: " + sfStage);
 		QLog.log("sfForceReload: " + sfForceReload);
-		
 		
 		//Get Sql Server Schema Rowset
 		SqlServerCnString srcCnString = new SqlServerCnString();
@@ -781,7 +631,6 @@ public class SnowflakeDbScour {
         //instantiate file writing objects
 		FileWriter writer = null;
 		BufferedWriter buffer = null;
-		
 		try {
 			writer = new FileWriter(fullFileNamePath);
 			buffer = new BufferedWriter(writer);
@@ -789,8 +638,8 @@ public class SnowflakeDbScour {
 		} catch (IOException e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
-			QLog.log("ETL Exception: " + e1.toString(),true);
-			QLog.log(e1,true);
+			QLog.log("ETL Exception: " + e1.toString());
+			QLog.log(e1);
 		}       
 		
 		//if all went well with file write objects, begin writing to files
@@ -798,9 +647,10 @@ public class SnowflakeDbScour {
 			
 			long cCnt = 0;	//count calls
 	        long aCnt = 0;	//count all records
-	        long lCnt = 0;	//count of lines in current file
+	        long lCnt = 0;	//count lines for specific file
 	        long fCnt = 0;	//
-	        long fSize = 0;
+	        long fSize = 0;	//file size of specific file
+
 	        StringBuilder values = new StringBuilder();
 	        
 			try {
@@ -809,25 +659,28 @@ public class SnowflakeDbScour {
 				
 				ThreadPoolExecutor exe = (ThreadPoolExecutor) Executors.newFixedThreadPool(MAX_CONCURRENCY_LEVEL);
 				
+				//start iterating table records and write to extract file
 				while(ssTable.next() ) {
 					aCnt++;cCnt++;lCnt++;
 					
 					//if more than one record, add comma separator 
 					if(lCnt>1) values.append(rowDelim); 
 					
-					//iterate columns and grab column values
+					//iterate columns and grab column values to generate record string
 					for(int i = 0; i < cols.size(); i++) {
 						if(i > 0) values.append(colDelim);
 						
-						//wrap and append values
+						//grab record values and clean value for Snowflake consumption
 						String csvValue = sfCsvValuePrep(
-											   ssTable.getString(cols.get(i)),
-											   datatypeCategories.get(cols.get(i)),
-											   textQualifier,escapeChar);
+											   ssTable.getString(cols.get(i)),		//value
+											   datatypeCategories.get(cols.get(i)),	//value datatype
+											   textQualifier,escapeChar);			//add text qualifier and/or escape character
 						
+						//add to record string
 						values.append(csvValue);
 					}		
 					
+					//write to extract file
 					buffer.write(values.toString());
 					
 					//show current row values at some rowcount interval
@@ -841,16 +694,23 @@ public class SnowflakeDbScour {
 					if(fSize >= maxFileSize) {
 						buffer.close();
 						
-						
 						//using a thread pooler allows for the compression of a completed file to occur independently of the
 						//SQL pull and can be a time saving if files turn out to be rather large.
 						//ExecuteZipAndShip t = new ExecuteZipAndShip(filePath, fullFileName, fullFileName + ".gz", true, azCredsLoc);
 						ExecuteZipAndShip t = new ExecuteZipAndShip(
-								sfCredsLoc, sfDatabase, sfSchema, sfTable, 
-								filePath, fullFileName, fullFileName + ".gz", true, 
-								azCredsLoc, azBlobDir, 
-								sfStage, sfForceReload);
-						
+								sfCredsLoc, 			//Snowflake Credentials location
+								sfDatabase, 			//Snowflake Database
+								sfSchema, 				//Snowflake Schema
+								sfTable,				//Snowflake path
+								filePath, 				//local file path of csv
+								fullFileName, 			//file name of csv
+								fullFileName + ".gz", 	//renamed zip file of csv
+								true, 					//delete .csv after .csv.gz is complete
+								azCredsLoc, 			//Azure credentials location
+								azBlobDir,				//Azure blob directory to store zipped file
+								sfStage, 				//Snowflake stage name to cnmsume from from Azure to Snowflake
+								sfForceReload);			//Snowflake COPY force load directive (needed if file already loaded once)
+
 						exe.submit(t);
 						
 						lCnt = 0; 	//reset line count counter
@@ -874,18 +734,26 @@ public class SnowflakeDbScour {
 				//using a thread pooler allows for the compression of a completed file to occur independently of the
 				//SQL pull and can be time saving if files turn out to be rather large.
 				ExecuteZipAndShip t = new ExecuteZipAndShip(
-						sfCredsLoc, sfDatabase, sfSchema, sfTable, 
-						filePath, fullFileName, fullFileName + ".gz", true, 
-						azCredsLoc, azBlobDir, 
-						sfStage, sfForceReload);
-				exe.submit(t);
+						sfCredsLoc, 			//Snowflake Credentials location
+						sfDatabase, 			//Snowflake Database
+						sfSchema, 				//Snowflake Schema
+						sfTable,				//Snowflake path
+						filePath, 				//local file path of csv
+						fullFileName, 			//file name of csv
+						fullFileName + ".gz", 	//renamed zip file of csv
+						true, 					//delete .csv after .csv.gz is complete
+						azCredsLoc, 			//Azure credentials location
+						azBlobDir,				//Azure blob directory to store zipped file
+						sfStage, 				//Snowflake stage name to cnmsume from from Azure to Snowflake
+						sfForceReload);			//Snowflake COPY force load directive (needed if file already loaded once)
 				
+				exe.submit(t);
+
 				exe.shutdown();
 			} catch (SQLException | IOException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
-				QLog.log("ETL Exception: " + e.toString(),true);
-				QLog.log(e,true);
+				QLog.log("ETL Exception: " + e.toString());
+				QLog.log(e);
 			}
 			finally {
 				//compiler complained for not having try/catch around buffer.close()
@@ -893,8 +761,8 @@ public class SnowflakeDbScour {
 				try {
 					buffer.close();
 				} catch (IOException e) {
-					QLog.log("ETL Exception: " + e.toString(),true);
-					QLog.log(e,true);
+					QLog.log("ETL Exception: " + e.toString());
+					QLog.log(e);
 				} //silently fail
 			}
 		}
@@ -1000,8 +868,8 @@ public class SnowflakeDbScour {
 		} catch (IOException e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
-			QLog.log("ETL Exception: " + e1.toString(),true);
-			QLog.log(e1,true);
+			QLog.log("ETL Exception: " + e1.toString());
+			QLog.log(e1);
 		}       
 		
 		//continue if buffer was successfully created
@@ -1009,12 +877,12 @@ public class SnowflakeDbScour {
 			
 			long cCnt = 0;	//count calls
 	        long aCnt = 0;	//count all records
-	        long lCnt = 0;
-	        long fSize = 0;
+	        long lCnt = 0;	//count lines for specific file
+	        long fSize = 0;	//file size of specific file
 	        StringBuilder values = new StringBuilder();
 	        
 			try {
-				
+				//spin up thread pool to for ExecuteZipAndShip
 				ThreadPoolExecutor exe = (ThreadPoolExecutor) Executors.newFixedThreadPool(MAX_CONCURRENCY_LEVEL);
 				
 				while(ssTable.next() ) {
@@ -1040,22 +908,25 @@ public class SnowflakeDbScour {
 							QLog.log(fileName + " " + cCnt + ": " + values.toString());
 					
 					fSize = fSize + values.length();
+					
+					//if file size reaches specified max file size, close file and create new file
 					if(fSize >= maxFileSize) {
+						//close flie
 						buffer.close();
 						
 						ExecuteZipAndShip t = new ExecuteZipAndShip(
-								sfCredsLoc, 		//Snowflake Credentials location
-								sfDatabase, 		//Snowflake Database
-								sfSchema, 			//Snowflake Schema
-								sfTable,			//Snowflake path
-								filePath, 			//local file path of csv
-								fullFileName, 		//file name of csv
-								fullFileName + ".gz", //renamed zip file of csv
-								true, 				//delete .csv after .csv.gz is complete
-								azCredsLoc, 		//Azure credentials location
-								azBlobDir,			//Azure blob directory to store zipped file
-								sfStage, 			//Snowflake stage name to cnmsume from from Azure to Snowflake
-								true);				//Snowflake COPY force load directive (needed if file already loaded once)
+								sfCredsLoc, 			//Snowflake Credentials location
+								sfDatabase, 			//Snowflake Database
+								sfSchema, 				//Snowflake Schema
+								sfTable,				//Snowflake path
+								filePath, 				//local file path of csv
+								fullFileName, 			//file name of csv
+								fullFileName + ".gz", 	//renamed zip file of csv
+								true, 					//delete .csv after .csv.gz is complete
+								azCredsLoc, 			//Azure credentials location
+								azBlobDir,				//Azure blob directory to store zipped file
+								sfStage, 				//Snowflake stage name to cnmsume from from Azure to Snowflake
+								true);					//Snowflake COPY force load directive (needed if file already loaded once)
 						
 						exe.submit(t);
 	
@@ -1063,6 +934,7 @@ public class SnowflakeDbScour {
 						fSize = 0;	//reset file size counter
 						fCnt++;		//increment file count counter
 						
+						//handles up to 999 files of the same name
 				        fullFileName = fileName + "_"  + String.format("%03d", fCnt) + ".csv";
 				        fullFileNamePath = filePath + fullFileName;
 
@@ -1073,23 +945,23 @@ public class SnowflakeDbScour {
 					values.setLength(0);
 				}
 				
-
+				//close last file
 				buffer.close();
-				//ExecuteCompressGzip t = new ExecuteCompressGzip(fullFileName, fullFileName + ".gz", true);
-				//ExecuteZipAndShip t = new ExecuteZipAndShip(filePath, fullFileName, fullFileName + ".gz", true, azCredsLoc);
+				
+				//Asynchronously compress (GZIP) and send to Azure Blob Container 
 				ExecuteZipAndShip t = new ExecuteZipAndShip(
-						sfCredsLoc, 		//Snowflake Credentials location
-						sfDatabase, 		//Snowflake Database
-						sfSchema, 			//Snowflake Schema
-						sfTable,			//Snowflake path
-						filePath, 			//local file path of csv
-						fullFileName, 		//file name of csv
-						fullFileName + ".gz", //renamed zip file of csv
-						true, 				//delete .csv after .csv.gz is complete
-						azCredsLoc, 		//Azure credentials location
-						azBlobDir,			//Azure blob directory to store zipped file
-						sfStage, 			//Snowflake stage name to consume from from Azure to Snowflake
-						true);				//Snowflake COPY force load directive (needed if file already loaded onece)
+						sfCredsLoc, 			//Snowflake Credentials location
+						sfDatabase, 			//Snowflake Database
+						sfSchema, 				//Snowflake Schema
+						sfTable,				//Snowflake path
+						filePath, 				//local file path of csv
+						fullFileName, 			//file name of csv
+						fullFileName + ".gz", 	//renamed zip file of csv
+						true, 					//delete .csv after .csv.gz is complete
+						azCredsLoc, 			//Azure credentials location
+						azBlobDir,				//Azure blob directory to store zipped file
+						sfStage, 				//Snowflake stage name to consume from from Azure to Snowflake
+						true);					//Snowflake COPY force load directive (needed if file already loaded once)
 				
 				exe.submit(t);
 				exe.shutdown();
@@ -1097,8 +969,8 @@ public class SnowflakeDbScour {
 			} catch (SQLException | IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
-				QLog.log("ETL Exception: " + e.toString(),true);
-				QLog.log(e,true);
+				QLog.log("ETL Exception: " + e.toString());
+				QLog.log(e);
 			}
 			finally {
 				//compiler complained for not having try/catch around buffer.close()
@@ -1106,8 +978,8 @@ public class SnowflakeDbScour {
 				try {
 					buffer.close();
 				} catch (IOException e) {
-					QLog.log("ETL Exception: " + e.toString(),true);
-					QLog.log(e,true);
+					QLog.log("ETL Exception: " + e.toString());
+					QLog.log(e);
 				} //silently fail
 			}
 		}
@@ -1117,13 +989,13 @@ public class SnowflakeDbScour {
 	/***
 	 * 
 	 * 
-	 * @param sfCredsLoc
-	 * @param sfDatabase
-	 * @param sfSchema
-	 * @param sfTable
-	 * @param valueLimiterCol
-	 * @param valueLimit
-	 * @param valueDatatypeCat
+	 * @param String sfCredsLoc:
+	 * @param String sfDatabase:
+	 * @param String sfSchema:
+	 * @param String sfTable:
+	 * @param String valueLimiterCol:
+	 * @param String valueLimit:
+	 * @param String valueDatatypeCat:
 	 */
 	static void sfDeleteFrom(String sfCredsLoc, String sfDatabase, String sfSchema, String sfTable, 
 			String valueLimiterCol, String valueLimit, String valueDatatypeCat) {
@@ -1152,13 +1024,15 @@ public class SnowflakeDbScour {
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-			QLog.log("ETL Exception: " + e.toString(),true);
-			QLog.log(e,true);
+			QLog.log("ETL Exception: " + e.toString());
+			QLog.log(e);
 		}
 		
 	}
 	
+	
 	/***
+	 * 
 	 * 
 	 * @param sfCredsLoc
 	 * @param sfDatabase
@@ -1169,16 +1043,17 @@ public class SnowflakeDbScour {
 		sfDeleteFrom(sfCredsLoc,sfDatabase,sfSchema,sfTable, null, null, null);
 	}
 	
+	
 	/***
 	 * 
-	 * @param checkString
-	 * @param stringList
-	 * @return
+	 * @param String checkString:
+	 * @param ArrayList<String> stringList:
+	 * @return String
 	 */
 	static String containsString(String checkString, ArrayList<String> stringList) {
 		String output = null;
 		
-		if(stringList.contains(checkString.toUpperCase()))
+		if(stringList.contains(checkString))
 			output = checkString;
 		return output;
 	}
@@ -1186,12 +1061,37 @@ public class SnowflakeDbScour {
 	
 	/***
 	 * 
-	 * @param sfCredsLoc
-	 * @param sfDatabase
-	 * @param sfSchema
-	 * @param sfTable
-	 * @param valueLimiterCol
+	 * 
+	 * @param String checkString:
+	 * @param ArrayList<String> stringList:
 	 * @return
+	 */
+	static String containsString(String checkString, ArrayList<String> stringList, boolean ignoreCase) {
+		String output = null;
+		
+		if(ignoreCase == false)
+			output = containsString(checkString, stringList);
+		else {
+			for(int i = 0; i < stringList.size(); i++) {
+				if(stringList.get(i).toString().equalsIgnoreCase(checkString) == true) {
+					output = checkString;
+					i = stringList.size();  //short circuit loop if found
+				}
+			}
+		}
+		return output;
+	}
+	
+	
+	/***
+	 * 
+	 * 
+	 * @param String sfCredsLoc:
+	 * @param String sfDatabase:
+	 * @param String sfSchema:
+	 * @param String sfTable:
+	 * @param String valueLimiterCol:
+	 * @return String
 	 */
 	static String getSfMaxValue(String sfCredsLoc, String sfDatabase, String sfSchema, String sfTable, String valueLimiterCol) {
 		String output = null;
@@ -1209,8 +1109,8 @@ public class SnowflakeDbScour {
 			} catch (SQLException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
-				QLog.log("ETL Exception: " + e.toString(),true);
-				QLog.log(e,true);
+				QLog.log("ETL Exception: " + e.toString());
+				QLog.log(e);
 			}
 		}
 		return output;
@@ -1220,13 +1120,14 @@ public class SnowflakeDbScour {
 
 	
 	/***
+	 * Returns the maximum value from a particular DATABASE.SCHEMA.TABLE.COLUMN
 	 * 
-	 * @param srcSqlHost
-	 * @param srcDatabase
-	 * @param srcSchema
-	 * @param srcTable
-	 * @param valueLimiterCol
-	 * @return
+	 * @param String srcSqlHost: 
+	 * @param String srcDatabase:
+	 * @param String srcSchema:
+	 * @param String srcTable:
+	 * @param String valueLimiterCol:
+	 * @return String
 	 */
 	public static String getSsMaxValue(String srcSqlHost, String srcDatabase, String srcSchema, String srcTable, String valueLimiterCol) {
 		String output = null;
@@ -1241,27 +1142,27 @@ public class SnowflakeDbScour {
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-			QLog.log("ETL Exception: " + e.toString(),true);
-			QLog.log(e,true);
+			QLog.log("ETL Exception: " + e.toString());
+			QLog.log(e);
 		}
 	
 		return output;
 	}
 
+	
 	/***
-	 * 
-	 * 
-	 * 
-	 * @param srcSqlHost
-	 * @param srcDatabase
-	 * @param srcSchema
-	 * @param srcTable
-	 * @param sfCredsLoc
-	 * @param sfDatabase
-	 * @param sfSchema
-	 * @param sfTable
-	 * @param renameAndCreate
-	 * @return True if table determined or created such that there is a high probability it is ready to receive data
+	 *  
+	 *
+	 * @param String srcSqlHost: Source SQL Server Hostname or IP address (ie, "SQLSERV01" or "192.168.1.102")
+	 * @param String srcDatabase: Source Database in which table resides (ie,"DatabaseName")
+	 * @param String srcSchema: Source Database schema table resides (ie, "dbo")
+	 * @param String srcTable: Source Table to compare against
+	 * @param String sfCredsLoc: Location of Snowflake credentials specified via JSON (ie, "C:\\snowflake_creds.json")
+	 * @param String sfDatabase: Remote Snowflake database name (ie, "DatabaseName")
+	 * @param String sfSchema: Remote Snowflake schema name to compare columns(ie,"DBO")
+	 * @param String sfTable: Destination table to compare to
+	 * @param boolean renameAndCreate:
+	 * @return String: return new file name as evidence of success
 	 */
 	public static String checkTableAndCols(
 			 String srcSqlHost, String srcDatabase, String srcSchema, String srcTable,
@@ -1276,10 +1177,10 @@ public class SnowflakeDbScour {
 		SqlServerCnString srcCnString = new SqlServerCnString();
 		srcCnString.setCnStringIntegratedSecurity(srcSqlHost, null , srcDatabase);
 		
-		String sfObj = sfDatabase + "." + sfSchema + "." + sfTable;
+		//String sfObj = sfDatabase + "." + sfSchema + "." + sfTable;
+		String sfObj = SnowflakeDiscovery.asmSfObj(sfDatabase,sfSchema,sfTable);
 		
 		QLog.log("Performing check table on: " + sfObj);
-		
 		
 		RowSet ssSchemaRowSet = SqlServerDbScour.getSrcInformationSchema(
 				srcCnString.getCnString(), srcCnString.getDatabaseName(), srcSchema, srcTable);
@@ -1287,7 +1188,6 @@ public class SnowflakeDbScour {
 		
 		//we have a source table
 		if(ssSchemaRowSet != null && ssCols.size() != 0) {
-			
 			
 			//Get Snowflake Schema RowSet
 			java.sql.Connection sfCn = null;
@@ -1300,14 +1200,12 @@ public class SnowflakeDbScour {
 			//we have a destination table
 			if(sfSchemaRowSet != null && sfCols.size() != 0) {
 				
-				
 				QLog.log("ssCols: " + ssCols.size());			
 				QLog.log("sfCols: " + sfCols.size());
 				//check row counts first
 				
 				if(ssCols.size() == sfCols.size()) {
 					ArrayList<String> cols = rowsetColCompare(ssSchemaRowSet,sfSchemaRowSet);
-					
 					
 					//if the rowsetColcompare returns same size of ssCols and sfCols, they compare
 					if(cols.size() == sfCols.size()) {
@@ -1365,13 +1263,14 @@ public class SnowflakeDbScour {
 	
 	/***
 	 * 
-	 * @param sfCredsLoc
-	 * @param sfDatabase
-	 * @param sfSchema
-	 * @param sfTable
-	 * @param valueLimiterCol
-	 * @param dataTypeCat
-	 * @return
+	 * 
+	 * @param String sfCredsLoc:
+	 * @param String sfDatabase:
+	 * @param String sfSchema:
+	 * @param String sfTable:
+	 * @param String valueLimiterCol:
+	 * @param String dataTypeCat:
+	 * @return String 
 	 */
 	public static String renameTable_Processdated(String sfCredsLoc, String sfDatabase, String sfSchema, String sfTable,
 			String valueLimiterCol, String dataTypeCat) {
@@ -1409,8 +1308,8 @@ public class SnowflakeDbScour {
 			// TODO Auto-generated catch block
 			
 			e.printStackTrace();
-			QLog.log("ETL Exception: " + e.toString(),true);
-			QLog.log(e,true);
+			QLog.log("ETL Exception: " + e.toString());
+			QLog.log(e);
 		}
 		
 		return output;
@@ -1418,18 +1317,20 @@ public class SnowflakeDbScour {
 	}
 	
 	/***
+	 * Creates a table in Snowflake by referencing a SQL Server Table
 	 * 
-	 * @param sfCredsLoc
-	 * @param srcSqlHost
-	 * @param srcDatabase
-	 * @param srcSchema
-	 * @param srcTable
-	 * @return
+	 * @param String sfCredsLoc:
+	 * @param String srcSqlHost:
+	 * @param String srcDatabase:
+	 * @param String srcSchema:
+	 * @param String srcTable:
+	 * @return boolean: Returns true if no errors were encountered in creating the table
 	 */
 	public static boolean createTableFromSs(String sfCredsLoc, 
 			String srcSqlHost, String srcDatabase, String srcSchema, String srcTable) {
 		boolean output = false;
 		
+		//generate CREATE TABLE SQL statement
 		String sql = sqlCreateTableFromSs(srcSqlHost,srcDatabase,srcSchema,srcTable);
 		QLog.log(sql);
 		
@@ -1443,28 +1344,114 @@ public class SnowflakeDbScour {
 			
 			output = true;			
 		} catch (SQLException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
-			QLog.log("ETL Exception: " + e.toString(),true);
-			QLog.log(e,true);
+			QLog.log("ETL Exception: " + e.toString());
+			QLog.log(e);
 		}
-		
 		
 		return output;
 	}
 	
+	
+	/***
+	 * Writes CREATE TABLE statements to file, and optionally send to Azure Blob Container.
+	 * 
+	 * @param String extractDir:
+	 * @param String srcSqlHost:
+	 * @param String srcDatabase:
+	 * @param String srcSchema:
+	 * @param String srcTable:
+	 * @param String azCredsLoc: Location of the Azure credentials of an Azure Blob Container instance (ie, "C:\\azure_creds.json")
+	 * @param String azBlobDir: A directory to store extracts for an Azure Blob Container instance (ie, "init" or "20220203" or "test/2020203")
+	 */
+	public static void writeSqlCreateTable(String extractDir, 
+			String srcSqlHost, String srcDatabase, String srcSchema, String srcTable,
+			String azCredsLoc, String azBlobDir) {
+		
+		String sqlDir = extractDir + "sql\\";
+		new File(sqlDir).mkdirs();
+		String sql = sqlCreateTableFromSs(srcSqlHost,srcDatabase,srcSchema,srcTable);
+		String fileName = srcSchema + "." + srcTable + ".sql";
+		String fullFileNamePath = sqlDir + fileName;
+		
+        //instantiate file writing objects
+		FileWriter writer = null;
+		BufferedWriter buffer = null;
+		try {
+			writer = new FileWriter(fullFileNamePath);
+			buffer = new BufferedWriter(writer);
+			buffer.write(sql);
+			buffer.close();
+			
+			//send to azure blob storage
+			if(azCredsLoc != null) {
+				AzureBlob.putBlobFile(azCredsLoc, sqlDir, fileName, azBlobDir + "/sql");
+			}
+			
+		} catch (IOException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+			QLog.log("ETL Exception: " + e1.toString());
+			QLog.log(e1);
+		}  
+	}
+	
+	
+	/***
+	 * 
+	 * 00_CREATE.sql
+	 * 01_DELETE.sql
+	 * 02_COPYINTO.sql
+	 * 
+	 * @param String extractDir:
+	 * @param String fileName:
+	 * @param String sql:
+	 * @param String azCredsLoc:
+	 * @param String azBlobDir:
+	 */
+	public static void writeSql(String extractDir, String fileName, String sql,
+			String azCredsLoc, String azBlobDir) {
+		
+		String sqlDir = extractDir + "sql\\";
+		new File(sqlDir).mkdirs();
 
+		fileName = fileName + ".sql";
+		String fullFileNamePath = sqlDir + fileName;
+		
+        //instantiate file writing objects
+		FileWriter writer = null;
+		BufferedWriter buffer = null;
+		try {
+			writer = new FileWriter(fullFileNamePath);
+			buffer = new BufferedWriter(writer);
+			buffer.write(sql);
+			buffer.close();
+			
+			//send
+			if(azCredsLoc != null) {
+				AzureBlob.putBlobFile(azCredsLoc, sqlDir, fileName, azBlobDir + "\\sql");
+			}
+			
+		} catch (IOException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+			QLog.log("ETL Exception: " + e1.toString());
+			QLog.log(e1);
+		}  
+	}
+	
+	
 	/***
 	 * Copy table via series of API calls to Snowflake
 	 * 
-	 * @param srcSqlHost
-	 * @param srcDatabse
-	 * @param srcSchema
-	 * @param srcTable
-	 * @param sfCredsLoc
-	 * @param sfDatabase
-	 * @param sfSchema
-	 * @param sfTable
+	 * @param String srcSqlHost:
+	 * @param String srcDatabse:
+	 * @param String srcSchema:
+	 * @param String srcTable: 
+	 * @param String sfCredsLoc:
+	 * @param String sfDatabase:
+	 * @param String sfSchema:
+	 * @param String sfTable:
 	 */
 	static public void copyApiTableData(String srcSqlHost, String srcDatabse, String srcSchema, String srcTable,
 			String sfCredsLoc, String sfDatabase, String sfSchema, String sfTable) {
@@ -1501,21 +1488,23 @@ public class SnowflakeDbScour {
 			sfCn.close();
 		} catch (SQLException e) {
 			e.printStackTrace();
-			QLog.log("ETL Exception: " + e.toString(),true);
-			QLog.log(e,true);
+			QLog.log("ETL Exception: " + e.toString());
+			QLog.log(e);
 		}
         
 
 	}
 	
+	
 	/***
 	 * 
-	 * @param colSet
-	 * @param srcTableResultSet
-	 * @param sfConnection
-	 * @param sfSchema
-	 * @param sfTable
-	 * @param datatypeCategories
+	 * 
+	 * @param ArrayList<String> colSet:
+	 * @param String srcTableResultSet:
+	 * @param String sfConnection:
+	 * @param String sfSchema:
+	 * @param String sfTable:
+	 * @param TreeMap<String, String> datatypeCategories:
 	 * @throws SQLException
 	 */
 	static void copyApiTableDataIterate(ArrayList<String> colSet, ResultSet srcTableResultSet, 
@@ -1531,7 +1520,7 @@ public class SnowflakeDbScour {
         StringBuilder values = new StringBuilder();
     	StringBuilder sql = new StringBuilder();
     	
-    	//Instantiate Thread pooler
+    	//Instantiate Thread pool
     	ThreadPoolExecutor exe = (ThreadPoolExecutor) Executors.newFixedThreadPool(MAX_CONCURRENCY_LEVEL);
     	
 		while(srcTableResultSet.next() ) {
@@ -1577,15 +1566,14 @@ public class SnowflakeDbScour {
 		ExecuteUpdateSnowflakeCommand t = new ExecuteUpdateSnowflakeCommand(sql.toString(), sfConnection, cCnt);
 		exe.submit(t);	
 		
-		
 		exe.shutdown();
 	}
 	
 	
 	/***
 	 * 
-	 * @param sqlCommand
-	 * @param sfConnection
+	 * @param String sqlCommand:
+	 * @param java.sql.Connection sfConnection:
 	 * @return
 	 */
 	public static RowSet executeRowSetSnowflakeCommand(String sqlCommand, java.sql.Connection sfConnection) {
@@ -1608,25 +1596,30 @@ public class SnowflakeDbScour {
 			// TODO Auto-generated catch block
 			
 			e.printStackTrace();
-			QLog.log("ETL Exception: " + e.toString(),true);
-			QLog.log(e,true);
+			QLog.log("ETL Exception: " + e.toString());
+			QLog.log(e);
+			QLog.log("SQL Error: " + sqlCommand);
 		}
 		finally {
 			try {
 				stmnt.close();
 			} catch (SQLException e) {
-				QLog.log("ETL Exception: " + e.toString(),true);
-				QLog.log(e,true);
+				QLog.log("ETL Exception: " + e.toString());
+				QLog.log(e);
 			}
 		}
 		
 		return output;
 	}
 	
+	
 	/***
 	 * Builds a tree map of Column names to Data Type Category f
-	 * @param shema
-	 * @return
+	 * Key pair is set to upper case
+	 * 
+	 * @param RowSet schema: a rowset that contains columns "COLUMN_NAME" and "DATA_TYPE_CAT"
+	 * 			produced by SnowflakeDiscovery.sqlDatabaseAllInformationShema(database)
+	 * @return TreeMap<String, String>:
 	 */
 	public static TreeMap<String, String> setDataTypeCategories(RowSet schema) {
         TreeMap<String, String> output;
@@ -1643,19 +1636,32 @@ public class SnowflakeDbScour {
 	        }			
 		} catch (SQLException e) {
 			e.printStackTrace();
-			QLog.log("ETL Exception: " + e.toString(),true);
-			QLog.log(e,true);
+			QLog.log("ETL Exception: " + e.toString());
+			QLog.log(e);
 		}
         return output;
 	}
 	
 
-	/*
+	/***
+	 * A method that copies data directly from SQL server to Snowflake for a matching 
+	 * DATABASE.SCHEMA.TABLE.  
+	 * 
+	 * *CAUTION*
+	 * Uses Snowflake Webservices credits 
+	 * Currently not being used as a production item, but leaving available as experimental
 	 * 
 	 * snowflakeCreds \
 	 *                 --- database, schema, table -> match fields
 	 * srcSQLHost     /
 	 * 
+	 * @param String snowflakeCreds:
+	 * @param String srcSqlHost:
+	 * @param String database:
+	 * @param String schema:
+	 * @param String table:
+	 * @throws SQLException
+	 * @throws IOException
 	 */
 	public static void copyApiTableData(String snowflakeCreds, String srcSqlHost, 
 			String database, String schema, String table) throws SQLException, IOException {
@@ -1693,7 +1699,7 @@ public class SnowflakeDbScour {
         //generate list of matching columns between Sql Server and Snowflake tables
         ArrayList<String> cols = rowsetColCompare(ssCols,sfCols);
         
-        //load up a treemap to quickly reslove datatypes
+        //load up a treemap to quickly resolve datatypes
         TreeMap<String, String> colDatatypeCat = setDataTypeCategories(ssCols);
 
         sfCols.close();
@@ -1765,13 +1771,14 @@ public class SnowflakeDbScour {
 	
 	
 	/***
-	 * Prepares a given value for Snoflake consumption via a CSV based on the supplied datatype.
-	 * Converts unicode characters to space characters (" ").
+	 * Prepares a given value for Snowflake consumption via a CSV based on the supplied datatype.
+	 * Converts unicode characters to space characters (" ") as Snwoflake complains about trying to 
+	 * consume unicode characters via CSV.  Ensure ASCII character range
 	 * 
-	 * @param value
-	 * @param datatypeCat
-	 * @param textQualifier
-	 * @param escapeChar
+	 * @param String value:
+	 * @param String datatypeCat: Looks for "TEXT", "DATETIME", "NUMERIC", or "OTHER"
+	 * @param String textQualifier: Character used to wrap around text values, "ie, double quote ", single quote ', etc)
+	 * @param String escapeChar: Escape character to be used if given textQualifier is found in TEXT value (ie, backslash \)
 	 * @return String
 	 */
 	public static String sfCsvValuePrep(
@@ -1783,8 +1790,7 @@ public class SnowflakeDbScour {
 		if(value == null) output = "";
 		else if (datatypeCat.equals("TEXT")) {
 			
-			//Snowflake likes ASCII only.  (it says UTF-8, but its complaining for characters
-			//between 127-255
+			//Snowflake likes ASCII only.  (it says UTF-8, but its complaining for characters between 127-255
 			for(int i = 0; i < value.length(); i++) {
 				if((int)value.charAt(i) > 127) {
 					/* Common offenders
@@ -1806,9 +1812,10 @@ public class SnowflakeDbScour {
 				value = value.replace(escapeChar, escapeChar + escapeChar);
 			
 			//if text qualifier is present, escape the text qualifier
+			// ie, " -> \"
 			if(textQualifier != null && textQualifier != "") {
 				if(escapeChar != null && escapeChar != "")
-					value = value.replace(textQualifier,escapeChar + textQualifier );
+					value = value.replace(textQualifier,escapeChar + textQualifier);
 				else 
 					value = value.replace(textQualifier, textQualifier + textQualifier);
 				output = textQualifier + value + textQualifier;
@@ -1824,16 +1831,13 @@ public class SnowflakeDbScour {
 	}
 	
 
-
-	
-	
 	/***
 	 * Converts a Postdate String (ie,"12/31/2021") or Processdate (ie,"20221231") or String with special
 	 * characters to a file system friendly value to help with file naming.
 	 * 
-	 * @param value
-	 * @param datatypeCat
-	 * @return String
+	 * @param String value: File name to prep
+	 * @param String datatypeCat: Looks for "TEXT", "DATETIME", "NUMERIC", or "OTHER"
+	 * @return String 
 	 */
 	public static String fileNamePrep(String value, String datatypeCat) {
 		
@@ -1861,14 +1865,15 @@ public class SnowflakeDbScour {
 		return output; 
 	}
 	
-	
+	//used for tryDateParse function as date formats to look for
 	static List<String> dateFormatStrings = 
 			Arrays.asList("yyyy-MM-dd", "yyyyMMdd","MM/dd/yyyy","MM-dd-yyyy","MM/dd/yy","MM-dd-yy");
 	
 	/***
 	 * Tries to parse a String to Date
+	 * 
 	 * @param dateString
-	 * @return
+	 * @return java.util.Date
 	 */
 	static java.util.Date tryDateParse(String dateString) {
 	    for (String formatString : dateFormatStrings) {
@@ -1876,17 +1881,19 @@ public class SnowflakeDbScour {
 	            return new SimpleDateFormat(formatString).parse(dateString);
 	        }
 	        catch (java.text.ParseException e) {
-				QLog.log("ETL Exception: " + e.toString(),true);
-				QLog.log(e,true);
+				QLog.log("ETL Exception: " + e.toString());
+				QLog.log(e);
 	        }
 	    }
 	    return null;
 	}
 
+	
 	/***
+	 * Returns a unique set of column names for a RowSet that contains "COLUMN_NAME" in caps
 	 * 
-	 * @param rowSet
-	 * @return
+	 * @param RowSet rowSet: A rowset that contains the column name COLUMN_NAME 
+	 * @return ArrayList<String>: A list of column names
 	 */
 	public static ArrayList<String> toCols(RowSet rowSet) {
 		ArrayList<String> output = new ArrayList<String>();
@@ -1895,13 +1902,15 @@ public class SnowflakeDbScour {
 			rowSet.beforeFirst();
 
 			while(rowSet.next()) {
-				output.add(rowSet.getString("COLUMN_NAME").toUpperCase());
+				//make sure column doesn't already exist before adding to list
+				if(output.contains(rowSet.getString("COLUMN_NAME").toUpperCase()) == false)
+					output.add(rowSet.getString("COLUMN_NAME").toUpperCase());
 			}
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-			QLog.log("ETL Exception: " + e.toString(),true);
-			QLog.log(e,true);
+			QLog.log("ETL Exception: " + e.toString());
+			QLog.log(e);
 		}
 		
 		return output;
@@ -1913,7 +1922,7 @@ public class SnowflakeDbScour {
 	 * 
 	 * @param RowSet ssRowSet: Sql Server RowSet
 	 * @param RowSet sfRowSet: SnowFlake RowSet
-	 * @return
+	 * @return ArrayList<String> rowsetColCompare: An array list of matched columns
 	 * @throws SQLException
 	 */
 	public static ArrayList<String> rowsetColCompare(RowSet ssRowSet, RowSet sfRowSet) {
@@ -1948,8 +1957,8 @@ public class SnowflakeDbScour {
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-			QLog.log("ETL Exception: " + e.toString(),true);
-			QLog.log(e,true);
+			QLog.log("ETL Exception: " + e.toString());
+			QLog.log(e);
 		}
 		
 		return output;
@@ -1989,27 +1998,34 @@ public class SnowflakeDbScour {
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-			QLog.log("ETL Exception: " + e.toString(),true);
-			QLog.log(e,true);
+			QLog.log("ETL Exception: " + e.toString());
+			QLog.log(e);
 		}
 	}
 	
 	
+	/***
+	 * 
+	 * @param java.sql.Connection snowflakeCn:
+	 * @param String srcHost: Source SQL Server host name (String)
+	 * @param String srcDatabase: Source SQL Server database of the previously specified host name (String)
+	 * @throws SQLException
+	 */
 	public static void copySqlServerDatabase(java.sql.Connection snowflakeCn, 
 			String srcHost, String srcDatabase) throws SQLException {
 		
 		SqlServerCnString srcCnString = new SqlServerCnString();
 		srcCnString.setCnStringIntegratedSecurity(srcHost, null , srcDatabase);
-		
+		//TODO: not finished!
 	}
 	
 
 	/***
 	 * Copies schemas from a source SQL Server host to a Snowflake instance 
 	 * 
-	 * @param An established Snowflake connection to execute Snowflake SQL statements (java.sql.Connection)
-	 * @param Source SQL Server host name (String)
-	 * @param Source SQL Server database of the previously specified host name (String)
+	 * @param java.sql.Connection snowflakeCn: An established Snowflake connection to execute Snowflake SQL statements (java.sql.Connection)
+	 * @param String srcHost: Source SQL Server host name (String)
+	 * @param String srcDatabase: Source SQL Server database of the previously specified host name (String)
 	 * @throws SQLException
 	 */
 	public static void copySqlServerAllDatabaseSchemas(java.sql.Connection snowflakeCn, 
@@ -2039,8 +2055,8 @@ public class SnowflakeDbScour {
 			statement.close();
 		} catch (SQLException e) {
 			e.printStackTrace();
-			QLog.log("ETL Exception: " + e.toString(),true);
-			QLog.log(e,true);
+			QLog.log("ETL Exception: " + e.toString());
+			QLog.log(e);
 		}
 	}
 	
@@ -2052,8 +2068,9 @@ public class SnowflakeDbScour {
 	 * 
 	 * TODO: Method should be refactored moving from test case to 
 	 * 
-	 * @param Source SQL Server host name (String)
-	 * @param Source SQL Server database of the previously specified host name (String)
+	 * @param java.sql.Connection snowflakeCn: An active Snowflake connection
+	 * @param String srcHost: Source SQL Server host name
+	 * @param String srcDatabase: Source SQL Server database of the previously specified host name
 	 */
 	public static void copySqlServerAllDatabaseTables(java.sql.Connection snowflakeCn, 
 			String srcHost, String srcDatabase) throws SQLException {
@@ -2086,13 +2103,11 @@ public class SnowflakeDbScour {
 			statement.close();
 		} catch (SQLException e) {
 			e.printStackTrace();
-			QLog.log("ETL Exception: " + e.toString(),true);
-			QLog.log(e,true);
+			QLog.log("ETL Exception: " + e.toString());
+			QLog.log(e);
 		}
 	}
 	
-	
-
 	
 	/***
 	 * Connect to an existing Generates a CREATE TABLE for Snowflake
@@ -2103,11 +2118,11 @@ public class SnowflakeDbScour {
 	 * 
 	 * TODO: Using double quotes make objects case sensitive; give option to use use double quotes or not 
 	 * 
-	 * @param srcSqlHost String:
-	 * @param srcDatabse String:
-	 * @param srcSchema String: 
-	 * @param srcTable String:
-	 * @return
+	 * @param String srcSqlHost:
+	 * @param String srcDatabse:
+	 * @param String srcSchema: 
+	 * @param String srcTable:
+	 * @return String sql: SQL CREATE TABLE Statement
 	 */
 	public static String sqlCreateTableFromSs(String srcSqlHost, String srcDatabase, String srcSchema, String srcTable) {
 		

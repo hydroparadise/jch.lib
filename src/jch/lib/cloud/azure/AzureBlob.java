@@ -1,10 +1,7 @@
-package jch.lib.test;
-
+package jch.lib.cloud.azure;
 
 import java.io.FileInputStream;
-
 import java.io.IOException;
-
 import java.io.StringReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -13,19 +10,14 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 
-
-import org.json.simple.JSONObject;
-import org.json.simple.parser.JSONParser;
-import org.json.simple.parser.ParseException;
-
-import com.google.api.client.util.IOUtils;
-
-import jch.lib.common.QLog;
-
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 
+import jch.lib.common.QLog;
+import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
+import org.json.simple.parser.ParseException;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -33,105 +25,114 @@ import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
+import com.google.api.client.util.IOUtils;
+
 /***
- * Azure uses XML
  * 
  * 
  * 
  * @author harrisonc
  *
  */
-public class JchLib_AzureTest {
-
+public class AzureBlob {
 	/*
-	 * Sampple JSON file
-		{
-			"HTTPSStorageHost":"https://example.blob.core.windows.net", 
-			"Container":"azureblobexample", 
-			"ContainerSAS":"a;slkdjfa;soidfs"
-		}
+	 * Sample JSON file
+	 *	{
+	 *		"HTTPSStorageHost":"https://example.blob.core.windows.net", 
+	 *		"Container":"azureblobexample", 
+	 *		"ContainerSAS":"a;slkdjfa;soidfs"
+	 *	}
 	 */
 	
-	/****
+	
+
+	/***
 	 * Deletes a specific blob file
 	 * 
-	 * @param azBlobCredsLoc
-	 * @param blobName
-	 * @param blobPath
+	 * @param String azBlobCredsLoc:
+	 * @param String blobName:
+	 * @param String blobPath:
 	 */
 	public static void deleteBlob(String azBlobCredsLoc, String blobName, String blobPath) {
 	    JSONObject jsonObj = null;
+	    
+	    //retrieve Blob container details from JSON config file
 		try {
 			String jsonString = Files.readString(Path.of(azBlobCredsLoc));
 			JSONParser jsonParser = new JSONParser();
 			jsonObj =  (JSONObject) jsonParser.parse(jsonString);
 			
 		} catch (ParseException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
-			QLog.log("ETL Exception: " + e.toString(),true);
-			QLog.log(e,true);
+			QLog.log("ETL Exception: " + e.toString());
+			QLog.log(e);
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
-			QLog.log("ETL Exception: " + e.toString(),true);
-			QLog.log(e,true);
+			QLog.log("ETL Exception: " + e.toString());
+			QLog.log(e);
 		}
 	    
-	
 		String azBlobCnString = "";
-
+		
+		//grab values from JSON file and must be casted to String
 		String host = (String) jsonObj.get("HTTPSStorageHost");
 		String container = (String) jsonObj.get("Container");
 		String sas = (String) jsonObj.get("ContainerSAS");
 		
 		azBlobCnString = host + "/" + container;
 		
-		//System.out.println("blob dir: " + blobPath);
 		QLog.log("blob dir: " + blobPath);
 		
+		//assemble path to blob container URL if one was specified
 		if(blobPath != null) 
 			azBlobCnString = azBlobCnString + "/" + blobPath ;
 		
+		//TODO: what to do if blob name wasn't specified?
 		if(blobName != null)
 			azBlobCnString = azBlobCnString	+ "/" + blobName;
 		
+		//assemble URL with SAS token
 		azBlobCnString = azBlobCnString + "?" + sas;
-		
-		//System.out.println(sourcePath + sourceName);
-		//System.out.println(azBlobCnString);
+
 		QLog.log(azBlobCnString);
-		
-		
+				
 		URL url;
 		try {
 			url = new URL(azBlobCnString);
 			HttpURLConnection httpCon = (HttpURLConnection) url.openConnection();
 				
 			httpCon.setDoOutput(true);
-			//httpCon.setRequestProperty("x-ms-blob-type", "BlockBlob");
 			httpCon.setRequestMethod("DELETE");
 			
-			
+			//get connection response
 			String res = new String(httpCon.getInputStream().readAllBytes(), StandardCharsets.UTF_8) ;
 			
-			///System.out.println(res);
+			QLog.log("AzureBlob: Azure DELETE response: " + res);
 			QLog.log(azBlobCnString);
 			
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-			QLog.log("ETL Exception: " + e.toString(),true);
-			QLog.log(e,true);
+			QLog.log("ETL Exception: " + e.toString());
+			QLog.log(e);
 		}
 		
 	}
 	
-
 	
-	
-	/*
+	/***
 	 * 
+	 * @param azBlobCredsLoc
+	 * @param blobName
+	 */
+	public static void deleteBlob(String azBlobCredsLoc, String blobName) {
+		deleteBlob(azBlobCredsLoc, blobName, null);
+	}
+	
+	
+	/***
+	 * 
+	 *Sample XML 
 		<EnumerationResults ServiceEndpoint="https://testdevblob.blob.core.windows.net/" ContainerName="testcontainer">
 		<Blobs>
 			<Blob>
@@ -162,6 +163,9 @@ public class JchLib_AzureTest {
 		</Blobs>
 		<NextMarker/>
 		</EnumerationResults>
+		@param String azBlobCredsLoc
+		@param String azBlobFolderPath
+		@return ArrayList<String>
 	 */
 	public static ArrayList<String> listContainerBlobFiles(String azBlobCredsLoc, String azBlobFolderPath) {
 		// TODO Auto-generated method stub
@@ -181,43 +185,39 @@ public class JchLib_AzureTest {
 			
 			output = new ArrayList<String>();
 			
+			//start packing in directory items
 			for(int i = 0; i < list.getLength(); i++) {
 				
 				Node node = list.item(i);
 				if (node.getNodeType() == Node.ELEMENT_NODE) {
 					Element element = (Element) node;
-					
-					//System.out.println(element.getElementsByTagName("Name").item(0).getTextContent());
-					QLog.log(element.getElementsByTagName("Name").item(0).getTextContent());
-					
 					output.add(element.getElementsByTagName("Name").item(0).getTextContent());
+					
+					//QLog.log(element.getElementsByTagName("Name").item(0).getTextContent());
 				}
-				
 			}
-			
 			
 		} catch ( ParserConfigurationException | SAXException | IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-			QLog.log("ETL Exception: " + e.toString(),true);
-			QLog.log(e,true);
+			QLog.log("ETL Exception: " + e.toString());
+			QLog.log(e);
 		}
 		
-		
 		return output;
-		
 	}
 	
 	
 	/***
 	 * 
-	 * @param azBlobCredsLoc
-	 * @param azBlobFolderPath
-	 * @return
+	 * @param String azBlobCredsLoc:
+	 * @param String azBlobFolderPath:
+	 * @return String
 	 */
 	public static String xmlListContainerBlobFiles(String azBlobCredsLoc, String azBlobFolderPath) {
 		String output = null;
 		
+		//retrieve Blob container details from JSON config file
 	    JSONObject jsonObj = null;
 		try {
 			String jsonString = Files.readString(Path.of(azBlobCredsLoc));
@@ -225,18 +225,15 @@ public class JchLib_AzureTest {
 			jsonObj =  (JSONObject) jsonParser.parse(jsonString);
 			
 		} catch (ParseException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
-			QLog.log("ETL Exception: " + e.toString(),true);
-			QLog.log(e,true);
+			QLog.log("ETL Exception: " + e.toString());
+			QLog.log(e);
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
-			QLog.log("ETL Exception: " + e.toString(),true);
-			QLog.log(e,true);
+			QLog.log("ETL Exception: " + e.toString());
+			QLog.log(e);
 		}
 	    
-	
 		String azBlobCnString = "";
 
 		String host = (String) jsonObj.get("HTTPSStorageHost");
@@ -252,59 +249,45 @@ public class JchLib_AzureTest {
 		azBlobCnString = azBlobCnString + "&restype=container";
 		azBlobCnString = azBlobCnString + "&comp=list";
 		
-		//System.out.println(azBlobCnString);
-		
 		URL url;
 		try {
 			url = new URL(azBlobCnString);
 			HttpURLConnection httpCon = (HttpURLConnection) url.openConnection();
-				
-			//httpCon.setDoOutput(true);
-			//httpCon.setRequestProperty("restype", "container");
-			//httpCon.setRequestProperty("comp", "list");
+
 			httpCon.setRequestMethod("GET");
 			
-			
 			String res = new String(httpCon.getInputStream().readAllBytes(), StandardCharsets.UTF_8) ;
-			//String body = httpCon.getResponseMessage();
-			
 			output = res;
 			
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-			QLog.log("ETL Exception: " + e.toString(),true);
-			QLog.log(e,true);
+			QLog.log("ETL Exception: " + e.toString());
+			QLog.log(e);
 		}
 		
-		/*
-		System.out.println("at 0: " + output.charAt(0)+ ", " + (int)output.charAt(0));
-		System.out.println("at 1: " + output.charAt(1)+ ", " + (int)output.charAt(1));
-		System.out.println("at 2: " + output.charAt(2)+ ", " + (int)output.charAt(2));
-		System.out.println("at 3: " + output.charAt(3)+ ", " + (int)output.charAt(3));
-		*/
-		//at 0: ?, 65279
+		//if first character value is 65279, trim it off
 		if((int) output.charAt(0)  == 65279) {
 			output = output.substring(1);
-			//System.out.println("Trimmed the quesion");
-			QLog.log("Trimmed the quesion");
 			
-			/*
-			System.out.println("at 0: " + output.charAt(0)+ ", " + (int)output.charAt(0));
-			System.out.println("at 1: " + output.charAt(1)+ ", " + (int)output.charAt(1));
-			System.out.println("at 2: " + output.charAt(2)+ ", " + (int)output.charAt(2));
-			System.out.println("at 3: " + output.charAt(3)+ ", " + (int)output.charAt(3));
-			*/
+			QLog.log("xmlListContainerBlobFiles: Trimmed the question (65279)");
+			
 		}
 		
 		return output;
 	}
 	
 	
-	
+	/***
+	 * 
+	 * 
+	 * @param String azBlobCredsLoc:
+	 * @param String sourceBlobName:
+	 * @param String sourceBlobPath:
+	 * @param String destBlobPath:
+	 */
 	public static void copyBlobFile(String azBlobCredsLoc, String sourceBlobName, String sourceBlobPath,
 			String destBlobPath) {
-		
 		
 	    JSONObject jsonObj = null;
 		try {
@@ -315,13 +298,13 @@ public class JchLib_AzureTest {
 		} catch (ParseException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-			QLog.log("ETL Exception: " + e.toString(),true);
-			QLog.log(e,true);
+			QLog.log("ETL Exception: " + e.toString());
+			QLog.log(e);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-			QLog.log("ETL Exception: " + e.toString(),true);
-			QLog.log(e,true);
+			QLog.log("ETL Exception: " + e.toString());
+			QLog.log(e);
 		}
 	    
 
@@ -330,13 +313,12 @@ public class JchLib_AzureTest {
 		String sas = (String) jsonObj.get("ContainerSAS");
 		
 		String azBlobCnString = "";		
+		
 		azBlobCnString = host + "/" + container;	
 		if(destBlobPath != null) 
 			azBlobCnString = azBlobCnString + "/" + destBlobPath ;
 		azBlobCnString = azBlobCnString	+ "/" + sourceBlobName + "?" + sas;
-		//azBlobCnString = azBlobCnString	+ "/" + sourceBlobName;
-		
-		//System.out.println(azBlobCnString);
+
 		QLog.log(azBlobCnString);
 		
 		String sourceNameUrl = null;
@@ -356,52 +338,52 @@ public class JchLib_AzureTest {
 			HttpURLConnection httpCon = (HttpURLConnection) url.openConnection();
 				
 			httpCon.setDoOutput(true);
-			//httpCon.setRequestProperty("Autorization", sas);
-			
 			httpCon.setRequestProperty("x-ms-copy-source", sourceNameUrl);
 			httpCon.setFixedLengthStreamingMode(0); //response code 411 if not set
 			httpCon.setRequestMethod("PUT");
 			
 			res = new String(httpCon.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+			
+			//Error response if needed
 			//String err = new String(httpCon.getErrorStream().readAllBytes(), StandardCharsets.UTF_8);
 
 			
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-			QLog.log("ETL Exception: " + e.toString(),true);
-			QLog.log(e,true);
+			QLog.log("ETL Exception: " + e.toString());
+			QLog.log(e);
 		}
 		
-					
-		//System.out.println(res);
-		//System.out.println(res.length());
-		QLog.log(res);
+		QLog.log("Azure COPY response: " + res);
 	}
 	
 	
 	/***
 	 * 
-	 * @param azBlobCredsLoc
-	 * @param sourcePath
-	 * @param sourceName
+	 * 
+	 * @param String azBlobCredsLoc:
+	 * @param String sourcePath:
+	 * @param String sourceName:
 	 */
 	public static void putBlobFile(String azBlobCredsLoc, String sourcePath, String sourceName) {
 		putBlobFile(azBlobCredsLoc,sourcePath,sourceName, null);
 		
 	}
 	
+	
 	/***
+	 * Sends file to Azure Blob container via a PUT request
 	 * 
-	 * @param azBlobCredsLoc
-	 * @param sourcePath
-	 * @param sourceName
-	 * @param blobDir
+	 * @param String azBlobCredsLoc:
+	 * @param String sourcePath:
+	 * @param String sourceName:
+	 * @param String blobDir:
 	 */
 	public static void putBlobFile(String azBlobCredsLoc, String sourcePath, String sourceName, String blobDir) {
 	    JSONObject jsonObj = null;
+	    
 		try {
-			
 			
 			String jsonString = Files.readString(Path.of(azBlobCredsLoc));
 			JSONParser jsonParser = new JSONParser();
@@ -410,15 +392,14 @@ public class JchLib_AzureTest {
 		} catch (ParseException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-			QLog.log("ETL Exception: " + e.toString(),true);
-			QLog.log(e,true);
+			QLog.log("ETL Exception: " + e.toString());
+			QLog.log(e);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-			QLog.log("ETL Exception: " + e.toString(),true);
-			QLog.log(e,true);
+			QLog.log("ETL Exception: " + e.toString());
+			QLog.log(e);
 		}
-	    
 	
 		String azBlobCnString = "";
 
@@ -428,7 +409,6 @@ public class JchLib_AzureTest {
 		
 		azBlobCnString = host + "/" + container;
 		
-		//System.out.println("blob dir: " + blobDir);
 		QLog.log("blob dir: " + blobDir);
 		
 		if(blobDir != null) 
@@ -436,10 +416,8 @@ public class JchLib_AzureTest {
 		
 		azBlobCnString = azBlobCnString	+ "/" + sourceName + "?" + sas;
 		
-		//System.out.println(sourcePath + sourceName);
-		QLog.log(sourcePath + sourceName);
-		//System.out.println(azBlobCnString);
-		QLog.log(azBlobCnString);
+		QLog.log("AzureTest: " + sourcePath + sourceName);
+		QLog.log("AzureTest: " + azBlobCnString);
 		
 		
 		URL url;
@@ -451,113 +429,30 @@ public class JchLib_AzureTest {
 			httpCon.setRequestProperty("x-ms-blob-type", "BlockBlob");
 			httpCon.setRequestMethod("PUT");
 			
+			QLog.log("AzureBlob: Put request for " + sourcePath + sourceName);
 			IOUtils.copy(new FileInputStream(sourcePath + sourceName),httpCon.getOutputStream());
+			
+			QLog.log("AzureBlob: Getting Response....");
 			String res = new String(httpCon.getInputStream().readAllBytes(), StandardCharsets.UTF_8) ;
 			
 			//System.out.println(res);
-			QLog.log(res);
+			QLog.log("AzureBlob: Azure COPY response: " + res);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-			QLog.log("ETL Exception: " + e.toString(),true);
-			QLog.log(e,true);
+			QLog.log("ETL Exception: " + e.toString());
+			QLog.log(e);
 		}
-
-	}
-	
-
-	
-	
-	public static void putTest(String azBlobCfsconnectorscuLoc, String sourcePath, String sourceName) {
-		    JSONObject jsonObj = null;
-			try {
-				String jsonString = Files.readString(Path.of(azBlobCfsconnectorscuLoc));
-				JSONParser jsonParser = new JSONParser();
-				jsonObj =  (JSONObject) jsonParser.parse(jsonString);
-				
-				
-				
-			} catch (ParseException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-				QLog.log("ETL Exception: " + e.toString(),true);
-				QLog.log(e,true);
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-				QLog.log("ETL Exception: " + e.toString(),true);
-				QLog.log(e,true);
-			}
-		    
 		
-			String azBlobCnString = "";
-
-			String host = (String) jsonObj.get("HTTPSStorageHost");
-			String container = (String) jsonObj.get("Container");
-			String sas = (String) jsonObj.get("ContainerSAS");
-			
-			azBlobCnString = host + "/" + container + "/" + sourceName + "?" + sas;
-			
-			//System.out.println(sourcePath + sourceName);
-			QLog.log(sourcePath + sourceName);
-			
-			//System.out.println(azBlobCnString);
-			QLog.log(azBlobCnString);
-			
-			URL url;
-			try {
-				url = new URL(azBlobCnString);
-				HttpURLConnection httpCon = (HttpURLConnection) url.openConnection();
-					
-				httpCon.setDoOutput(true);
-				httpCon.setRequestProperty("x-ms-blob-type", "BlockBlob");
-				httpCon.setRequestMethod("PUT");
-				
-				//OutputStreamWriter out = new OutputStreamWriter(httpCon.getOutputStream());
-				//Path source = Paths.get(sourceName);
-				//FileInputStream fis = new FileInputStream(source.toFile());
-				
-				IOUtils.copy(new FileInputStream(sourcePath + sourceName),httpCon.getOutputStream());
-				String res = new String(httpCon.getInputStream().readAllBytes(), StandardCharsets.UTF_8) ;
-				
-				//System.out.println(res);
-				QLog.log(res);
-				
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-				QLog.log("ETL Exception: " + e.toString(),true);
-				QLog.log(e,true);
-			}
-
-			
-			
-			/*test 1
-			out.write("Resource content");
-			*/
-			
-			/*test 2
-            byte[] buffer = new byte[1024];
-            int len;
-            while ((len = fis.read(buffer)) > 0) {
-                //out.write(buffer, 0, len);
-            	out.write(buffer.toString(),0,len);
-            	
-            }
-			*/
-			
-			/*
-			IOUtils.copy(new FileInputStream(sourceName),httpCon.getOutputStream());
-			String res = httpCon.getInputStream().toString();
-			
-			out.close();
-			*/
-			//httpCon.getInputStream();
-	
-
 	}
 	
 	
+	/***
+	 * 
+	 * @param azBlobCredsLoc
+	 * @param sourceName
+	 * @return
+	 */
 	public static String printURL(String azBlobCredsLoc, String sourceName) {
 	    JSONObject jsonObj = null;
 		try {
@@ -565,33 +460,26 @@ public class JchLib_AzureTest {
 			JSONParser jsonParser = new JSONParser();
 			jsonObj =  (JSONObject) jsonParser.parse(jsonString);
 			
-			
-			
 		} catch (ParseException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-			QLog.log("ETL Exception: " + e.toString(),true);
-			QLog.log(e,true);
+			QLog.log("ETL Exception: " + e.toString());
+			QLog.log(e);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-			QLog.log("ETL Exception: " + e.toString(),true);
-			QLog.log(e,true);
+			QLog.log("ETL Exception: " + e.toString());
+			QLog.log(e);
 		}
 	    
-	
 		String azBlobCnString = "";
 
 		String host = (String) jsonObj.get("HTTPSStorageHost");
 		String container = (String) jsonObj.get("Container");
 		String sas = (String) jsonObj.get("ContainerSAS");
 		
-		return azBlobCnString = host + "/" + container + "/" + sourceName + "?" + sas;
+		azBlobCnString = host + "/" + container + "/" + sourceName + "?" + sas;
+		return azBlobCnString;
 	}
-	
-	
-	
-
-
 	
 }

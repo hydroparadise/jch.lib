@@ -1,4 +1,4 @@
-package jch.lib.db.snowflake;
+package jch.lib.test.merge;
 
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -12,7 +12,7 @@ import jch.lib.common.QLog;
  * @author harrisonc
  *
  */
-public	class ExecuteUpdateSnowflakeCommand extends Thread {
+public class ExecuteUpdateSnowflakeCommand extends Thread {
 	public ExecuteUpdateSnowflakeCommand(String sqlCommand, java.sql.Connection sfConnection, long cCnt) {
 		this.sqlCommand = sqlCommand;
 		this.sfConnection = sfConnection;

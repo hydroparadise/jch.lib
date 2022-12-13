@@ -6,8 +6,7 @@ import java.util.ArrayList;
 import javax.sql.RowSet;
 
 import jch.lib.common.QLog;
-import jch.lib.db.sqlserver.SqlServerCnString;
-import jch.lib.db.sqlserver.SqlServerDbScour;
+
 
 public class SnowflakeDiscovery {
 	

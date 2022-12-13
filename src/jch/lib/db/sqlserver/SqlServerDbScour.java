@@ -122,6 +122,7 @@ public class SqlServerDbScour {
 	        	//System.out.println(SqlServerDiscovery.sqlPrint(sqlTableColumns));
 	        	
 		        Statement sta = destCn.createStatement(ResultSet.TYPE_FORWARD_ONLY,ResultSet.CONCUR_READ_ONLY);
+		        QLog.log(sqlTableColumns);
 		        ResultSet resColumns = sta.executeQuery(sqlTableColumns);
 		        
 		        //convert ResultSet to RowSet
@@ -1462,12 +1463,12 @@ public class SqlServerDbScour {
 			   + "	NumericPrecisionRadix,NumericScale,DateTimePrecision,CharacterSetName,CollationCatalog,CollationSchema,  "
 			   + "	CollationName,DomainCatalog,DomainSchema,DomainName,CharacterSetCatalog,CharacterSetSchema,DataTypeCategory,  "
 			   + "	MeasureDate"
-			   + "FROM " + from
-			   + "WHERE TableName = " + SqlServerDiscovery.sqlStringClean(srcTableName)
+			   + " FROM " + from
+			   + " WHERE TableName = " + SqlServerDiscovery.sqlStringClean(srcTableName)
 			   + "  	AND TableSchema = " + SqlServerDiscovery.sqlStringClean(srcSchema)
 			   + "  	AND TableCatalog = " + SqlServerDiscovery.sqlStringClean(srcDatabaseName)
 			   + "  	AND CnString = " + SqlServerDiscovery.sqlStringClean(srcCnString)
-			   + "ORDER BY OrdinalPosition";
+			   + " ORDER BY OrdinalPosition";
 		
 		return output;
 	}
