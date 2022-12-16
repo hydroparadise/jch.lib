@@ -1,6 +1,5 @@
 package jch.lib.db.sqlserver;
 
-import java.sql.*;
 import java.util.ArrayList;
 
 import jch.lib.common.QLog;
@@ -182,7 +181,7 @@ public class SqlServerDiscovery {
 	 */
 	public static String sqlSelectAll(String database, String schema, String table) {
 		String output = null;
-		StringBuilder colList = new StringBuilder();
+		//StringBuilder colList = new StringBuilder();
 		
 		if(database != null && schema != null && table != null)  {
 			

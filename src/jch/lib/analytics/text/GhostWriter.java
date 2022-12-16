@@ -4,17 +4,17 @@ import java.util.TreeMap;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Iterator;
+//import java.util.Iterator;
 import java.util.Map.Entry;
 
 import jch.lib.analytics.text.StringStatEntryList.StringStatEntry;
 import jch.lib.analytics.text.book.SyntaxDatasetEntry;
-import jch.lib.analytics.text.book.bible.BibleSyntaxDatasetEntry;
-import jch.lib.analytics.text.book.bible.KingJamesVersionBible;
+//import jch.lib.analytics.text.book.bible.BibleSyntaxDatasetEntry;
+//import jch.lib.analytics.text.book.bible.KingJamesVersionBible;
 import jch.lib.common.chunk.ChunkList;
 import jch.lib.common.chunk.StringChunkLink;
 import jch.lib.analytics.text.StringArrayStatEntryList.StringArrayStatEntry;
-import jch.lib.analytics.text.StringStatEntryList.SortByFromCount;
+//import jch.lib.analytics.text.StringStatEntryList.SortByFromCount;
 
 
 /***
@@ -118,6 +118,8 @@ public class GhostWriter {
 	
 	/***
 	 * Builds single layer of string stats
+	 * 
+	 * TODO: refactor
 	 * @param lookback
 	 */
 	public void buildStringStats2(int lookback) {
@@ -170,7 +172,7 @@ public class GhostWriter {
 					String from = null;
 					String to = null;
 					
-					//we cant cant split a string where len == 1
+					//we cant split a string where len == 1
 					if(curLen == 1) {
 						from = entry.getKey();
 						to = "";
@@ -555,12 +557,16 @@ public class GhostWriter {
 			gs.add(entry.getMsrPDP());
 		}
 		
-		ArrayList<String> tempKey;
-		ArrayList<String> tempFrom;
+		//ArrayList<String> tempKey;
+		//ArrayList<String> tempFrom;
 		
 		String[] key;
+		
+		@SuppressWarnings("unused")
 		String[] from;
 		String[] prevFrom;
+		
+		@SuppressWarnings("unused")
 		String to;
 		long cnt;
 		double rt = 0.0;
@@ -684,7 +690,7 @@ public class GhostWriter {
 		//how ugly would a double tree map be?
 		TreeMap<String, Long> pt = new TreeMap<String, Long>();
 		TreeMap<String, TreeMap<String, Long>> pts = new TreeMap<String, TreeMap<String, Long>>();
-		StringStatEntryList posToWord = new StringStatEntryList();
+		//StringStatEntryList posToWord = new StringStatEntryList();
 		
 		
 		long cnt = 0;

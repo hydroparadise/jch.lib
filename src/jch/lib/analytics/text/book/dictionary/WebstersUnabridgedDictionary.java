@@ -1,15 +1,15 @@
 package jch.lib.analytics.text.book.dictionary;
 
-import java.io.FileWriter;
+//import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Map;
 import java.util.TreeMap;
 
-import jch.lib.analytics.text.StringStatEntryList;
-import jch.lib.analytics.text.StringStatEntryList.SortByFromCount;
-import jch.lib.analytics.text.book.bible.KingJamesVersionBible;
+//import jch.lib.analytics.text.StringStatEntryList;
+//import jch.lib.analytics.text.StringStatEntryList.SortByFromCount;
+//import jch.lib.analytics.text.book.bible.KingJamesVersionBible;
 import jch.lib.common.chunk.ChunkLink;
 import jch.lib.common.chunk.ChunkList;
 import jch.lib.common.chunk.StringChunkLink;
@@ -68,7 +68,7 @@ public class WebstersUnabridgedDictionary {
 		long extent = 0;
 		long len = 0;
 		int defCount;
-		int state = 0;
+		//int state = 0;
 		int n;
 		
 		int DEFN = -1;
@@ -349,7 +349,7 @@ public class WebstersUnabridgedDictionary {
 		for(int i = 0; i < output.Words.size(); i++) {
 			strTest1.setLength(0);
 			strTest1.append(output.Words.get(i).getCleanRefValue());
-			int cCnt = 1;
+			//int cCnt = 1;
 			if(strTest1.indexOf(";") >= 0) {
 				
 				cl1 = ChunkList.stringToChunks(strTest1.toString());
@@ -380,7 +380,10 @@ public class WebstersUnabridgedDictionary {
 		 */
 		cl1 = null;
 		for(int i = 0; i < output.Words.size(); i ++) {
+			
+			@SuppressWarnings("unused")
 			int posCnt=0;
+			
 			ts1 = output.Words.get(i).getCleanRefValue();
 			System.out.println(ts1);
 			ts1 = output.Words.get(i).WordHeader.getCleanRefValue();

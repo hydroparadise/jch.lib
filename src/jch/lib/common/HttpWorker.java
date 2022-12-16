@@ -19,7 +19,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.DataOutputStream;
-import java.net.HttpURLConnection;
+//import java.net.HttpURLConnection;
 
 import java.net.URL;
 import java.net.URLEncoder;
@@ -37,13 +37,17 @@ public class HttpWorker implements Runnable {
 	private String requestMethod = "GET";
 
 	private int timeOutEncountered = 15 * 1000;
+	@SuppressWarnings("unused")
 	private boolean doOutput;
 	
 	/*
 	 * Although annoying, sometimes we need to get through a proxy
 	 */
+	@SuppressWarnings("unused")
 	private String proxyAddress = "";
+	@SuppressWarnings("unused")
 	private String proxyUsername = "";
+	@SuppressWarnings("unused")
 	private String proxyPassword = "";
 	
 	
@@ -51,7 +55,9 @@ public class HttpWorker implements Runnable {
 	 * Credentials used to login to a give site,
 	 * but this is experimental as it has no guarantees 
 	 */
+	@SuppressWarnings("unused")
 	private String siteUsername = "";
+	@SuppressWarnings("unused")
 	private String sitePassword = "";
 	
 	
@@ -60,6 +66,7 @@ public class HttpWorker implements Runnable {
 	private String response = "";
 	private int responseCode = -1;
 	
+	@SuppressWarnings("unused")
 	private String cookies = "";
 	/**
 	 * Just a constructor
@@ -273,8 +280,5 @@ public class HttpWorker implements Runnable {
 
 	}
 	
-	private void test() {
-		
-	}
-	
+
 }

@@ -5,8 +5,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 
 public class WriteWorker implements Runnable {
-	private BufferedWriter writer = null;
-	private String fileLocation = "";
+
 	
 	public WriteWorker(String fileLocation) {
 		
@@ -30,5 +29,9 @@ public class WriteWorker implements Runnable {
 		// TODO Auto-generated method stub
 
 	}
-
+	
+	@SuppressWarnings("unused")
+	private BufferedWriter writer = null;
+	@SuppressWarnings("unused")
+	private String fileLocation = "";
 }

@@ -2,16 +2,16 @@ package jch.lib.analytics.investment.nyse.xdp;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
-import java.nio.charset.Charset;
+//import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.List;
+//import java.util.List;
 
-import jch.lib.analytics.investment.nyse.xdp.*;
-import jch.lib.common.chunk.ChunkList;
-import jch.lib.common.chunk.StringChunkLink;
+//import jch.lib.analytics.investment.nyse.xdp.*;
+//import jch.lib.common.chunk.ChunkList;
+//import jch.lib.common.chunk.StringChunkLink;
 
 /*
  
@@ -53,8 +53,10 @@ public abstract class TaqMsgFactory {
 	public static ArrayList<TaqMsg> loadFile(String filePath) {
 		ArrayList<TaqMsg> outputList = new ArrayList<TaqMsg>();
 		
-		Path path = new File(filePath).toPath();	    
-	    String mimeType = "";	    
+		Path path = new File(filePath).toPath();	
+		
+	    @SuppressWarnings("unused")
+		String mimeType = "";	    
 	    
 	    BufferedReader reader = null;
 

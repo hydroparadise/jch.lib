@@ -2,7 +2,7 @@ package jch.lib.analytics.text.book.dictionary;
 
 import java.util.Comparator;
 
-import jch.lib.analytics.text.StringStatEntryList.StringStatEntry;
+//import jch.lib.analytics.text.StringStatEntryList.StringStatEntry;
 
 public class WordPartsOfSpeech {
 	

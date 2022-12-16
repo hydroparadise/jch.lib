@@ -3,7 +3,7 @@ package jch.lib.analytics.investment.stock;
 import java.time.LocalTime;
 import java.util.Comparator;
 
-import jch.lib.analytics.text.StringStatEntryList.StringStatEntry;
+//import jch.lib.analytics.text.StringStatEntryList.StringStatEntry;
 
 
 /***

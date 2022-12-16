@@ -30,10 +30,7 @@ import java.util.TreeMap;
  * @version 0.0.0
  */
 public class ChunkList {
-	private long chunkCount = 0;
-	private ChunkLink firstChunk;
-	private ChunkLink lastChunk;
-	private ChunkLink currentChunk;
+
 
 	
 	/**
@@ -159,13 +156,13 @@ public class ChunkList {
 		ArrayList<String> stringList = null;
 		if(input.getFirstChunk() != null && delims.length > 0) {
 	
-			ChunkLink temp1 = input.getFirstChunk();
+			//ChunkLink temp1 = input.getFirstChunk();
 			String tC = null;
 			String tS = null;
 			boolean delimOn = false;
 			long valLen = 0;
 			String tempVal = "";
-			long cnt = 0;
+			//long cnt = 0;
 			long wcnt = 0;
 			
 			do {
@@ -236,7 +233,7 @@ public class ChunkList {
 		TreeMap<String, Long> tmap = null;
 		
 		if(input.getFirstChunk() != null && delims.length > 0) {
-			ChunkLink temp1 = input.getFirstChunk();
+			//ChunkLink temp1 = input.getFirstChunk();
 			tmap = new TreeMap<String, Long>();
 			String tC = null;
 			String tS = null;
@@ -244,6 +241,7 @@ public class ChunkList {
 			long valLen = 0;
 			String tempVal = "";
 			long cnt = 0;
+			@SuppressWarnings("unused")
 			long wcnt = 0;
 			
 			do {
@@ -315,10 +313,11 @@ public class ChunkList {
 		System.out.println("tree mapping...");
 		
 		if(input.getFirstChunk() != null && delims.length > 0) {
-			ChunkLink temp1 = input.getFirstChunk();
+			//ChunkLink temp1 = input.getFirstChunk();
 			tmap = new TreeMap<String, Long>();
 			boolean on1 = true;
 			long vl1 = 0;
+			@SuppressWarnings("unused")
 			long dl1 = 0;
 			
 			boolean on2 = true;
@@ -326,6 +325,7 @@ public class ChunkList {
 			long dl2 = 0;
 			long wordCount;
 			
+			@SuppressWarnings("unused")
 			long wcnt = 0;
 			long cnt = 0;
 			
@@ -455,7 +455,7 @@ public class ChunkList {
 
 
 				ChunkLink temp3 = input.getFirstChunk();
-				ChunkLink temp4 = input.getLastChunk();
+				//ChunkLink temp4 = input.getLastChunk();
 				temp1.setNextChunk(temp3);
 				temp3.setPreviousChunk(temp1);
 				this.lastChunk = input.getLastChunk();
@@ -972,7 +972,7 @@ public class ChunkList {
 				}
 			}
 			else {
-				ChunkLink temp = null;
+				//ChunkLink temp = null;
 				
 				if(currentChunk == firstChunk && 
 				   getCurrentChunk().getNextChunk() != null) {
@@ -988,7 +988,7 @@ public class ChunkList {
 				}
 				else if (getCurrentChunk().getNextChunk() != null &&
 						 getCurrentChunk().getPreviousChunk() != null){
-					ChunkLink tempCurrent = currentChunk;
+					//ChunkLink tempCurrent = currentChunk;
 					ChunkLink tempNext = currentChunk.getNextChunk();
 					ChunkLink tempPrev = currentChunk.getPreviousChunk();
 					
@@ -1444,6 +1444,10 @@ public class ChunkList {
 		return output.toString();
 	}
 	
+	private long chunkCount = 0;
+	private ChunkLink firstChunk;
+	private ChunkLink lastChunk;
+	private ChunkLink currentChunk;
 }
 
 

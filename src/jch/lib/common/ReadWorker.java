@@ -1,12 +1,12 @@
 package jch.lib.common;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
+//import java.io.FileInputStream;
+//import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStream;
+//import java.io.InputStream;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.nio.charset.StandardCharsets;
+//import java.nio.charset.StandardCharsets;
 
 
 /**
@@ -21,6 +21,7 @@ public class ReadWorker implements Runnable {
 	static private int hexBlockWidthMajor = 32;
 	static  int hexBlockSpaceWidth = 1;
 	
+	@SuppressWarnings("unused")
 	private int bufferSize = 1024;
 	private ByteBuffer currentBuffer;
 	private String unknownChar = "."; 				//character to print in place of non-ASCII character
@@ -35,6 +36,7 @@ public class ReadWorker implements Runnable {
 	}
 	
 	
+	@SuppressWarnings("static-access")
 	public int readBytes() throws IOException {
 		return readBytes(this.hexBlockWidthMajor);
 	}

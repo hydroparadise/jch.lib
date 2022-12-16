@@ -1,8 +1,7 @@
 package jch.lib.common.chunk;
 
 public class StringChunk {
-	private String value = "";
-	
+
 	public StringChunk(String newValue) {
 		if(newValue != null) {
 			this.value = newValue;
@@ -21,5 +20,5 @@ public class StringChunk {
 		else return false;
 	}
 
-
+	private String value = "";
 }

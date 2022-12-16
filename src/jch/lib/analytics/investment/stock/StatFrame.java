@@ -5,8 +5,8 @@ import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Collections;
 
-import jch.lib.analytics.text.StringStatEntryList;
-import jch.lib.analytics.text.StringStatEntryList.SortByFromCount;
+//import jch.lib.analytics.text.StringStatEntryList;
+//import jch.lib.analytics.text.StringStatEntryList.SortByFromCount;
 
 
 /***
@@ -143,12 +143,12 @@ public class StatFrame {
 	 */
 	public double calcWtdStdDevVolDurPrice() {
 		double output = 0;
-		double nzWts = 0;  //nonzero weights
+		//double nzWts = 0;  //nonzero weights
 		double wxSum = 0;
 		double wSum = 0;
 		double wt = 0;
 		double wAvg = this.calcWtdStdDevVolDurPrice();
-		long eCnt = this.calcEntryCount();
+		//long eCnt = this.calcEntryCount();
 		StatEntry curEntry = firstEntry;
 		while(curEntry != null  &&
 			  curEntry != lastEntry.getNextEntry()) {

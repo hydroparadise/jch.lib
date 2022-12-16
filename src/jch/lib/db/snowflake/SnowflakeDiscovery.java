@@ -7,7 +7,12 @@ import javax.sql.RowSet;
 
 import jch.lib.common.QLog;
 
-
+/***
+ * A collection of methods that generate SQL statements for execution within a Snowflake environment
+ * 
+ * @author harrisonc
+ *
+ */
 public class SnowflakeDiscovery {
 	
 	
@@ -21,6 +26,7 @@ public class SnowflakeDiscovery {
 		output = "CREATE DATABASE " + databaseName;
 		return output;
 	}
+	
 	
 	/***
 	 * 
@@ -46,6 +52,7 @@ public class SnowflakeDiscovery {
 		
 		return output;
 	}
+	
 	
 	/***
 	 * 
@@ -88,14 +95,13 @@ public class SnowflakeDiscovery {
 	}
 	
 	
-
 	/***
 	 * 
 	 * @param cols
 	 * @param srcDatabase
 	 * @param srcSchema
 	 * @param srcTable
-	 * @return
+	 * @return SQL CREATE TABLE
 	 */
 	public static String sqlCreateTable(RowSet cols, String srcDatabase, String srcSchema, String srcTable) {
 
@@ -213,7 +219,7 @@ public class SnowflakeDiscovery {
 	/***
 	 * 
 	 * @param isNullable
-	 * @return
+	 * @return NULL or NOT NULL
 	 */
 	static String isNullable(String isNullable) {
 		String output = "";
@@ -366,10 +372,11 @@ public class SnowflakeDiscovery {
 	
 	
 	/***
+	 * Snowflake database schema information for a specific table
 	 * 
-	 * @param database
-	 * @param schema
-	 * @param table
+	 * @param database Remote Snowflake database name (ei, "DatabaseName")
+	 * @param schema Remote Snowflake schema name to compare columns(ie,"DBO")
+	 * @param table Remote Snowflake table name to compare columns (ie,"ACCOUNT")
 	 * @return
 	 */
 	public static String sqlDatabaseTableInformationShema(String database, String schema, String table) {

@@ -14,10 +14,5 @@ public class Main {
 		
 		QLog.log("That's all folks!");
 	}
-	
-	
-	
+
 }
-
-
-

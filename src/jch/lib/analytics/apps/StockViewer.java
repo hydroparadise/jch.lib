@@ -2,7 +2,7 @@ package jch.lib.analytics.apps;
 import java.time.LocalTime;
 import java.util.ArrayList;
 
-import javafx.application.Application;
+//import javafx.application.Application;
 import javafx.stage.Stage;
 import jch.lib.analytics.investment.nyse.xdp.TaqMsg;
 import jch.lib.analytics.investment.nyse.xdp.TaqMsgFactory;
@@ -15,11 +15,11 @@ import javafx.scene.Scene;
 import javafx.scene.chart.*;
 import javafx.scene.control.Label;
 import javafx.scene.layout.StackPane;
-import javafx.scene.shape.Rectangle;
-import javafx.scene.control.*; 
-import javafx.scene.layout.*; 
-import javafx.event.ActionEvent; 
-import javafx.event.EventHandler; 
+//import javafx.scene.shape.Rectangle;
+//import javafx.scene.control.*; 
+//import javafx.scene.layout.*; 
+//import javafx.event.ActionEvent; 
+//import javafx.event.EventHandler; 
 import javafx.collections.*;
 import javafx.scene.chart.XYChart.Data;
 import javafx.scene.chart.XYChart.Series;
@@ -63,6 +63,7 @@ public class StockViewer extends javafx.application.Application{
 	
 	//https://www.developer.com/java/data/working-with-javafx-chart-apis.html
 	//http://myjavafx.blogspot.com/2013/09/javafx-charts-display-date-values-on.html
+	@SuppressWarnings("unchecked")
 	XYChart<NumberAxis, NumberAxis> createScatterChart() {
 		
 		
@@ -123,6 +124,7 @@ public class StockViewer extends javafx.application.Application{
 				aalStats.calcMaxPrice() + .01,
 				.05);
 		
+		@SuppressWarnings("rawtypes")
 		LineChart sc = new LineChart(xAxis, yAxis);
 		
 		sc.setData(data);
@@ -135,6 +137,8 @@ public class StockViewer extends javafx.application.Application{
 	Label tLabel = null;
 	StackPane tStackPane = null;
 	Scene tScene = null;
+	
+	@SuppressWarnings("rawtypes")
 	ScatterChart tChart = null;
 
 }

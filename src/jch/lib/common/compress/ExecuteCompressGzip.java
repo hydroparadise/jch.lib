@@ -11,10 +11,10 @@ import java.util.zip.GZIPOutputStream;
 import jch.lib.common.QLog;
 
 /***
-	 * Asynchronously compresses file
-	 * @author harrisonc
-	 *
-	 */
+ * Asynchronously compresses files in GZIP format
+ * @author harrisonc
+ *
+ */
 public class ExecuteCompressGzip extends Thread {
 	public ExecuteCompressGzip(String sourceFile, String targetFile, boolean deleteSource) {
 		this.sourceFile = sourceFile;
@@ -29,7 +29,7 @@ public class ExecuteCompressGzip extends Thread {
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-			QLog.log("ETL Exception: " + e.toString(),true);
+			QLog.log("ExecuteCompressGzip Exception: " + e.toString(),true);
 			QLog.log(e,true);
 		}
 	}
@@ -47,11 +47,10 @@ public class ExecuteCompressGzip extends Thread {
         Path source = Paths.get(sourceName);
         Path target = Paths.get(targetName);
     	
-        try (GZIPOutputStream gos = new GZIPOutputStream(
-                                      new FileOutputStream(target.toFile()));
+        try (GZIPOutputStream gos = new GZIPOutputStream(new FileOutputStream(target.toFile()));
              FileInputStream fis = new FileInputStream(source.toFile())) {
 
-            // copy file
+            //copy file
             byte[] buffer = new byte[1024];
             int len;
             while ((len = fis.read(buffer)) > 0) {

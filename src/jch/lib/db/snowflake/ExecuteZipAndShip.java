@@ -4,20 +4,25 @@ import java.io.IOException;
 import java.sql.SQLException;
 import java.sql.Statement;
 
-
+import jch.lib.cloud.azure.AzureBlob;
 import jch.lib.common.QLog;
-import jch.lib.test.JchLib_AzureTest;
 import jch.lib.common.compress.ExecuteCompressGzip;
 
-
-public class ExecuteZipAndShip extends Thread {
+/***
+ * Takes a local file and will GZIP and then to send to an Azure Blob conatainer 
+ * 
+ * @author harrisonc
+ * @TODO: Abstract away from Azure specific and make more abstract to other cloud platforms
+ */
+class ExecuteZipAndShip extends Thread {
 		/***
-		 * Zips and sends to Azure Only
-		 * @param filePath
-		 * @param sourceFileName
-		 * @param targetFileName
-		 * @param deleteSource
-		 * @param azBlobCredLoc
+		 * Constructor: Zips and sends to Azure Only
+		 * 
+		 * @param String filePath:
+		 * @param String sourceFileName:
+		 * @param String targetFileName:
+		 * @param boolean deleteSource:
+		 * @param String azBlobCredLoc:
 		 */
 		public ExecuteZipAndShip(
 				String filePath, String sourceFileName, String targetFileName, boolean deleteSource, 
@@ -29,20 +34,22 @@ public class ExecuteZipAndShip extends Thread {
 			this.filePath = filePath;
 		}
 		
+		
 		/***
-		 * Zips and sends to azure and snowflake consumes from azur
-		 * @param sfCredsLoc
-		 * @param sfDatabase
-		 * @param sfSchema
-		 * @param sfTable
-		 * @param filePath
-		 * @param sourceFileName
-		 * @param targetFileName
-		 * @param deleteSource
-		 * @param azBlobCredLoc
-		 * @param azBlobDir
-		 * @param sfStage
-		 * @param sfForceLoad
+		 * Constructor: Zips and sends to azure and Snowflake consumes from Azure
+		 * 
+		 * @param String sfCredsLoc:
+		 * @param String sfDatabase:
+		 * @param String sfSchema:
+		 * @param String sfTable:
+		 * @param String filePath:
+		 * @param String sourceFileName:
+		 * @param String targetFileName:
+		 * @param boolean deleteSource:
+		 * @param String azBlobCredLoc:
+		 * @param String azBlobDir:
+		 * @param String sfStage:
+		 * @param boolean sfForceLoad:
 		 */
 		public ExecuteZipAndShip(
 				String sfCredsLoc, String sfDatabase, String sfSchema, String sfTable,  
@@ -79,21 +86,21 @@ public class ExecuteZipAndShip extends Thread {
 				
 				if(this.azBlobCredLoc != null) {
 					
-					
-					QLog.log("azBlobCredLoc: " + this.azBlobCredLoc);
-					QLog.log("filePath: " + this.filePath);
-					QLog.log("targetFileName: " + this.targetFileName);
-					QLog.log("azBlobDir: " + this.azBlobDir);
+					//for debugging
+					QLog.log("ExecuteZipAndShip azBlobCredLoc: " + this.azBlobCredLoc);
+					QLog.log("ExecuteZipAndShip filePath: " + this.filePath);
+					QLog.log("ExecuteZipAndShip targetFileName: " + this.targetFileName);
+					QLog.log("ExecuteZipAndShip azBlobDir: " + this.azBlobDir);
 					
 					//if Azure blob directory hasn't been specified, send to container root
 					if(this.azBlobDir != null && this.azBlobDir != "")
-						JchLib_AzureTest.putBlobFile(
+						AzureBlob.putBlobFile(
 								this.azBlobCredLoc, 
 								this.filePath, 
 								this.targetFileName, 
 								this.azBlobDir);
 					else
-						JchLib_AzureTest.putBlobFile(
+						AzureBlob.putBlobFile(
 								this.azBlobCredLoc, 
 								this.filePath, 
 								this.targetFileName);
@@ -109,28 +116,27 @@ public class ExecuteZipAndShip extends Thread {
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
-				QLog.log("ETL Exception: " + e.toString(),true);
-				QLog.log(e,true);
+				QLog.log("ETL Exception: " + e.toString());
+				QLog.log(e);
 			}
 		}
 		
 
-	    /***
-	     * 
-	     * @param azBlobCredsLoc
-	     * @param blobFileName
-	     * @param sfCredsLoc
-	     * @param sfDatabase
-	     * @param sfSchema
-	     * @param sfTable
-	     * @param sfStage
-	     * @param valueLimiterCol
-	     */
+		/***
+		 * Copy from Azure blob stage file into a Snowflake table.
+		 * 
+		 * @param String azBlobCredsLoc:
+		 * @param String azBlobFileName:
+		 * @param String azBlobDir:
+		 * @param String sfCredsLoc:
+		 * @param String sfDatabase:
+		 * @param String sfSchema:
+		 * @param String sfTable:
+		 * @param String sfStage:
+		 * @param boolean forceLoad:
+		 */
 	    public static void sfCopyFromAzureBlob(String azBlobCredsLoc, String azBlobFileName,  String azBlobDir,
 	    		String sfCredsLoc, String sfDatabase, String sfSchema, String sfTable, String sfStage, boolean forceLoad) {
-	    	
-	    	
-	    	
 	    	
 			String sql = SnowflakeDiscovery.sqlCopyFromStage(azBlobFileName, azBlobDir, sfSchema, sfTable, sfStage, forceLoad);
 			
@@ -139,18 +145,19 @@ public class ExecuteZipAndShip extends Thread {
 			try {
 				
 				java.sql.Connection sfCn = null;
+				
+				//Connection schema context must be set to "PUBLIC" to access Snowflake stage object
 				sfCn = SnowflakeCnString.getConnection(sfCredsLoc, sfDatabase, "PUBLIC");
 				Statement sfStatement = sfCn.createStatement();
 				
-
 				sfStatement.execute(sql);
 				sfStatement.close();
 				
 			} catch (SQLException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
-				QLog.log("ETL Exception: " + e.toString(),true);
-				QLog.log(e,true);
+				QLog.log("ETL Exception: " + e.toString());
+				QLog.log(e);
 			}
 	    }
 	    

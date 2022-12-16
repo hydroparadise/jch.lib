@@ -1,4 +1,4 @@
-package jch.lib.test.merge;
+package jch.lib.test;
 
 import java.io.File;
 import java.io.IOException;
@@ -17,8 +17,6 @@ import org.json.simple.parser.*;
 
 import jch.lib.common.QLog;
 import jch.lib.db.snowflake.SnowflakeDbScour;
-import jch.lib.test.JchLib_AzureTest;
-import jch.lib.test.JchLib_SnowflakeTest;
 
 
 /***
@@ -26,8 +24,15 @@ import jch.lib.test.JchLib_SnowflakeTest;
  * @author harrisonc
  *
  */
-public class FmcuSnowflakeEtl {
+public class JchLib_SnowflakeEtlTest {
 	
+	/***
+	 * 
+	 * @param args
+	 * 
+	 * .bat file example
+	 * "c:\Java\jdk-11.0.14.1+1-jre\bin\java" -Xmx13048M -Dfile.encoding=Cp1252 -classpath "T:\Snowflake\Firstmark Snowflake ETL\bin";"T:\Snowflake\Firstmark Snowflake ETL\dependencies\*";"T:\Snowflake\Firstmark Snowflake ETL\dependencies\SnowFlake v3.13.12\*";"T:\Snowflake\Firstmark Snowflake ETL\dependencies\sqljdbc_9.4\enu\*";"T:\Snowflake\Firstmark Snowflake ETL\dependencies\google-api-client-assembly-1.30.2-1.30.2\google-api-java-client\libs\*" org.firstmarkcu.snowflakeetl.Main -j "T:\Snowflake\Config\fmcu_snowflake_etl.json"
+	 */
 	public static void processArgs(String[] args) {
 		
 		//no arguments provided
@@ -38,7 +43,7 @@ public class FmcuSnowflakeEtl {
 		//1 argument provided: assumed file path to JSON config file
 		if(args.length == 1) {
 			//path to JSON config file
-			FmcuSnowflakeEtl.runJsonFullEtl(args[0]);
+			JchLib_SnowflakeEtlTest.runJsonFullEtl(args[0]);
 		}
 		else
 		//multiple arguments provided 
@@ -49,14 +54,14 @@ public class FmcuSnowflakeEtl {
 			//run JSON config file
 			if(args[argPos].compareTo("-j") == 0) {
 				//path to JSON config file
-				FmcuSnowflakeEtl.runJsonFullEtl(args[++argPos]);
+				JchLib_SnowflakeEtlTest.runJsonFullEtl(args[++argPos]);
 
 			}
 			
 			//read JSON config file
 			if(args[argPos].compareTo("-r") == 0) {
 				//path to JSON config file
-				FmcuSnowflakeEtl.readJsonFullEtl(args[++argPos]);
+				JchLib_SnowflakeEtlTest.readJsonFullEtl(args[++argPos]);
 
 			}
 		}
@@ -505,7 +510,7 @@ public class FmcuSnowflakeEtl {
 		extractDir = baseDir + "ARCUSYM000dbo\\" + valueLimit + "\\";
 		new File(extractDir).mkdirs();
 		
-		
+		/*TODO: the following method shows an error
 		SnowflakeDbScour.writeCsvFromSqlServerAllTablesValueLimit(
 				extractDir,								//filePath: Output file location. Include last slash (ie, "C:\\temp\\" which becomes "C:\temp\)
 				1000000000L,							//maxFileSize: Max file size threshold (ie, 30000 "means 30Kb" or 4000000000L "means 4Gb") 
@@ -525,7 +530,7 @@ public class FmcuSnowflakeEtl {
 				"H:\\azure_blob_arcusym000dbo.json", 	//String azCredsLoc: Location of the Azure credentials of an Azure Blob Container instance (ie, "C\\azure_creds.json")
 				valueLimit,								//String azBlobDir: A directory to store extracts for an Azure Blob Container instance (ie, "init" or "20220203" or "test/2020203")
 				"@stage_arcusym000dbo_dev2"); 			//String sfStage: The name of the defined stage in Snowflake to consume from Azure (ie, "@stage_azure")
-
+		*/
 			 		 
 		
 	}
@@ -973,9 +978,9 @@ public class FmcuSnowflakeEtl {
 	 * 
 	 */
 	public static void runFullEtl_Test1() {
-		FmcuSnowflakeEtl.genSfExtractDiffShip_ARCUSYM000dbo();
-		FmcuSnowflakeEtl.genSfExtractDiffShip_ARCUSYM000arcu();
-		FmcuSnowflakeEtl.genSfExtractDiffShip_CfsConnectorsCu();
+		JchLib_SnowflakeEtlTest.genSfExtractDiffShip_ARCUSYM000dbo();
+		JchLib_SnowflakeEtlTest.genSfExtractDiffShip_ARCUSYM000arcu();
+		JchLib_SnowflakeEtlTest.genSfExtractDiffShip_CfsConnectorsCu();
 	}
 	
 	
@@ -1594,25 +1599,4 @@ public class FmcuSnowflakeEtl {
 		}
 	}
 
-	
-	//main
-	
-	//java.sql.Connection cn = null;
-	//Statement statement = cn.createStatement();
-	
-	//Pass
-	//cn = JchLib_SnowflakeTest.getConnection("H:\\snowflake_creds.json", "FMCUANALYTICSTEST", "dbo");
-	
-	//Pass
-	//cn = JchLib_SnowflakeTest.getConnection("H:\\snowflake_creds.json", "FMCUANALYTICSTEST");
-	//pass
-	//statement.executeUpdate("CREATE SCHEMA arcu");
-	//Pass
-	//statement.executeUpdate("create or replace table arcu.demo(C1 STRING)");
-	
-	//Pass
-	//cn = JchLib_SnowflakeTest.getConnection("H:\\snowflake_creds.json");
-	//Pass
-	//statement.executeUpdate("CREATE DATABASE test");
-	
 }
