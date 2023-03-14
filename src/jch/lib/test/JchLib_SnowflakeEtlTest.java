@@ -12,11 +12,17 @@ import java.util.TreeMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 
+import javax.sql.RowSet;
+
 import org.json.simple.*;
 import org.json.simple.parser.*;
 
 import jch.lib.common.QLog;
+import jch.lib.db.snowflake.SnowflakeCnString;
 import jch.lib.db.snowflake.SnowflakeDbScour;
+import jch.lib.db.snowflake.SnowflakeDiscovery;
+import jch.lib.db.sqlserver.SqlServerCnString;
+import jch.lib.db.sqlserver.SqlServerDbScour;
 
 
 /***
@@ -25,6 +31,101 @@ import jch.lib.db.snowflake.SnowflakeDbScour;
  *
  */
 public class JchLib_SnowflakeEtlTest {
+	
+	/***
+	 * Used to fill in specific value limited portions of a table
+	 * 
+	 * @param tableName
+	 * @param valueLimiterCol
+	 * @param valueLimit
+	 */
+	public static void valLimitRun_FMCUAnalyticsCu(String tableName, String valueLimiterCol, String valueLimit) {
+		
+
+		
+		String etlTitle = "FMCU ARCU to Snowflake ETL Value Limit Run";
+		String baseDir = "C:\\temp\\Snowflake\\Extracts\\";
+		
+		String qlogBaseFileName = "FMCU_Snowflake_ValLimit_Log_";
+		int qlogCharLimit = 2000;
+		boolean qlogPrintConsole = true;
+		
+		String etlName = "FMCUAnalyticscu";
+		//String etlMethod = null;
+		long maxFileSize = 1000000000;
+		String srcSqlHost = "arcu.firstmarkcu.org";
+		//String srcDatabase = "FMCUAnalytics";
+		//String srcSchema = "cu";
+		String sfCredsLoc = "C:\\temp\\Snowflake\\Config\\snowflake_creds.json";
+		//String sfDatabase = "FMCUAnalytics";
+		//String sfSchema = "cu";
+		String rowDelim = "\r\n";
+		String colDelim = "~";
+		String textQualifier = "\"";
+		String escapeChar = "\\";
+		//ArrayList<String> timeDimensions = new ArrayList<String>(Arrays.asList("POSTDATE", "PROCESSDATE", "DATE"));
+		//boolean strictPK = false;
+		boolean optionalFull = true;
+		String azCredsLoc = "C:\\temp\\Snowflake\\Config\\azure_blob_fmcuanalyticscu.json";
+		
+		String sfStage = "@stage_fmcuanalyticscu_dev";
+		
+		String databaseName = "FMCUAnalytics";
+		String schemaName = "cu";
+		String filePath = baseDir + etlName + "\\" + valueLimit + "\\";
+		String fileName = schemaName + "." + tableName;
+		
+		//-----------------------------------------------------------------------------------------------------------
+		//set up logging
+		QLog.filePath = baseDir;
+		QLog.baseFileName = qlogBaseFileName + valueLimit;
+		QLog.charLimit = qlogCharLimit;
+		QLog.printConsole = qlogPrintConsole;
+		
+		QLog.log("Starting " + etlTitle);
+		QLog.log("valueLimit: " + valueLimit);
+		
+		//-----------------------------------------------------------------------------------------------------------
+		//Check Table and Columns
+		
+		//establish an Integrated Security based SQL Server Connection to source SQL Server
+		SqlServerCnString srcCnString = new SqlServerCnString();
+		srcCnString.setCnStringIntegratedSecurity(srcSqlHost, null , databaseName);
+		
+		QLog.log("Cn String: " + srcCnString.getCnString());
+		RowSet ssCols = SqlServerDbScour.getSrcInformationSchema(
+				srcCnString.getCnString(),databaseName,schemaName,tableName);
+		
+		TreeMap<String, String> datatypeCategories = SnowflakeDbScour.setDataTypeCategories(ssCols);	
+		String dataTypeCat = datatypeCategories.get(valueLimiterCol.toUpperCase());
+		
+		QLog.log(dataTypeCat);
+		
+				
+		String azBlobDir = SnowflakeDbScour.fileNamePrep(valueLimit,datatypeCategories.get(valueLimiterCol.toUpperCase()));
+		
+		
+		//check if tables match
+		String maxFromTable = SnowflakeDbScour.checkTableAndCols(
+				srcSqlHost,	databaseName, schemaName,	tableName,		
+				sfCredsLoc, databaseName,	schemaName, tableName, 
+				valueLimiterCol, dataTypeCat, true);
+		
+		//Write SQL to file for support purposes							
+		SnowflakeDbScour.writeSqlCreateTable(filePath, srcSqlHost, databaseName, schemaName, tableName, azCredsLoc, azBlobDir);
+		
+		//-----------------------------------------------------------------------------------------------------------
+		//Run
+		SnowflakeDbScour.writeCsvFromSqlServerTableValueLimit(
+				filePath, fileName, maxFileSize,
+				srcSqlHost, databaseName, schemaName, tableName,
+				sfCredsLoc, databaseName, schemaName, maxFromTable,
+				rowDelim, colDelim, textQualifier, escapeChar,
+				valueLimiterCol, valueLimit, 
+				azCredsLoc, azBlobDir, sfStage, optionalFull);
+		
+		
+	}
 	
 	/***
 	 * 

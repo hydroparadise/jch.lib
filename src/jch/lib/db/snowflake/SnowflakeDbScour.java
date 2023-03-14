@@ -180,10 +180,10 @@ import jch.lib.cloud.azure.*;
  *{
  *	"user":"ARCUETL", 
  *	"password":"SECRET", 
- *	"account":"pg73514", 
+ *	"account":"pg75894", 
  *	"db":"ANALYTICSTEST", 
  *	"schema":"cu"
- *	"cnstring":"jdbc:snowflake://pg73514.east-us-2.azure.snowflakecomputing.com"
+ *	"cnstring":"jdbc:snowflake://pg75894.east-us-2.azure.snowflakecomputing.com"
  *}
  *</file>}  
  *
@@ -1135,7 +1135,7 @@ public class SnowflakeDbScour {
 	 * @param azCredsLoc Location of the Azure credentials of an Azure Blob Container instance (ie, "C\\azure_creds.json")
 	 * @param azBlobDir A directory to store extracts for an Azure Blob Container instance (ie, "init" or "20220203" or "test/2020203")
 	 * @param sfStage The name of the defined stage in Snowflake to consume from Azure (ie, "@stage_azure")
-	 * @param sfForceReload Performs delete on full table if true
+	 * @param sfForceReload Performs delete based on valueLimit value
 	 */
 	static public void writeCsvFromSqlServerTableValueLimit(String filePath, String fileName, long maxFileSize,
 							 String srcSqlHost, String srcDatabase, String srcSchema, String srcTable,
@@ -1197,7 +1197,7 @@ public class SnowflakeDbScour {
         //if force load is true, delete current table segment to be be reloaded
         if(sfForceReload == true) {
         	QLog.log("Deleting from " + SnowflakeDiscovery.asmSfObj(sfDatabase, sfSchema, sfTable) 
-        							  + " @ " + valueLimiterCol +"=" +valueLimit);
+        							  + " @ " + valueLimiterCol + "=" + valueLimit);
         	sfDeleteFrom(sfCredsLoc, sfDatabase, sfSchema, sfTable, valueLimiterCol, valueLimit,
         			 datatypeCategories.get(valueLimiterCol.toUpperCase()));
         }
