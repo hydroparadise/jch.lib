@@ -2739,7 +2739,6 @@ public class SnowflakeDbScour {
 		return SnowflakeDiscovery.sqlCreateTable(cols, srcDatabase,  srcSchema,  srcTable);
 	}
 	
-		
 	static int API_PACK_SIZE = 1900000;
 	static int MAX_CONCURRENCY_LEVEL = 4;
 	static int SHOW_ROW_RECORD_COUNT = 50000;

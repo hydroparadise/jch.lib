@@ -2,10 +2,20 @@ package jch.lib.test;
 
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.util.Properties;
+
+import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
+import org.json.simple.parser.ParseException;
 
 import jch.lib.analytics.text.book.bible.Bible;
 import jch.lib.analytics.text.book.bible.BibleSyntaxDatasetEntry;
 import jch.lib.analytics.text.book.bible.KingJamesVersionBible;
+import jch.lib.common.QLog;
 import jch.lib.common.chunk.ChunkList;
 
 /*
@@ -28,7 +38,7 @@ import com.google.cloud.language.v1.Document.Type;
 */
 
 
- import com.google.cloud.language.v1.AnalyzeSyntaxRequest;
+import com.google.cloud.language.v1.AnalyzeSyntaxRequest;
 //Imports the Google Cloud client library
 import com.google.cloud.language.v1.Document;
 import com.google.cloud.language.v1.Document.Type;
@@ -44,6 +54,11 @@ import javafx.application.Application;
 
 import com.google.cloud.language.v1.AnalyzeSyntaxResponse;
 
+//import com.google.cloud.bigquery.BigQuery;
+//import com.google.cloud.bigquery.BigQueryException;
+//import com.google.cloud.bigquery.BigQueryOptions;
+//import com.google.cloud.bigquery.QueryJobConfiguration;
+//import com.google.cloud.bigquery.TableResult;
 
 
 public class JchLib_GoogleTest {
@@ -53,7 +68,50 @@ public class JchLib_GoogleTest {
 		int i;
 	}
 
+	
+	/***
+	 * Sample for reading json file for creds
+	 * @param loc
+	 */
+	public static void gcloudReadCreds(String credentialPath) {
+	    //use JSON object to pull sensitive information instead of hardcoding
+	    JSONObject jsonObj = null;
+		try {
+			String jsonString = Files.readString(Path.of(credentialPath));
+			JSONParser jsonParser = new JSONParser();
+			jsonObj =  (JSONObject) jsonParser.parse(jsonString);
+			
+		} catch (ParseException e) {
+			e.printStackTrace();
+			QLog.log(e.toString());
+			QLog.log(e);
+		} catch (IOException e) {
+			e.printStackTrace();
+			QLog.log(e.toString());
+			QLog.log(e);
+		}
+	    
+		QLog.log("test read:   "+ (String) jsonObj.get("type"));
+		
+		
+	}
+	
+/*
 
+{
+  "type": "service_account",
+  "project_id": "",
+  "private_key_id": "",
+  "private_key": "",
+  "client_email": "",
+  "client_id": "",
+  "auth_uri": "",
+  "token_uri": "",
+  "auth_provider_x509_cert_url": "",
+  "client_x509_cert_url": ""
+}
+*/
+	
 	
 	public static void gcloudNaturalLanguage_example4() throws IOException {
 		// Instantiates a client
