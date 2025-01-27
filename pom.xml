@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>jch</groupId>
+    <artifactId>jch-lib-build</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <name>jch.build</name>
+    <description>A test bed of utilities in Java</description>
+    <packaging>pom</packaging>
+    <properties>
+        <java.version>17</java.version>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compliler.target>17</maven.compliler.target>
+    </properties>
+    <dependencies>
+        <dependency>
+            <groupId>jch</groupId>
+            <artifactId>jch-lib-v2</artifactId>
+            <version>0.2.0-SNAPSHOT</version>
+        </dependency>
+    </dependencies>
+    <modules>
+        <module>lib/v2/pom.xml</module>
+        <module>app/webstack/pom.xml</module>
+    </modules>
+</project>

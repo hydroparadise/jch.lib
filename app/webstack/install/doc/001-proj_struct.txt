@@ -1,0 +1,95 @@
+A typical modern Angular app follows the recommended folder structure provided by the Angular team. Here's an example of a standard 
+file and folder structure for an Angular application:
+
+```markdown
+- src/
+  - assets/                # Static assets like images, fonts, etc.
+  - favicon.ico            # Favicon for your website
+  - index.html             # The main HTML page for your app
+  - i18n/                  # Internationalization (i18n) files if needed
+    - en-US.json           # English language file
+    - fr-FR.json           # French language file
+    ...
+  - modules/               # Contain feature modules
+    - module-a/
+      - module-a.module.ts
+      - module-a-routing.module.ts
+      - components/
+        - component-a.component.ts
+        - component-a.component.html
+        - component-a.component.css
+      - services/
+        - service-a.service.ts
+      ...
+    - module-b/
+      ...
+  - app-routing.module.ts # Routing for the entire application
+  - AppComponent.html     # The main HTML template for the AppComponent
+  - AppComponent.css       # CSS styles for the AppComponent
+  - AppComponent.ts       # TypeScript code for the AppComponent
+  - environment/           # Environment files for different deployment stages (e.g., production, development)
+    - environment.prod.ts
+    - environment.ts
+  - main.ts                # Bootstrap and boot your Angular app
+  - polyfills.ts           # Polyfills for older browsers compatibility
+  - styles.css             # Global styles for the entire application
+  - tsconfig.app.json      # TypeScript configuration file specific to the application code
+  - tsconfig.spec.json     # TypeScript configuration file for test code
+  - typings.d.ts            # Declaration merging
+  - angular.json           # Angular workspace configuration
+  - karma.conf.js          # Karma configuration for unit tests
+  - package.json           # Project dependencies and scripts
+  - tsconfig.json          # Default TypeScript configuration shared by all configurations
+  - README.md              # Documentation file
+```
+This structure is a guideline, and you can adjust it based on your project requirements. Here's an explanation of the main folders:
+
+* `src/assets`: Stores static assets like images, fonts, icons, and other files that will be served directly to the browser.
+* `src/favicon.ico`: The favicon for your website.
+* `src/index.html`: The main HTML page for your app.
+* `src/i18n`: For internationalization (i18n) if needed. It contains language-specific JSON files for translations.
+* `src/modules`: Contains feature modules, each with its own components, services, and other Angular constructs.
+* `src/app-routing.module.ts`: Routing configuration for the entire application.
+* `src/AppComponent.*`: The main AppComponent HTML template, CSS styles, and TypeScript code.
+* `src/environment`: Environment files for different deployment stages like production, development, etc.
+* `src/main.ts`: Boots up your Angular app.
+* `src/polyfills.ts`: Polyfills required for older browser compatibility.
+* `src/styles.css`: Global styles for the entire application.
+* TypeScript configuration files: `tsconfig.app.json`, `tsconfig.spec.json`, and `tsconfig.json`.
+* Typings.d.ts: Declaration merging file, which can be used to merge global type definitions.
+* angular.json: Angular workspace configuration file.
+* karma.conf.js: Karma configuration for unit tests.
+* package.json: Contains project dependencies, scripts, and other metadata.
+* README.md: Documentation for your project.
+
+
+Graph (LGraph)
+ - The core data structure that holds nodes and their connections
+ - Manages the logical flow and relationships between nodes
+ - Think of it as the "model" or data layer
+
+GraphEditor (Component)
+ - Angular component that coordinates between UI and graph logic
+ - Handles lifecycle events and user interactions
+ - Think of it as the "controller" or coordinator
+
+Canvas (LGraphCanvas)
+ - The visual rendering layer that draws the graph
+ - Handles visual aspects like positioning, drawing, and scaling
+ - Think of it as the "view" or presentation layer
+The relationship flows:
+ GraphEditor → Graph → Canvas
+
+GraphEditor manages both Graph and Canvas
+Graph holds the data
+Canvas displays it.
+
+The Graph (LGraph) handles services we define. It's the core data structure that manages the logical
+relationships and data flow between nodes, including any custom services we create. The GraphEditor
+component and Canvas are more about presentation and coordination, while the Graph itself maintains
+the service connections and execution.
+
+This is why in the code we see the GraphService being injected into the GraphEditor component - the
+Graph is where our actual service logic and connections live, while the component just coordinates
+the display and interaction with those services.
+

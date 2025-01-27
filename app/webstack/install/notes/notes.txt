@@ -1,0 +1,652 @@
+
+Author: James Chad Harrison
+Project Name: AC Data Flow
+An Angular App that will serve the following components as primary UI:  litegraph.js
+
+
+
+
+Angular single page rendered in client Browser
+        Style: CSS
+        SSR: False
+        SSG: False
+Angular will be used for data binding.
+
+Use default litegraph.js configuration and styling
+The angular app will use HTML and Styles from litegraph.js
+
+litegraph.js uses nodes, the name of all nodes will be called Endpoints
+The creation and registration of nodes will be modeled from Litegaph.js
+Custom litegraph.js nodes will be added at a later time.
+
+
+
+Endpoint Types:
+    Remote
+    Local
+
+Remote Endpoints:
+    FTP protocols (FTP, SFTP, FTPS)
+    Cloud Services:
+        Google Cloud (BigQuery, GCS)
+        AWS (S3)
+        Snowflake
+    SQL Databases:
+    Microsoft SQL Server
+
+Local Endpoints:
+    File Operations:
+        Encryption (RSA, PGP, DES, AES)
+        Compression (GZip, ZIP, TAR, 7zip)
+        Data Formats (CSV, JSON, XML)
+        Filesystem Operations
+
+Common Operations Across Services:
+    SQL Operations
+    Schema Management
+    Import/Export
+    Data Preview
+    Catalog Browsing
+
+The structure suggests a modular approach where similar operations are grouped together, making it easy to:
+
+Add new cloud providers
+Extend functionality for existing services
+Maintain consistent interfaces across similar node types
+Share common functionality between nodes
+
+    Non-Local endpoints will require authentication components
+    Nodes can be connected to represent data transfer, the type of data transfer depends on the nodes connected
+        Examples
+        BigQuery -> BigQuery: Big Query Table to Table based on SQL input within source node
+        BigQuery -> GCS Bucket: Export table as CSV to given bucket endpoint with export options (field delimiter, compress shards)
+        BigQuery -> AwsBucket: Export table as CSV, but will require the additional endpoints to be traversed (BigQuery -> GCS Bucket -> Local System File -> Aws Bucket)
+        BigQuery -> SFTP: Export table as CSV, but will require the additional
+
+    Suggest additional steps needed to bridge the gap between endpoint types.
+
+    All endpoints will be able to list its containing items, and treats the elements as a single unit for transfer
+        Local File Endpoint lists files and folder based on path given with regex filter to list and target only desired elements)
+        GCS bucket to list objects based on a given bucket name and path
+        AWS bucket to list objects based on a give bucket name and path
+        SFTP
+
+    Datasets will often be very large files to need to be transferred so will need to provide some sort of progress indicator for each node type depending on the transfer type
+
+
+
+
+App Structure
+    Testing Framework
+    Utility Layer
+    Logging Aspect Layer
+    Service Layer
+    Endpoint Layer
+    Link Layer
+    Queue Layer
+    Reporting Layer
+    REST API Layer
+    UI Layer
+
+Each Layer is Dependent on All Before It
+    Utility Layer depends on Testing Framework
+    Logging Aspect Layer depends on Utility Layer and Testing Framework
+    Service Layer depends on Utility, Testing, and Logging Layer
+    Etc.
+
+
+Tech Stack
+    Java 17
+
+    Maven
+        Lombok 1.18.36
+        Spring Boot 3.3.6
+        Google
+        Bouncy Castle >= 1.17
+        AwsSdK 2.29.24
+        Google Sdk
+        Junit
+
+    JavaScript
+
+    TypeScript
+
+    Angular
+
+
+
+
+Service Layer
+    GoogleService
+    AwsService
+    IFtpService
+    IEncryptionService
+    ICompressionService
+    IEndpointService
+    IExecutionService
+    IFileService
+    IFileSystemService
+    IMySqlService
+    IMsSqlServer
+    ISnowflakeService
+    IEmail
+
+
+Endpoint Layer
+
+    ILocality <- ILocal
+    ILocality <- IRemote
+
+    IRemote <- IRegion
+
+    IPath <- IWindowsPath
+    IPath <- IUnix
+
+    ISql <- MsSql
+    ISql <- MySql
+    ISql <- Postgres
+    ISql <- BigQuery
+
+    INoSql <- Mongo
+
+    ISystem <- IFileSystem<ILocality<?>, IPath<?>>
+    ISystem <- ISql
+    ISystem <- INoSql
+    ISystem <-
+
+    IEndpoint<ILocality<?>,<ISystem<?>>
+
+
+
+
+
+    IFileSystem <- IBucket
+    IFileSystem <- ILocalFile
+    IFileSystem <- IFtp
+
+    IFtp <- FTP
+    IFtp <- SFTP
+    IFtp <- Sftp
+
+    IBucket <- Gcs
+    IBucket <- Aws
+    IBucket <- Azure
+
+    IData <- Csv
+    IData <- Xml
+    IData <- Json
+    IData <- Html
+
+    ICompressed <- Gzip
+    ICompressed <- ZIP
+    ICompressed <- Tar
+    ICompressed <- Rar
+
+    IEncrypted <- RSA
+    IEncrypted <- AES
+    IEncrypted <- DES
+
+    IWeb<Html> <- Http
+    IWeb<Json> <- Rest
+    IWeb<Xml> <- Soap
+
+
+    INameable <- Dir
+    INameable <- File
+    INameable <- Table
+    INameable <- IFieldable
+
+    IFileSystem <- IStackable<Dir>
+
+    ISerializable <- IEndpoint
+
+    INameable <- IEndpoint
+    IStackable <- IEndpoint
+    IQueryable <- ISql
+    IQueryable <- INoSql
+
+    IPathable <- IFileSystem
+
+    IFieldable <- ISql
+    IFieldable <- INoSql
+    IFieldable <- IData
+
+    ISecurable <- IEncrypted
+
+    IListable <- IFieldable
+    IListable <- IFileSystem<IDynamic>
+    IListable <- IStackable<?>
+
+    ITable
+    IRow <- IList<Field>
+    IField <- IList<Row>
+
+
+    ITable <- IFile<IData<CSV>>
+    ITable <- ISql
+
+
+    IData<?> <- IFact
+    IData<?> <- IDimension
+
+    ISchema <- IList<Field, >
+
+    Add the following nodes in litegraph.js
+        Local File
+        MS SQL Server
+        BigQuery:
+        AWS Bucket:
+        SFTP:
+
+
+
+    Non-Local endpoints will require authentication components
+    Nodes can be connected to represent data transfer, the type of data transfer depends on the nodes connected
+        Examples
+        BigQuery -> BigQuery: Big Query Table to Table based on SQL input within source node
+        BigQuery -> GCS Bucket: Export table as CSV to given bucket endpoint with export options (field delimiter, compress shards)
+        BigQuery -> AwsBucket: Export table as CSV, but will require the additional endpoints to be traversed (BigQuery -> GCS Bucket -> Local System File -> Aws Bucket)
+        BigQuery -> SFTP: Export table as CSV, but will require the additional
+
+    Suggest additional steps needed to bridge the gap between endpoint types.
+
+    All endpoints will be able to list its containing items, and treats the elements as a single unit for transfer
+        Local File Endpoint lists files and folder based on path given with regex filter to list and target only desired elements)
+        GCS bucket to list objects based on a given bucket name and path
+        AWS bucket to list objects based on a give bucket name and path
+        SFTP
+
+    Datasets will often be very large files to need to be transferred so will need to provide some sort of progress indicator for each node type depending on the transfer type
+
+
+
+Run Layer
+
+Link Layer
+
+Reporting Layer
+
+Rest API Layer
+
+
+
+UI Layer
+
+    Angular setup
+
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
+    source ~/.bashrc
+
+    nvm ls-remote
+
+    nvm install v18.20.5
+    nvm list
+
+    npm install -g typescript
+    npm install -g @angular/cli
+
+    node --version    #v18.20.5
+    npm -v            #10.8.2
+    ng version        #19.0.4
+    tsc -v            #5.7.2
+
+
+    cd jch.lib/app/webstack
+
+    ng new jch-webstack-app
+        > CSS
+        > SSR No
+        > SSG No
+
+    cd jch-webstack-app
+    npm install express
+    npm install monaco-editor
+    npm install litegraph.js
+    npm list
+
+
+Endpoint Types:
+    Remote
+    Local
+
+Remote Endpoints:
+    FTP protocols (FTP, SFTP, FTPS)
+    Cloud Services:
+        Google Cloud (BigQuery, GCS)
+        AWS (S3)
+        Snowflake
+    SQL Databases:
+    Microsoft SQL Server
+
+Local Endpoints:
+    File Operations:
+        Encryption (RSA, PGP, DES, AES)
+        Compression (GZip, ZIP, TAR, 7zip)
+        Data Formats (CSV, JSON, XML)
+        Filesystem Operations
+
+Common Operations Across Services:
+    SQL Operations
+    Schema Management
+    Import/Export
+    Data Preview
+    Catalog Browsing
+
+    ng build --output-path=dist/ --base-href=/app/
+    ng serve --watch
+
+    npm install browserify
+
+
+
+        monaco editor for SQL coding
+
+    ng new jch-webstack-app
+        > CSS
+        > SSR = No
+        > SSG = No
+
+    node --version    #v18.20.5
+    npm -v            #10.8.2
+    ng version        #19.0.4
+    tsc -v            #5.7.2
+
+Angular single page rendered in client Browser
+        Style: CSS
+        SSR: False
+        SSG: False
+Angular will be used for data binding.
+Angular will serve the following components as primary UI:  litegraph.js
+Use default litegraph.js configuration and styling
+The angular app will use HTML and Styles from litegraph.js
+
+litegraph.js uses nodes, the name of all nodes will be called Endpoints
+The creation and registration of nodes will be modeled from Litegaph.js
+Custom litegraph.js nodes will be added at a later time.
+
+
+
+
+
+
+Please provide a bash script that does the following:
+ 1) install qemu virtualization software
+ 2) download linux mint 64 cinnamon iso
+ 3) run a temporary live instance of the linux mint iso with the following specs
+    - 8 Gb Ram
+    - 2 amd64 bit Processors
+    - No hard drive
+    - Network connection using NAT to host
+
+Here's a bash script that installs QEMU, downloads Linux Mint ISO, and runs a temporary live instance with the specified
+specifications:
+```bash
+#!/bin/bash
+Endpoint Types:
+    Remote
+    Local
+
+Remote Endpoints:
+    FTP protocols (FTP, SFTP, FTPS)
+    Cloud Services:
+        Google Cloud (BigQuery, GCS)
+        AWS (S3)
+        Snowflake
+    SQL Databases:
+    Microsoft SQL Server
+
+Local Endpoints:
+    File Operations:
+        Encryption (RSA, PGP, DES, AES)
+        Compression (GZip, ZIP, TAR, 7zip)
+        Data Formats (CSV, JSON, XML)
+        Filesystem Operations
+
+Common Operations Across Services:
+    SQL Operations
+    Schema Management
+    Import/Export
+    Data PreviewEndpoint Types:
+    Remote
+    Local
+
+Remote Endpoints:
+    FTP protocols (FTP, SFTP, FTPS)
+    Cloud Services:
+        Google Cloud (BigQuery, GCS)
+        AWS (S3)
+        Snowflake
+    SQL Databases:
+    Microsoft SQL Server
+
+Local Endpoints:
+    File Operations:
+        Encryption (RSA, PGP, DES, AES)
+        Compression (GZip, ZIP, TAR, 7zip)
+        Data Formats (CSV, JSON, XML)
+        Filesystem Operations
+
+Common Operations Across Services:Endpoint Types:
+    Remote
+    Local
+
+Remote Endpoints:
+    FTP protocols (FTP, SFTP, FTPS)
+    Cloud Services:
+        Google Cloud (BigQuery, GCS)
+        AWS (S3)
+        Snowflake
+    SQL Databases:
+    Microsoft SQL Server
+
+Local Endpoints:
+    File Operations:
+        Encryption (RSA, PGP, DES, AES)
+        Compression (GZip, ZIP, TAR, 7zip)
+        Data Formats (CSV, JSON, XML)
+        Filesystem Operations
+
+Common Operations Across Services:
+    SQL Operations
+    Schema Management
+    Import/Export
+    Data Preview
+    Catalog Browsing
+    SQL Operations
+    Schema Management
+    Import/Export
+    Data Preview
+    Catalog Browsing
+    Catalog Browsing
+# Update package list and install QEMU
+sudo apt-get update -y
+sudo apt-get install qemu-system-x86-64 -y
+
+# Download Linux Mint ISO from official website
+cd /tmp
+wget https://mirrors.kernel.org/linuxmint/stable/21.3/linuxmint-21.3-cinnamon-64bit.iso
+
+chmod 775 linuxmint*.iso
+
+# Run QEMU with specified specifications
+qemu-system-x86_64 \
+ -boot d \
+ -cdrom linuxmint-21.3-cinnamon-64bit.iso \
+ -m 8G \
+ -nic user,model=virtio-net-pci \
+ -device virtio-net-pci,netdev=net0
+
+# The script will exit after you close the QEMU window. To access the live instance over SSH, use:
+# ssh root@localhost -p 10022
+```
+Make sure to update the download link with the latest Linux Mint Cinnamon ISO if there's a newer version
+available when you run this script.
+
+Note: The `root` user doesn't have a password by default in Linux Mint live session. You may need to change the root
+password or use a different user if it has been set up differently in the ISO.
+
+This script assumes you're using Ubuntu or any Debian-based distribution. If you're using another distribution,
+adjust the package manager commands accordingly (e.g., `dnf` for Fedora/RHEL/CentOS).
+
+
+
+Endpoint Types:
+    Remote
+    Local
+
+Remote Endpoints:
+    FTP protocols (FTP, SFTP, FTPS)
+    Cloud Services:
+        Google Cloud (BigQuery, GCS)
+        AWS (S3)
+        Snowflake
+    SQL Databases:
+    Microsoft SQL Server
+
+Local Endpoints:
+    File Operations:
+        Encryption (RSA, PGP, DES, AES)
+        Compression (GZip, ZIP, TAR, 7zip)
+        Data Formats (CSV, JSON, XML)
+        Filesystem Operations
+
+Common Operations Across Services:
+    SQL Operations
+    Schema Management
+    Import/Export
+    Data Preview
+    Catalog BrowsingEndpoint Types:
+    Remote
+    Local
+
+Remote Endpoints:
+    FTP protocols (FTP, SFTP, FTPS)
+    Cloud Services:
+        Google Cloud (BigQuery, GCS)
+        AWS (S3)
+        Snowflake
+    SQL Databases:
+    Microsoft SQL Server
+
+Local Endpoints:
+    File Operations:
+        Encryption (RSA, PGP, DES, AES)
+        Compression (GZip, ZIP, TAR, 7zip)
+        Data Formats (CSV, JSON, XML)
+        Filesystem Operations
+
+Common Operations Across Services:
+    SQL Operations
+    Schema Management
+    Import/Export
+    Data Preview
+    Catalog Browsing
+Graph (LGraph)
+ - The core data structure that holds nodes and their connections
+ - Manages the logical flow and relationships between nodes
+ - Think of it as the "model" or data layer
+
+GraphEditor (Component)
+ - Angular component that coordinates between UI and graph logic
+ - Handles lifecycle events and user interactions
+ - Think of it as the "controller" or coordinator
+
+Canvas (LGraphCanvas)
+ - The visual rendering layer that draws the graph
+ - Handles visual aspects like positioning, drawing, and scaling
+ - Think of it as the "view" or presentation layer
+The relationship flows:
+ GraphEditor → Graph → Canvas
+
+GraphEditor manages both Graph and Canvas
+Graph holds the data
+Canvas displays it.
+
+
+ 1) Top Level Menu Elements Layer (Foreground)
+   - Static Anchored Top Menu full span - Graph Menu
+     * Allows for saving and loading Graphs as Templates among other default templates the user can select from (Opinionated templates biased towards business logic required)
+     * Controls for running the graph: Start, Stop, Step
+     * Status indicator for the following: CPU Load, Memory Allocation, Network Throughput
+
+   - Anchored Collapsible Left - Code Editor MenuEndpoint Types:
+     * Uses Monaco Code editor for code editing for things like SQL, JSON, etc
+     * Supports tabs for multiple instances of code editing bound to specific node that contains a "code" property
+     * Instances not bound to a node is considered scratch
+     * Can be toggled to expand or collapse, or mouse over to temporarily expand to overlap the canvas temporarily
+
+  - Collapsible Right Menu - Properties Menu
+     * Displays a detail list of editable properties for the currently loaded graph or in context to an individual node
+     * Nodes will display a subset of options for most common use cases to save space on the canvas where
+
+  - Collapsible Bottom Menu - Search, Log, and other items and features for future development
+     * Anchored bottom Menu that resizes to a collapsible in respect to a collapsible anchored left and right menu
+     * Search function that is able to search for property values across graph nodes
+     * Show runtime logs provided by underlying Spring Boot engine performing actual work performed by Spring
+     * Toggle for expanding and collapsing bottom menu to show log text in a console like presentation
+
+  - Each top menu component will handle its own context menus that will be later defined
+
+ 2) Canvas Layer (Background)
+  - Context Menu for adding different node types to canvas and graph
+  - Canvas is moveable and zoom able but does not affect top layer menu items.
+
+ 3) Nodes Layer (Canvas Overlay, Business Logic)
+  - litegraph.js uses nodes, a base node is provided to be extended for development of custom nodes
+  - All custom nodes will extend from a custom node called EndpointBase that will handle all common node behaviors
+  - Each node will have a collection of input connections, output connections, properties, displayed properties using widgets
+  - Nodes are conditionally connectable based on connection types: like connection types are connectable
+  - All nodes are moveable and resizable and should be initialized to reasonable display widgets/properties
+  - EndpointBase will have a base context menu that can be extendable via different Endpoint Node types
+  - The following example is a loose set of Endpoint specifications for how Endpoint Node classes will be structured
+
+        Endpoint Types:
+            Remote
+            Local
+
+        Remote Endpoints:
+            FTP protocols (FTP, SFTP, FTPS)
+            Cloud Services:
+                Google Cloud (BigQuery, GCS)
+                AWS (S3)
+                Snowflake
+            SQL Databases:
+            Microsoft SQL Server
+
+        Local Endpoints:
+            File Operations:
+                Encryption (RSA, PGP, DES, AES)
+                Compression (GZip, ZIP, TAR, 7zip)
+                Data Formats (CSV, JSON, XML)
+                Filesystem Operations
+
+        Common Operations Across Services:
+            SQL Operations
+            Schema Management
+            Import/Export
+            Data Preview
+            Catalog Browsing
+
+
+ 4) Node Connection Layer
+  - Nodes will have various input and output types depending on the node definition
+  - Each Node Connection type will be shown as a different color to indicate the type
+  - A Node Connection legend can be optionally displayed (likely to be handled and owned by Top Layer Bottom Menu)
+  - Node connection lines will appear to "pulse" from output to input to indicate activity between nodes when node is
+    performing some task
+    * For example, if a node is responsible for moving multiple files asynchronously, each file transferred will
+      represent a single file transferred
+      In effect, multiple pulses can be displayed at time
+  - Example Connection Type Definitions (but currently not set in stone)
+        String
+        Code Extends String
+        DateTime
+        Numeric
+        Path extends String
+        Item Name extends String
+        SQL Table
+        Local to Remote
+        Remote to Local
+
+
+

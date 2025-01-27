@@ -1,0 +1,23 @@
+
+REST Specs
+
+host/endpoints
+host/endpoint/bigquery/projects
+host/endpoint/bigquery/{project_id}/datasets
+host/endpoint/bigquery/{project_id}/{dataset}/tables
+host/endpoint/bigquery/{project_id}/
+
+
+
+
+scheme:[//authority]path[query][#fragment]
+  scheme: http, https, ftp, mailto, file, data
+  Authority: username:password@host:port
+             ipaddress:port
+  #fragment
+  Reserved:
+      Colon(:)
+      Question Mark(?)
+      Hash Tag(#)
+      Square Brackets([]),
+      At Sign(@)
