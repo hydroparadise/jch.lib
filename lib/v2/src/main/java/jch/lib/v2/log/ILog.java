@@ -7,6 +7,8 @@ import java.nio.file.*;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
+
 import lombok.Getter;
 
 /***
@@ -43,7 +45,9 @@ public interface ILog<T> {
     void trace(Object msg);
     void catching(Object msg);
     void throwing(Object msg);
-    ArrayList<ILog<T>> getAllLoggers();
+
+
+    List<T> getAllLoggers();
 
     //TODO: decide how to handle
     //public void traceEntry();

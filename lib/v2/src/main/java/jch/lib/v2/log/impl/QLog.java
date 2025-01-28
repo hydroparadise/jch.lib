@@ -43,7 +43,7 @@ public class QLog implements ILog<QLog> {
     @Builder.Default @JsonProperty("fullFilePath") private String fullFilePath = "";
 
     @Getter private boolean initialized = false;
-    @Getter private static List<ILog<QLog>> allLoggers = new ArrayList<>();
+    @Getter private List<QLog> allLoggers;
 
     public String getCallerName() {
         String output = "";
