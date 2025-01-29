@@ -7,8 +7,12 @@ import software.amazon.awssdk.http.async.SdkAsyncHttpClient;
 import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
+//import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.transfer.s3.S3TransferManager;
+import software.amazon.awssdk.transfer.s3.model.*;
+import software.amazon.awssdk.transfer.s3.progress.LoggingTransferListener;
 
-
+import java.nio.file.Paths;
 import java.time.Duration;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
@@ -16,6 +20,21 @@ import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 public abstract class AwsService {
     static S3AsyncClient s3AsyncClient = null;
 
+    static {
+        System.out.println("here!");
+    }
+
+    public Long downloadFile(S3TransferManager transferManager, String bucketName,
+                             String key, String downloadedFileWithPath) {
+        DownloadFileRequest downloadFileRequest = DownloadFileRequest.builder()
+                .getObjectRequest(b -> b.bucket(bucketName).key(key))
+                .destination(Paths.get(downloadedFileWithPath))
+                .build();
+        FileDownload downloadFile = transferManager.downloadFile(downloadFileRequest);
+        CompletedFileDownload downloadResult = downloadFile.completionFuture().join();
+        //logger.info("Content length [{}]", downloadResult.response().contentLength());
+        return downloadResult.response().contentLength();
+    }
 
     public static S3AsyncClient getAsyncClient() {
         if (s3AsyncClient == null) {
